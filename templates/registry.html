@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ panel_title }}{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">{{ eyebrow }}</p>
+    <h2>{{ title }}</h2>
+    <p class="subtitle">{{ description }}</p>
+    <p class="back-link-wrap">
+      <a class="back-link" href="{{ return_to or url_for('crm') }}">‹ Voltar</a>
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">{{ panel_kicker }}</p>
+          <h2>{{ panel_title }}</h2>
+        </div>
+        <span class="panel-badge">{{ panel_badge }}</span>
+      </div>
+
+      <form method="post" class="form-grid {{ form_class|default('') }}">
+        {% if return_to %}
+          <input type="hidden" name="return_to" value="{{ return_to }}">
+        {% endif %}
+        {% for field in fields %}
+          <label class="{% if field.get('full') %}full{% endif %} {{ field.get('label_class', '') }}">
+            {{ field["label"] }}
+            {% if field["type"] == "textarea" %}
+              <textarea
+                name="{{ field['name'] }}"
+                rows="3"
+                {% if field.get('placeholder') %}placeholder="{{ field['placeholder'] }}"{% endif %}
+              ></textarea>
+            {% elif field["type"] == "select" %}
+              <select name="{{ field['name'] }}" {% if field.get('required') %}required{% endif %}>
+                {% if not field.get('required') %}
+                  <option value="">Nenhum</option>
+                {% endif %}
+                {% for option in field["options"] %}
+                  <option value="{{ option }}" {% if field.get('value') == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            {% elif field["type"] == "checkbox" %}
+              <span class="checkbox-field">
+                <input type="checkbox" name="{{ field['name'] }}">
+                <span>{{ field.get("hint", "Sim") }}</span>
+              </span>
+            {% else %}
+              <input
+                type="{{ field['type'] }}"
+                name="{{ field['name'] }}"
+                {% if field.get('class') %}class="{{ field['class'] }}"{% endif %}
+                {% if field.get('inputmode') %}inputmode="{{ field['inputmode'] }}"{% endif %}
+                {% if field.get('placeholder') %}placeholder="{{ field['placeholder'] }}"{% endif %}
+                {% if field.get('min') is not none %}min="{{ field['min'] }}"{% endif %}
+                {% if field.get('step') is not none %}step="{{ field['step'] }}"{% endif %}
+                {% if field.get('value') is not none %}value="{{ field['value'] }}"{% endif %}
+                {% if field.get('readonly') %}readonly{% endif %}
+                {% if field.get('required') %}required{% endif %}
+              >
+            {% endif %}
+          </label>
+        {% endfor %}
+        <div class="button-row full">
+          {% if section == 'components' %}
+            <a class="secondary-button" href="{{ url_for('registry_page', section='suppliers', return_to=url_for('registry_page', section='components')) }}">Cadastrar fornecedor</a>
+          {% endif %}
+          <button type="submit">{{ submit_label }}</button>
+        </div>
+      </form>
+    </article>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Base cadastrada</p>
+          <h2>{{ panel_title }}</h2>
+        </div>
+      </div>
+      {% if delete_error %}
+        <p class="error">{{ delete_error }}</p>
+      {% endif %}
+      {% if records %}
+        <div class="table-wrap">
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>Editar</th>
+                {% for column in columns %}
+                  <th>{{ column["label"] }}</th>
+                {% endfor %}
+                <th>Excluir</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in records %}
+                <tr>
+                  <td data-label="Editar">
+                    {% if record.get("action_url") %}
+                      <a class="action-link" href="{{ record['action_url'] }}">Editar</a>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  {% for column in columns %}
+                    <td data-label="{{ column['label'] }}">{{ record[column["key"]] }}</td>
+                  {% endfor %}
+                  <td data-label="Excluir">
+                    {% if record.get("delete_url") %}
+                      <form method="post" action="{{ record['delete_url'] }}" class="inline-form" onsubmit="return confirm('Excluir este cadastro?');">
+                        <button type="submit" class="danger-button">Excluir</button>
+                      </form>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty">Nenhum item cadastrado ainda nesta categoria.</p>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

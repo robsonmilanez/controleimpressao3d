@@ -1,0 +1,10 @@
+.DS_Store
+.venv/
+__pycache__/
+.pycache/
+*.pyc
+app.db
+app.backup-before-clean-real-launch-2026-04-14.db
+data/
+static/uploads/jobs/*
+!static/uploads/jobs/.gitkeep

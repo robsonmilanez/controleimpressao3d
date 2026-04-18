@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Movimentações de Estoque{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Movimentações</p>
+    <h2>Entradas, perdas, ajustes e consumo de materiais</h2>
+    <p class="subtitle">
+      Registre tudo que entra ou sai do estoque para manter o saldo real atualizado.
+    </p>
+  </section>
+
+  <section class="panel-grid">
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Nova movimentação</h2>
+      </div>
+      {% if error %}
+        <p class="error">{{ error }}</p>
+      {% endif %}
+      {% if materials %}
+        <form method="post" class="form-grid">
+          <label>
+            Material
+            <select name="material_id" required>
+              <option value="">Nenhum</option>
+              {% for item in materials %}
+                <option value="{{ item['id'] }}">{{ item["name"] }} - {{ item["color"] }} ({{ "%.0f"|format(item["stock_grams"]) }} g)</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Tipo
+            <select name="movement_type" required>
+              <option value="">Nenhum</option>
+              {% for movement_type in movement_types %}
+                <option>{{ movement_type }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Quantidade (g)
+            <input type="number" name="quantity_grams" min="0.01" step="0.01" required>
+          </label>
+          <label class="full">
+            Observações
+            <textarea name="notes" rows="3" placeholder="Compra, inventario, quebra, teste de maquina..."></textarea>
+          </label>
+          <button type="submit">Registrar movimentação</button>
+        </form>
+      {% else %}
+        <p class="empty">Cadastre materiais antes de registrar movimentações.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Resumo do estoque</h2>
+      </div>
+      {% if materials %}
+        <ul class="stock-list">
+          {% for item in materials[:8] %}
+            <li>
+              <div>
+                <strong>{{ item["name"] }} {{ item["color"] }}</strong>
+                <span>{{ item["material_type"] }}</span>
+              </div>
+              <span>{{ "%.0f"|format(item["stock_grams"]) }} g</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">Sem materiais cadastrados.</p>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Histórico de movimentações</h2>
+      </div>
+      {% if movements %}
+        <div class="table-wrap">
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Material</th>
+                <th>Quantidade</th>
+                <th>Observações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for movement in movements %}
+                <tr>
+                  <td data-label="Data">{{ movement["created_at"] }}</td>
+                  <td data-label="Tipo">{{ movement["movement_type"] }}</td>
+                  <td data-label="Material">{{ movement["material_name"] }} {{ movement["material_color"] }}</td>
+                  <td data-label="Quantidade">{{ "%.0f"|format(movement["quantity_grams"]) }} g</td>
+                  <td data-label="Observações">{{ movement["notes"] or "-" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty">Nenhuma movimentação registrada.</p>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

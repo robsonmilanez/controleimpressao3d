@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Cadastros{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Cadastros</p>
+    <h2>Central de configurações da operação</h2>
+    <p class="subtitle">
+      Aqui ficam apenas os tópicos e subtópicos. Cada clique abre a tela dedicada daquele cadastro.
+    </p>
+  </section>
+
+  <section class="settings-groups settings-groups-compact">
+    {% for group in menu_groups %}
+      <div class="settings-block">
+        <p class="settings-title">{{ group["title"] }}</p>
+        <div class="settings-list">
+          {% for item in group["items"] %}
+            <a class="settings-row" href="{{ item['href'] }}">
+              <span class="settings-icon">{{ item["icon"] }}</span>
+              <span class="settings-label">{{ item["label"] }}</span>
+              <span class="settings-count">{{ item["count"] }}</span>
+              <span class="settings-arrow">›</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </section>
+{% endblock %}

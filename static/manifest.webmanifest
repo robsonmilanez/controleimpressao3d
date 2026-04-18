@@ -1,0 +1,10 @@
+{
+  "name": "Controle de Impressão 3D",
+  "short_name": "Impressão 3D",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4efe7",
+  "theme_color": "#b65b2c",
+  "description": "Gestão comercial, estoque e pedidos para empresas de impressão 3D.",
+  "icons": []
+}

@@ -1,0 +1,166 @@
+<label class="compact-field">
+  Código interno
+  <input type="text" value="{{ product['sku'] if product else next_product_code }}" readonly>
+</label>
+<label class="span-4">
+  Nome do produto
+  <input type="text" name="name" value="{{ product['name'] if product else '' }}" placeholder="Chaveiro personalizado, suporte, miniatura..." required>
+</label>
+<label class="span-3">
+  Categoria
+  <input type="text" name="category" value="{{ product['category'] if product else '' }}" placeholder="Decoracao, reposicao, brinde...">
+</label>
+<label class="span-3">
+  Status
+  {% set product_status = product['status'] if product else 'Ativo' %}
+  <select name="status">
+    <option value="">Nenhum</option>
+    <option value="Ativo" {% if product_status == "Ativo" %}selected{% endif %}>Ativo</option>
+    <option value="Pausado" {% if product_status == "Pausado" %}selected{% endif %}>Pausado</option>
+    <option value="Sob encomenda" {% if product_status == "Sob encomenda" %}selected{% endif %}>Sob encomenda</option>
+    <option value="Fora de linha" {% if product_status == "Fora de linha" %}selected{% endif %}>Fora de linha</option>
+  </select>
+</label>
+
+<div class="form-section full">
+  <h3>Filamentos e componentes</h3>
+  <p>Defina os filamentos usados pelo produto, com quantidade e tempo de impressão, e depois os componentes vinculados.</p>
+</div>
+
+{% set material_rows = product_material_lines if product_material_lines is defined and product_material_lines else ([{'material_id': (product['material_id'] if product and product['material_id'] else None), 'quantity_grams': (product['weight_grams'] if product else 0), 'print_hours': (product['print_hours'] if product else 0)}] if product else [{'material_id': None, 'quantity_grams': 0, 'print_hours': 0}]) %}
+<div class="collection full" data-collection="product-materials">
+  {% for row in material_rows %}
+    <div class="collection-row product-material-row">
+      <label class="span-4">
+        Filamento
+        <select name="product_material_id" data-new-url="{{ url_for('materials', return_to=(url_for('edit_product', product_id=product['id']) if product else url_for('products'))) }}">
+          <option value="__new__">+ Cadastrar novo filamento</option>
+          <option value="">Nenhum</option>
+          {% for material in materials %}
+            <option value="{{ material['id'] }}" data-cost-per-kg="{{ material['cost_per_kg'] or 0 }}" {% if row['material_id'] == material['id'] %}selected{% endif %}>{{ material["name"] }} / {{ material["color"] or "-" }} / {{ material["manufacturer_name"] or "-" }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="span-1">
+        Qtde (g)
+        <input type="number" name="product_material_quantity" min="0" step="0.01" value="{{ row['quantity_grams'] or 0 }}">
+      </label>
+      <label class="span-1">
+        Impressão (h)
+        <input type="number" name="product_material_print_hours" min="0" step="0.01" value="{{ row['print_hours'] or 0 }}">
+      </label>
+      <label class="span-1 computed-field">
+        Total
+        <input type="text" class="product-material-line-total" value="0,00" readonly tabindex="-1">
+      </label>
+    </div>
+  {% endfor %}
+</div>
+<div class="button-row full">
+  <button type="button" class="secondary-button" data-add-row="product-materials">Adicionar filamento</button>
+</div>
+<div class="button-row full product-collection-summary">
+  <span class="summary-label">Total dos filamentos</span>
+  <strong class="product-material-grand-total">R$ 0,00</strong>
+</div>
+
+{% set component_rows = product_component_lines if product_component_lines is defined and product_component_lines else [{'component_id': None, 'quantity': 0}] %}
+<div class="collection full" data-collection="product-components">
+  {% for row in component_rows %}
+    <div class="collection-row product-component-row">
+      <label class="span-4">
+        Componente
+        <select name="product_component_id" data-new-url="{{ url_for('registry_page', section='components', return_to=(url_for('edit_product', product_id=product['id']) if product else url_for('products'))) }}">
+          <option value="__new__">+ Cadastrar novo componente</option>
+          <option value="">Nenhum</option>
+          {% for component in components %}
+            <option value="{{ component['id'] }}" data-unit-cost="{{ component['unit_cost'] or 0 }}" {% if row['component_id'] == component['id'] %}selected{% endif %}>{{ component["name"] }}{% if component["manufacturer_name"] %} / {{ component["manufacturer_name"] }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="span-2">
+        Quantidade
+        <input type="number" name="product_component_quantity" min="0" step="0.01" value="{{ row['quantity'] or 0 }}">
+      </label>
+      <label class="span-2 computed-field">
+        Total
+        <input type="text" class="product-component-line-total" value="0,00" readonly tabindex="-1">
+      </label>
+    </div>
+  {% endfor %}
+</div>
+<div class="button-row full">
+  <button type="button" class="secondary-button" data-add-row="product-components">Adicionar componente</button>
+</div>
+<div class="button-row full product-collection-summary">
+  <span class="summary-label">Total dos componentes</span>
+  <strong class="product-component-grand-total">R$ 0,00</strong>
+</div>
+
+<label class="span-2 computed-field">
+  Peso (g)
+  <input type="number" name="weight_grams" min="0" step="0.01" value="{{ product['weight_grams'] if product else 0 }}" readonly tabindex="-1">
+</label>
+<label class="span-2 computed-field">
+  Custo filamentos
+  <input type="text" class="product-material-cost-total" value="0,00" readonly tabindex="-1">
+</label>
+<label class="span-2 computed-field">
+  Tempo de impressão (h)
+  <input type="number" name="print_hours" min="0" step="0.01" value="{{ product['print_hours'] if product else 0 }}" readonly tabindex="-1">
+</label>
+<label class="span-2 computed-field">
+  Energia total
+  <input type="text" class="product-energy-total" value="0,00" readonly tabindex="-1">
+  <input type="hidden" name="energy_cost_per_hour" value="{{ product['energy_cost_per_hour']|br_money if product else '0,80' }}">
+</label>
+<label class="span-2">
+  Operacional/h
+  <input type="text" name="operating_cost_per_hour" class="currency-field" inputmode="decimal" value="{{ product['operating_cost_per_hour']|br_money if product else '3,50' }}">
+</label>
+<label class="span-2">
+  Trabalho (h)
+  <input type="number" name="labor_hours" min="0" step="0.01" value="{{ product['labor_hours'] if product else 0 }}">
+</label>
+<label class="span-2">
+  Valor trabalho/h
+  <input type="text" name="labor_hourly_rate" class="currency-field" inputmode="decimal" value="{{ product['labor_hourly_rate']|br_money if product else '0,00' }}">
+</label>
+
+<label class="span-3">
+  Valor design/h
+  <input type="text" name="design_hourly_rate" class="currency-field" inputmode="decimal" value="{{ product['design_hourly_rate']|br_money if product else '0,00' }}">
+</label>
+<label class="span-3">
+  Custos extras
+  <input type="text" name="extra_cost" class="currency-field" inputmode="decimal" value="{{ product['extra_cost']|br_money if product else '0,00' }}">
+</label>
+<label class="span-2">
+  Margem (%)
+  <input type="number" name="margin_percent" min="0" max="99" step="0.01" value="{{ product['margin_percent'] if product else 0 }}">
+</label>
+<label class="span-2">
+  Preço de venda
+  <input type="text" name="sale_price" class="currency-field" inputmode="decimal" value="{{ product['sale_price']|br_money if product else '0,00' }}">
+</label>
+<label class="span-1 computed-field">
+  Estoque pronto
+  <input type="number" name="stock_quantity" min="0" step="0.01" value="{{ product['stock_quantity'] if product else 0 }}" readonly tabindex="-1">
+</label>
+<label class="span-1">
+  Minimo
+  <input type="number" name="minimum_quantity" min="0" step="0.01" value="{{ product['minimum_quantity'] if product else 0 }}">
+</label>
+
+<label class="full">
+  Descrição comercial
+  <textarea name="description" rows="3" placeholder="Texto curto para catálogo, loja ou proposta.">{{ product['description'] if product else '' }}</textarea>
+</label>
+<label class="full">
+  Link do modelo/arquivo
+  <input type="url" name="model_link" value="{{ product['model_link'] if product else '' }}" placeholder="https://...">
+</label>
+<label class="full">
+  Observações internas
+  <textarea name="notes" rows="3" placeholder="Acabamento, variações, embalagem, cuidados, restrições de produção...">{{ product['notes'] if product else '' }}</textarea>
+</label>

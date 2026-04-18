@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Consultar Produtos para Venda{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Consultas</p>
+    <h2>Consultar produtos para venda</h2>
+    <p class="subtitle">
+      Veja apenas a listagem dos produtos para venda ja cadastrados, sem entrar na tela de cadastro.
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Produtos cadastrados</h2>
+      </div>
+      {% if products %}
+        <div class="table-wrap">
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>Codigo</th>
+                <th>Produto</th>
+                <th>Material base</th>
+                <th>Canal</th>
+                <th>Status</th>
+                <th>Preco</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for product in products %}
+                <tr>
+                  <td data-label="Codigo">{{ product["sku"] or "-" }}</td>
+                  <td data-label="Produto">
+                    <strong>{{ product["name"] }}</strong><br>
+                    {{ product["category"] or "-" }}
+                  </td>
+                  <td data-label="Material base">
+                    {% if product["material_name"] %}
+                      {{ product["material_name"] }}{% if product["material_color"] %} - {{ product["material_color"] }}{% endif %}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td data-label="Canal">{{ product["sale_channel"] or "-" }}</td>
+                  <td data-label="Status">{{ product["status"] or "-" }}</td>
+                  <td data-label="Preco">R$ {{ product["sale_price"]|br_money }}</td>
+                  <td data-label="Acoes">
+                    <div class="action-group">
+                      <a class="action-link" href="{{ url_for('edit_product', product_id=product['id']) }}">Abrir produto</a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty">Nenhum produto para venda cadastrado.</p>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

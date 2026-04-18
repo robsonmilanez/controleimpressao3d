@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Produtos para Venda{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Produtos</p>
+    <h2>Cadastro de produtos para venda</h2>
+    <p class="subtitle">
+      Organize os itens prontos ou repetitivos com filamentos, componentes, custo, margem e preço final.
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Novo cadastro</p>
+          <h2>Produto para venda</h2>
+        </div>
+        <span class="panel-badge">{{ next_product_code }}</span>
+      </div>
+      <form method="post" class="form-grid material-form">
+        {% if return_to %}
+          <input type="hidden" name="return_to" value="{{ return_to }}">
+        {% endif %}
+        {% set product = none %}
+        {% include "product_form_fields.html" %}
+        <button type="submit">Salvar produto</button>
+      </form>
+    </article>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Catalogo</p>
+          <h2>Produtos cadastrados</h2>
+        </div>
+      </div>
+      {% if delete_error %}
+        <p class="error">{{ delete_error }}</p>
+      {% endif %}
+      {% if products %}
+        <div class="table-wrap">
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>Editar</th>
+                <th>Codigo</th>
+                <th>Produto</th>
+                <th>Material</th>
+                <th>Custo</th>
+                <th>Venda</th>
+                <th>Estoque</th>
+                <th>Status</th>
+                <th>Excluir</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in products %}
+                <tr>
+                  <td data-label="Editar">
+                    <a class="action-link" href="{{ url_for('edit_product', product_id=item['id']) }}">Editar</a>
+                  </td>
+                  <td data-label="Codigo">{{ item["sku"] or "-" }}</td>
+                  <td data-label="Produto">
+                    <strong>{{ item["name"] }}</strong><br>
+                    {{ item["category"] or "Sem categoria" }}
+                  </td>
+                  <td data-label="Material">
+                    {% if item["material_lines"] %}
+                      {% for line in item["material_lines"] %}
+                        <div>{{ line["label"] }} · {{ line["quantity_grams"]|br_decimal }} g · {{ line["print_hours"]|br_decimal }} h</div>
+                      {% endfor %}
+                    {% elif item["material_name"] %}
+                      {{ item["material_name"] }} · {{ item["material_color"] }}
+                    {% else %}
+                      -
+                    {% endif %}
+                    {% if item["component_lines"] %}
+                      <br><span class="muted-text">Componentes:
+                        {% for line in item["component_lines"] %}
+                          {{ line["label"] }} x {{ line["quantity"]|br_decimal }}{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td data-label="Custo">R$ {{ item["unit_cost"]|br_money }}</td>
+                  <td data-label="Venda">R$ {{ item["sale_price"]|br_money }}</td>
+                  <td data-label="Estoque">{{ item["stock_quantity"]|br_decimal }} / min {{ item["minimum_quantity"]|br_decimal }}</td>
+                  <td data-label="Status">{{ item["status"] }}</td>
+                  <td data-label="Excluir">
+                    <form method="post" action="{{ url_for('delete_product', product_id=item['id']) }}" class="inline-form" onsubmit="return confirm('Excluir este produto?');">
+                      <button type="submit" class="danger-button">Excluir</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty">Cadastre o primeiro produto para montar seu catálogo de venda.</p>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

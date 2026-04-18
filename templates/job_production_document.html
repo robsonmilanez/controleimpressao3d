@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ordem de produção #{{ job["id"] }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260414-1435') }}">
+  </head>
+  <body class="print-body">
+    <main class="print-page">
+      <div class="print-actions">
+        <a class="action-link" href="{{ url_for('jobs') }}">Voltar</a>
+        <button type="button" onclick="window.print()">Gerar PDF</button>
+      </div>
+
+      <header class="document-header">
+        <div>
+          <p class="eyebrow">Ordem de produção interna</p>
+          <h1>OP #{{ "%04d"|format(job["id"]) }}</h1>
+          <p>{{ job["item_name"] }}</p>
+        </div>
+      </header>
+
+      <section class="document-commercial-grid">
+        <article>
+          <span>Cliente</span>
+          <strong>{{ job["customer_display"] }}</strong>
+        </article>
+        <article>
+          <span>Status</span>
+          <strong>{{ job["status"] }}</strong>
+        </article>
+        <article>
+          <span>Canal de venda interno</span>
+          <strong>{{ job["sale_channel"] or "-" }}</strong>
+        </article>
+        <article>
+          <span>Prazo</span>
+          <strong>{{ job["due_date"] or "-" }}</strong>
+        </article>
+        <article>
+          <span>Validade do orçamento</span>
+          <strong>{{ job["valid_until"] or "-" }}</strong>
+        </article>
+        <article>
+          <span>Condicoes de pagamento</span>
+          <strong>{{ job["payment_terms"] or "-" }}</strong>
+        </article>
+        <article>
+          <span>Representante</span>
+          <strong>{{ job["representative_name"] or "-" }}</strong>
+        </article>
+        <article>
+          <span>Loja parceira</span>
+          <strong>{{ job["partner_store_name"] or "-" }}</strong>
+        </article>
+      </section>
+
+      <section class="document-section">
+        <h2>Detalhes dos itens</h2>
+        <div class="document-item-meta">
+          <p><strong>Objeto:</strong> {{ job["item_name"] }}</p>
+          <p><strong>Quantidade geral:</strong> {{ job["quantity"] }} un</p>
+          <p><strong>Impressora:</strong> {{ job["printer_name"] or "Conforme linhas de produção" }}{% if job["printer_model"] %} - {{ job["printer_model"] }}{% endif %}</p>
+          <p><strong>Secador:</strong> {{ job["dryer_brand"] or "Conforme linhas de produção" }}{% if job["dryer_model"] %} {{ job["dryer_model"] }}{% endif %}</p>
+          <p><strong>Link do modelo:</strong> {{ job["model_link"] or "-" }}</p>
+        </div>
+        <table class="document-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qtd.</th>
+              <th>Valor unit.</th>
+              <th>Acrescimo</th>
+              <th>Desconto</th>
+              <th>Total</th>
+              <th>Obs.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for service in service_lines %}
+              <tr>
+                <td>{{ service["service_name"] }}</td>
+                <td>{{ service["quantity"]|br_decimal }}</td>
+                <td>R$ {{ service["unit_price"]|br_money }}</td>
+                <td>R$ {{ service["addition_value"]|br_money }}</td>
+                <td>R$ {{ service["discount_value"]|br_money }}</td>
+                <td>R$ {{ service["total_price"]|br_money }}</td>
+                <td>{{ service["notes"] or "-" }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7">Nenhum item detalhado.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      {% if photo_lines %}
+        <section class="document-section">
+          <h2>Fotos do produto</h2>
+          <div class="document-photos">
+            {% for photo in photo_lines %}
+              <img src="{{ url_for('uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="document-section">
+        <h2>Filamentos e materiais</h2>
+        <table class="document-table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Cor</th>
+              <th>Fabricante</th>
+              <th>Peso</th>
+              <th>Custo/kg</th>
+              <th>Custo estimado</th>
+              <th>Local</th>
+              <th>Obs.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for material in material_lines %}
+              <tr>
+                <td>{{ material["material_type"] }}</td>
+                <td>{{ material["color"] }}</td>
+                <td>{{ material["manufacturer_name"] or "-" }}</td>
+                <td>{{ material["weight_grams"]|br_decimal }} g</td>
+                <td>R$ {{ material["cost_per_kg"]|br_money }}</td>
+                <td>R$ {{ ((material["weight_grams"] * material["cost_per_kg"]) / 1000)|br_money }}</td>
+                <td>{{ material["location"] or "-" }}</td>
+                <td>{{ material["notes"] or "-" }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="8">Nenhum material detalhado.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="document-section">
+        <h2>Componentes</h2>
+        <table class="document-table">
+          <thead>
+            <tr>
+              <th>Componente</th>
+              <th>Codigo</th>
+              <th>Qtd.</th>
+              <th>Unidade</th>
+              <th>Custo unit.</th>
+              <th>Total</th>
+              <th>Local</th>
+              <th>Obs.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for component in component_lines %}
+              <tr>
+                <td>{{ component["component_name"] }}</td>
+                <td>{{ component["sku"] or "-" }}</td>
+                <td>{{ component["quantity"]|br_decimal }}</td>
+                <td>{{ component["unit_measure"] or "un" }}</td>
+                <td>R$ {{ component["unit_cost"]|br_decimal(4) }}</td>
+                <td>R$ {{ (component["quantity"] * component["unit_cost"])|br_money }}</td>
+                <td>{{ component["location"] or "-" }}</td>
+                <td>{{ component["notes"] or "-" }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="8">Nenhum componente detalhado.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="document-section">
+        <h2>Custos e horas</h2>
+        <table class="document-table">
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th>Base</th>
+              <th>Taxa / valor</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Filamentos e materiais</td>
+              <td>{{ cost_summary["total_weight"]|br_decimal }} g</td>
+              <td>Conforme linhas acima</td>
+              <td>R$ {{ cost_summary["material_cost"]|br_money }}</td>
+            </tr>
+            {% for detail in cost_summary["breakdowns"]["materials"] %}
+              <tr class="document-subrow">
+                <td>• {{ detail["label"] }}</td>
+                <td>{{ detail["base"] }}</td>
+                <td>{{ detail["rate"] }}</td>
+                <td>R$ {{ detail["total"]|br_money }}</td>
+              </tr>
+            {% endfor %}
+            <tr>
+              <td>Componentes</td>
+              <td>{{ cost_summary["component_count"]|br_decimal }} item(ns)</td>
+              <td>Conforme linhas acima</td>
+              <td>R$ {{ cost_summary["component_cost"]|br_money }}</td>
+            </tr>
+            {% for detail in cost_summary["breakdowns"]["components"] %}
+              <tr class="document-subrow">
+                <td>• {{ detail["label"] }}</td>
+                <td>{{ detail["base"] }}</td>
+                <td>{{ detail["rate"] }}</td>
+                <td>R$ {{ detail["total"]|br_money }}</td>
+              </tr>
+            {% endfor %}
+            <tr>
+              <td>Energia</td>
+              <td>{{ cost_summary["total_print_hours"]|br_decimal }} h</td>
+              <td>Conforme impressoras</td>
+              <td>R$ {{ cost_summary["energy_cost"]|br_money }}</td>
+            </tr>
+            {% for detail in cost_summary["breakdowns"]["energy"] %}
+              <tr class="document-subrow">
+                <td>• {{ detail["label"] }}</td>
+                <td>{{ detail["base"] }}</td>
+                <td>{{ detail["rate"] }}</td>
+                <td>R$ {{ detail["total"]|br_money }}</td>
+              </tr>
+            {% endfor %}
+            <tr>
+              <td>Custo operacional</td>
+              <td>{{ cost_summary["total_print_hours"]|br_decimal }} h</td>
+              <td>Conforme impressoras</td>
+              <td>R$ {{ cost_summary["operating_cost"]|br_money }}</td>
+            </tr>
+            {% for detail in cost_summary["breakdowns"]["operating"] %}
+              <tr class="document-subrow">
+                <td>• {{ detail["label"] }}</td>
+                <td>{{ detail["base"] }}</td>
+                <td>{{ detail["rate"] }}</td>
+                <td>R$ {{ detail["total"]|br_money }}</td>
+              </tr>
+            {% endfor %}
+            <tr>
+              <td>Secagem do filamento</td>
+              <td>{{ cost_summary["total_dryer_hours"]|br_decimal }} h</td>
+              <td>Conforme secadores</td>
+              <td>R$ {{ cost_summary["dryer_cost"]|br_money }}</td>
+            </tr>
+            {% for detail in cost_summary["breakdowns"]["dryers"] %}
+              <tr class="document-subrow">
+                <td>• {{ detail["label"] }}</td>
+                <td>{{ detail["base"] }}</td>
+                <td>{{ detail["rate"] }}</td>
+                <td>R$ {{ detail["total"]|br_money }}</td>
+              </tr>
+            {% endfor %}
+            <tr>
+              <td>Trabalho manual</td>
+              <td>{{ job["labor_hours"]|br_decimal }} h</td>
+              <td>R$ {{ job["labor_hourly_rate"]|br_money }}/h</td>
+              <td>R$ {{ cost_summary["labor_cost"]|br_money }}</td>
+            </tr>
+            <tr>
+              <td>Design/modelagem</td>
+              <td>{{ job["design_hours"]|br_decimal }} h</td>
+              <td>R$ {{ job["design_hourly_rate"]|br_money }}/h</td>
+              <td>R$ {{ cost_summary["design_cost"]|br_money }}</td>
+            </tr>
+            <tr>
+              <td>Custos extras</td>
+              <td>-</td>
+              <td>-</td>
+              <td>R$ {{ cost_summary["extra_cost"]|br_money }}</td>
+            </tr>
+            <tr>
+              <td><strong>Custo total</strong></td>
+              <td>-</td>
+              <td>-</td>
+              <td><strong>R$ {{ cost_summary["total_cost"]|br_money }}</strong></td>
+            </tr>
+            <tr>
+              <td><strong>Preco vendido/sugerido</strong></td>
+              <td>Margem desejada: {{ job["margin_percent"]|br_decimal }}%</td>
+              <td>-</td>
+              <td><strong>R$ {{ cost_summary["suggested_price"]|br_money }}</strong></td>
+            </tr>
+            <tr>
+              <td><strong>Lucro estimado</strong></td>
+              <td>-</td>
+              <td>-</td>
+              <td><strong>R$ {{ cost_summary["profit"]|br_money }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="document-section">
+        <h2>Observações para cliente</h2>
+        <p>{{ job["customer_notes"] or "-" }}</p>
+      </section>
+
+      <section class="document-section">
+        <h2>Observações internas</h2>
+        <p>{{ job["internal_notes"] or job["notes"] or "-" }}</p>
+      </section>
+    </main>
+  </body>
+</html>

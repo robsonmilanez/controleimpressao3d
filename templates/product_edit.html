@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Editar Produto{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Produtos</p>
+    <h2>Editar produto para venda</h2>
+    <p class="subtitle">
+      Atualize custo, preço, canal e estoque do item cadastrado.
+    </p>
+    <p class="back-link-wrap">
+      <a class="back-link" href="{{ url_for('products') }}">‹ Voltar para produtos</a>
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Edição</p>
+          <h2>{{ product["name"] }}</h2>
+        </div>
+        <span class="panel-badge">{{ product["sku"] or "Sem codigo" }}</span>
+      </div>
+      <form method="post" class="form-grid material-form">
+        {% set next_product_code = product["sku"] %}
+        {% include "product_form_fields.html" %}
+        <button type="submit">Salvar alterações</button>
+      </form>
+    </article>
+  </section>
+{% endblock %}

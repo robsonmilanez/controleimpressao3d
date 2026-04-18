@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}Ordem de Producao #{{ job["id"] }}{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Consultas</p>
+    <h2>Ordem de produção #{{ "%04d"|format(job["id"]) }}</h2>
+    <p class="subtitle">Edite somente a parte operacional deste pedido: materiais, componentes, horas, custo e observações internas.</p>
+    <div class="action-group hero-actions">
+      <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF da ordem</a>
+      <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Abrir pedido comercial</a>
+    </div>
+    <p class="back-link-wrap">
+      <a class="back-link" href="{{ url_for('production_orders') }}">‹ Voltar para ordens de produção</a>
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="quote-number quote-number-form full">
+        <div>
+          <span>Pedido relacionado</span>
+          <strong>#{{ "%04d"|format(job["id"]) }}</strong>
+        </div>
+        <div>
+          <span>Cliente</span>
+          <strong>{{ job["customer_display"] }}</strong>
+        </div>
+        <div>
+          <span>Item</span>
+          <strong>{{ job["item_name"] }}</strong>
+        </div>
+      </div>
+
+      <section class="document-commercial-grid production-context-grid">
+        <article>
+          <span>Status</span>
+          <strong>{{ job["status"] }}</strong>
+        </article>
+        <article>
+          <span>Data de cadastro</span>
+          <strong>{{ job["created_at"][:10] if job["created_at"] else "-" }}</strong>
+        </article>
+        <article>
+          <span>Validade</span>
+          <strong>{{ job["valid_until"] or "-" }}</strong>
+        </article>
+        <article>
+          <span>Prazo</span>
+          <strong>{{ job["due_date"] or "-" }}</strong>
+        </article>
+        <article>
+          <span>Canal de venda</span>
+          <strong>{{ job["sale_channel"] or "-" }}</strong>
+        </article>
+        <article>
+          <span>Pagamento</span>
+          <strong>{{ job["payment_terms"] or "-" }}</strong>
+        </article>
+        <article>
+          <span>Representante</span>
+          <strong>{{ job["representative_name"] or "-" }}</strong>
+        </article>
+        <article>
+          <span>Loja parceira</span>
+          <strong>{{ job["partner_store_name"] or "-" }}</strong>
+        </article>
+      </section>
+
+      <section class="document-section production-context-section">
+        <h2>Detalhes do pedido</h2>
+        <table class="document-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qtd.</th>
+              <th>Valor unit.</th>
+              <th>Acrescimo</th>
+              <th>Desconto</th>
+              <th>Total</th>
+              <th>Obs.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if service_lines %}
+              {% for service in service_lines %}
+                <tr>
+                  <td>{{ service["service_name"] }}</td>
+                  <td>{{ service["quantity"]|br_decimal }}</td>
+                  <td>R$ {{ service["unit_price"]|br_money }}</td>
+                  <td>R$ {{ service["addition_value"]|br_money }}</td>
+                  <td>R$ {{ service["discount_value"]|br_money }}</td>
+                  <td>R$ {{ service["total_price"]|br_money }}</td>
+                  <td>{{ service["notes"] or "-" }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td>{{ job["item_name"] }}</td>
+                <td>{{ job["quantity"]|br_decimal }}</td>
+                <td>R$ {{ job["suggested_price"]|br_money }}</td>
+                <td>R$ 0,00</td>
+                <td>R$ 0,00</td>
+                <td>R$ {{ job["suggested_price"]|br_money }}</td>
+                <td>-</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="document-item-meta production-context-meta">
+        <p><strong>Quantidade geral:</strong> {{ job["quantity"]|br_decimal }} un</p>
+        <p><strong>Link do modelo:</strong> {{ job["model_link"] or "-" }}</p>
+        <p><strong>Valor vendido:</strong> R$ {{ job["suggested_price"]|br_money }}</p>
+        <p><strong>Custo interno atual:</strong> R$ {{ job["total_cost"]|br_money }}</p>
+      </section>
+
+      {% if photo_lines %}
+        <section class="document-section production-context-section">
+          <h2>Fotos do produto</h2>
+          <div class="document-photos">
+            {% for photo in photo_lines %}
+              <img src="{{ url_for('uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="document-section production-context-section">
+        <h2>Observações do cliente</h2>
+        <p>{{ job["customer_notes"] or "-" }}</p>
+      </section>
+
+      <form method="post" class="form-grid job-form">
+        <section class="production-shell full">
+          <div class="production-shell-header">
+            <p class="eyebrow">Ordem de produção</p>
+            <h3>Execucao interna</h3>
+            <p>Atualize a produção sem mexer na estrutura comercial do pedido.</p>
+          </div>
+
+          <div class="job-topic-block production-topic-block full">
+            <div class="form-section full">
+              <h3>1. Linhas de produção</h3>
+              <p>Defina material, peso, tempo, impressora, secador e observação de cada etapa produzida.</p>
+            </div>
+            <div class="collection full" data-collection="materials">
+              {% set existing_materials = material_lines if material_lines else [none] %}
+              {% for material_line in existing_materials %}
+                <div class="collection-row material-row">
+                  <label>
+                    Filamento/material
+                    <select name="material_id" required data-new-url="{{ url_for('materials', return_to=url_for('edit_production_order', job_id=job['id'])) }}">
+                      <option value="__new__">+ Cadastrar novo filamento</option>
+                      <option value="">Nenhum</option>
+                      {% for item in materials %}
+                        <option value="{{ item['id'] }}" data-cost-per-kg="{{ item['cost_per_kg'] or 0 }}" {% if material_line and item['id'] == material_line['material_id'] %}selected{% endif %}>{{ item["material_type"] }} / {{ item["color"] }} / {{ item["manufacturer_name"] or item["name"] }} ({{ "%.0f"|format(item["stock_grams"]) }} g)</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <label>
+                    Peso estimado (g)
+                    <input type="number" name="material_weight_grams" min="0" step="0.01" value="{{ material_line['weight_grams'] if material_line else job['weight_grams'] }}" required>
+                  </label>
+                  <label>
+                    Tempo de impressão (h)
+                    <input type="number" name="print_hours" class="mirror-print-hours" min="0" step="0.01" value="{{ material_line['print_hours'] if material_line else job['print_hours'] }}" required>
+                  </label>
+                  <label>
+                    Impressora
+                    <select name="printer_id">
+                      <option value="">Nenhum</option>
+                      {% for printer in printers %}
+                        {% set printer_energy_cost = ((printer["energy_watts"] or 0) / 1000) * (printer["kwh_cost"] or 0) %}
+                        {% set printer_operating_cost = (printer["hourly_cost"] or 0) - printer_energy_cost %}
+                        <option
+                          value="{{ printer['id'] }}"
+                          data-energy-cost="{{ printer_energy_cost }}"
+                          data-operating-cost="{{ printer_operating_cost if printer_operating_cost > 0 else 0 }}"
+                          {% if (material_line and ((material_line['printer_id'] and printer['id'] == material_line['printer_id']) or (not material_line['printer_id'] and printer['id'] == job['printer_id']))) or (not material_line and printer['id'] == job['printer_id']) %}selected{% endif %}
+                        >
+                          {{ printer["name"] }}{% if printer["model"] %} - {{ printer["model"] }}{% endif %}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <label>
+                    Secador
+                    <select name="filament_dryer_id">
+                      <option value="">Nenhum</option>
+                      {% for dryer in filament_dryers %}
+                        <option
+                          value="{{ dryer['id'] }}"
+                          data-hourly-cost="{{ dryer['hourly_cost'] or 0 }}"
+                          {% if (material_line and ((material_line['filament_dryer_id'] and dryer['id'] == material_line['filament_dryer_id']) or (not material_line['filament_dryer_id'] and dryer['id'] == job['filament_dryer_id']))) or (not material_line and dryer['id'] == job['filament_dryer_id']) %}selected{% endif %}
+                        >
+                          {{ dryer["brand"] }} {{ dryer["model"] }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <label>
+                    Total R$
+                    <input type="text" class="material-line-total" value="0,00" readonly>
+                  </label>
+                  <label class="span-2">
+                    Observacao
+                    <input type="text" name="material_notes" value="{{ material_line['notes'] if material_line else '' }}">
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+            <div class="button-row full">
+              <button type="button" class="secondary-button" data-add-row="materials">Adicionar filamento</button>
+            </div>
+          </div>
+
+          <div class="job-topic-block production-topic-block full">
+            <div class="form-section full">
+              <h3>2. Componentes e montagem</h3>
+              <p>Registre pecas, acessorios e itens usados na montagem desse pedido.</p>
+            </div>
+            <div class="collection full" data-collection="components">
+              {% set existing_components = component_lines if component_lines else [none] %}
+              {% for component_line in existing_components %}
+                <div class="collection-row component-row">
+                  <label>
+                    Componente
+                    <select name="component_id" data-new-url="{{ url_for('registry_page', section='components', return_to=url_for('edit_production_order', job_id=job['id'])) }}">
+                      <option value="__new__">+ Cadastrar novo componente</option>
+                      <option value="">Nenhum</option>
+                      {% for component in components %}
+                        <option value="{{ component['id'] }}" data-unit-cost="{{ component['unit_cost'] or 0 }}" {% if component_line and component['id'] == component_line['component_id'] %}selected{% endif %}>{{ component["name"] }} ({{ component["stock_quantity"]|br_decimal }} {{ component["unit_measure"] or "un" }})</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <label>
+                    Quantidade
+                    <input type="number" name="component_quantity" min="0" step="0.01" value="{{ component_line['quantity'] if component_line else 0 }}">
+                  </label>
+                  <label class="span-2">
+                    Uso/observacao interna
+                    <input type="text" name="component_notes" value="{{ component_line['notes'] if component_line else '' }}">
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+            <button type="button" class="secondary-button" data-add-row="components">Adicionar componente</button>
+          </div>
+
+          <div class="job-topic-block production-topic-block full">
+            <div class="form-section full">
+              <h3>3. Custos e apontamentos</h3>
+              <p>Resumo interno de custos, horas e observações operacionais desta ordem.</p>
+            </div>
+            <div class="production-costs-shell">
+              {% include "job_internal_cost_fields.html" %}
+            </div>
+            <label class="full">
+              Observações internas
+              <textarea name="internal_notes" rows="4">{{ job["internal_notes"] or job["notes"] or "" }}</textarea>
+            </label>
+          </div>
+        </section>
+
+        <button type="submit">Salvar ordem de produção</button>
+      </form>
+    </article>
+  </section>
+{% endblock %}

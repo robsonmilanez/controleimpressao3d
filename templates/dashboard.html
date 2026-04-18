@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Dashboard</p>
+    <h2>Visão geral da operação de impressão 3D</h2>
+    <p class="subtitle">
+      Acompanhe vendas, produção, prazos e alertas de estoque em uma leitura única.
+    </p>
+  </section>
+
+  <section class="hero-grid">
+    <article class="metric-card">
+      <span>Clientes cadastrados</span>
+      <strong>{{ totals["total_customers"] }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Fornecedores</span>
+      <strong>{{ totals["total_suppliers"] }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Materiais ativos</span>
+      <strong>{{ totals["total_materials"] }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Produtos para venda</span>
+      <strong>{{ totals["total_products"] }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Pedidos em aberto</span>
+      <strong>{{ totals["active_jobs"] }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Orçamentos</span>
+      <strong>{{ totals["total_quotes"] }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Prontos para entrega</span>
+      <strong>{{ totals["ready_to_ship"] }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Pipeline comercial</span>
+      <strong>R$ {{ "%.2f"|format(totals["pipeline_value"]) }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Receita entregue</span>
+      <strong>R$ {{ "%.2f"|format(totals["delivered_revenue"]) }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Estoque total</span>
+      <strong>{{ "%.0f"|format(totals["total_stock"]) }} g</strong>
+    </article>
+    <article class="metric-card attention">
+      <span>Itens em alerta</span>
+      <strong>{{ totals["low_stock_count"] }}</strong>
+    </article>
+  </section>
+
+  <section class="panel-grid dashboard-grid">
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Pedidos recentes</h2>
+      </div>
+      {% if recent_jobs %}
+        <div class="table-wrap">
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Item</th>
+                <th>Status</th>
+                <th>Valor</th>
+                <th>PDF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for job in recent_jobs %}
+                <tr>
+                  <td data-label="Cliente">{{ job["linked_customer_name"] or job["customer_name"] }}</td>
+                  <td data-label="Item">{{ job["item_name"] }}</td>
+                  <td data-label="Status">{{ job["status"] }}</td>
+                  <td data-label="Valor">R$ {{ "%.2f"|format(job["suggested_price"]) }}</td>
+                  <td data-label="PDF">
+                    <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty">Nenhum pedido cadastrado ainda.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Baixo estoque</h2>
+      </div>
+      {% if low_stock %}
+        <ul class="stock-list">
+          {% for item in low_stock %}
+            <li>
+              <div>
+                <strong>{{ item["name"] }} {{ item["color"] }}</strong>
+                <span>{{ item["material_type"] }}{% if item["supplier_name"] %} · {{ item["supplier_name"] }}{% endif %}</span>
+              </div>
+              <span>{{ "%.0f"|format(item["stock_grams"]) }} g / min {{ "%.0f"|format(item["minimum_stock_grams"]) }} g</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">Nenhum material com baixo estoque.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Agenda de entrega</h2>
+      </div>
+      {% if upcoming_jobs %}
+        <ul class="timeline-list">
+          {% for job in upcoming_jobs %}
+            <li>
+              <strong>{{ job["item_name"] }}</strong>
+              <span>{{ job["customer_display"] }} · {{ job["status"] }}</span>
+              <span>Prazo {{ job["due_date"] }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">Nenhum prazo registrado por enquanto.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel accent-panel">
+      <div class="panel-header">
+        <h2>Fluxo recomendado</h2>
+      </div>
+      <ul class="check-list">
+        <li>Cadastre clientes, representantes e lojas parceiras antes de abrir pedidos.</li>
+        <li>Defina estoque mínimo por material para acionar reposição com antecedência.</li>
+        <li>Use movimentações para entradas, perdas e ajustes fora dos pedidos.</li>
+        <li>Registre prazos em cada pedido para acompanhar produção e entrega.</li>
+      </ul>
+    </article>
+  </section>
+{% endblock %}

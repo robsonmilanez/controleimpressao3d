@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Editar material{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Materiais</p>
+    <h2>Editar material</h2>
+    <p class="subtitle">Atualize os dados técnicos, de calibração e de ambiente deste material.</p>
+    <p class="back-link-wrap">
+      <a class="back-link" href="{{ url_for('materials') }}">‹ Voltar para materiais</a>
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Edição</p>
+          <h2>{{ material["line_series"] or material["name"] }}</h2>
+        </div>
+        <span class="panel-badge">{{ material["sku"] or "-" }}</span>
+      </div>
+      <form method="post" class="form-grid material-form">
+        <input type="hidden" name="stock_grams" value="{{ material['stock_grams'] }}">
+        <input type="hidden" name="product_cost" value="{{ material['product_cost']|br_money }}">
+        <input type="hidden" name="shipping_cost" value="{{ material['shipping_cost']|br_money }}">
+        <input type="hidden" name="store_discount" value="{{ material['store_discount']|br_money }}">
+        <input type="hidden" name="coupon_discount" value="{{ material['coupon_discount']|br_money }}">
+        <input type="hidden" name="payment_discount" value="{{ material['payment_discount']|br_money }}">
+        <div class="form-section full">
+          <h3>Filamento</h3>
+          <p>Dados de identificação técnica do filamento, resina ou insumo.</p>
+        </div>
+        <label class="compact-field">
+          Código interno automático
+          <input type="text" value="{{ material['sku'] or '-' }}" readonly>
+        </label>
+        <label class="span-3">
+          Linha/Série (Line/Series)
+          <input type="text" name="line_series" value="{{ material['line_series'] or material['name'] }}" required>
+        </label>
+        <label class="span-3">
+          Tipo (Material type)
+          <select name="material_type" required data-new-url="{{ url_for('registry_page', section='material-types', return_to=url_for('edit_material', material_id=material['id'])) }}">
+            <option value="">Nenhum</option>
+            {% for material_type in material_types %}
+              <option value="{{ material_type['name'] }}" {% if material['material_type'] == material_type['name'] or selected_material_type == material_type['name'] %}selected{% endif %}>{{ material_type["name"] }}</option>
+            {% endfor %}
+            <option value="__new__">+ Novo tipo</option>
+          </select>
+        </label>
+        <label class="color-field">
+          Cor (Color)
+          <span class="color-input-group">
+            <input type="text" name="color" value="{{ material['color'] }}" required>
+            <input type="color" name="color_hex" value="{{ material['color_hex'] or '#111111' }}" aria-label="Selecionar cor do filamento">
+          </span>
+        </label>
+        <label class="span-3">
+          Marca / Fabricante (Brand / Manufacturer)
+          <input type="text" name="manufacturer_name" value="{{ material['manufacturer_name'] or '' }}">
+        </label>
+        <label class="span-3">
+          Fornecedor
+          <select name="supplier_id" data-new-url="{{ url_for('registry_page', section='suppliers', return_to=url_for('edit_material', material_id=material['id'])) }}">
+            <option value="">Nenhum</option>
+            {% for supplier in suppliers %}
+              <option value="{{ supplier['id'] }}" {% if supplier['id'] == selected_supplier_id %}selected{% endif %}>{{ supplier["name"] }}</option>
+            {% endfor %}
+            <option value="__new__">+ Cadastrar novo fornecedor</option>
+          </select>
+        </label>
+        <label class="compact-field">
+          Lote (Lot)
+          <input type="text" name="lot_number" value="{{ material['lot_number'] or '' }}">
+        </label>
+        <label class="compact-field">
+          Estoque mínimo (g)
+          <input type="number" name="minimum_stock_grams" min="0" step="0.01" value="{% if material['minimum_stock_grams'] %}{{ material['minimum_stock_grams'] }}{% endif %}" placeholder="Opcional">
+        </label>
+        <label class="compact-field">
+          Localizacao
+          <input type="text" name="location" value="{{ material['location'] or '' }}">
+        </label>
+        <label class="full">
+          Link do fabricante (Manufacturer link)
+          <input type="text" name="purchase_link" value="{{ material['purchase_link'] or '' }}">
+        </label>
+
+        <div class="form-section full">
+          <h3>Calibração</h3>
+          <p>Parâmetros recomendados para repetir o comportamento do material.</p>
+        </div>
+        <label class="compact-field">
+          Temperatura do bico (Nozzle temperature)
+          <input type="number" name="nozzle_temperature_c" min="0" step="0.01" value="{{ material['nozzle_temperature_c'] or 0 }}">
+        </label>
+        <label class="compact-field">
+          Temperatura da mesa (Bed temperature)
+          <input type="number" name="bed_temperature_c" min="0" step="0.01" value="{{ material['bed_temperature_c'] or 0 }}">
+        </label>
+        <label class="compact-field">
+          Velocidade da ventoinha (Fan speed %)
+          <span class="split-input-group">
+            <span class="inline-prefix-field">
+              <span>Minimo:</span>
+              <input type="number" name="fan_speed_min_percent" min="0" step="0.01" value="{{ material['fan_speed_min_percent'] or material['fan_speed_percent'] or 0 }}">
+            </span>
+            <span class="inline-prefix-field">
+              <span>Maximo:</span>
+              <input type="number" name="fan_speed_max_percent" min="0" step="0.01" value="{{ material['fan_speed_max_percent'] or material['fan_speed_percent'] or 0 }}">
+            </span>
+          </span>
+        </label>
+        <label class="compact-field">
+          Fluxo (Flow %)
+          <span class="split-input-group">
+            <span class="inline-prefix-field">
+              <span>Teste 1:</span>
+              <input type="number" name="flow_test_1_percent" min="0" step="0.01" value="{{ material['flow_test_1_percent'] or material['flow_percent'] or 0 }}">
+            </span>
+            <span class="inline-prefix-field">
+              <span>Teste 2:</span>
+              <input type="number" name="flow_test_2_percent" min="0" step="0.01" value="{{ material['flow_test_2_percent'] or material['flow_percent'] or 0 }}">
+            </span>
+          </span>
+        </label>
+        <label class="compact-field">
+          Distância de retração (Retraction distance)
+          <input type="number" name="retraction_distance_mm" min="0" step="0.01" value="{{ material['retraction_distance_mm'] or 0 }}">
+        </label>
+        <label class="compact-field">
+          Velocidade de retração (Retraction speed)
+          <input type="number" name="retraction_speed_mm_s" min="0" step="0.01" value="{{ material['retraction_speed_mm_s'] or 0 }}">
+        </label>
+        <label class="compact-field">
+          Avanço de pressão (Pressure advance)
+          <input type="number" name="pressure_advance" min="0" step="0.0001" value="{{ material['pressure_advance'] or 0 }}">
+        </label>
+        <label class="compact-field">
+          Velocidade de impressão (Print speed)
+          <input type="number" name="print_speed_mm_s" min="0" step="0.01" value="{{ material['print_speed_mm_s'] or 0 }}">
+        </label>
+        <label class="compact-field">
+          Compensacao XY (XY compensation)
+          <input type="number" name="xy_compensation_mm" step="0.01" value="{{ material['xy_compensation_mm'] or 0 }}">
+        </label>
+
+        <div class="form-section full">
+          <h3>Ambiente</h3>
+          <p>Condições de uso e preparo do material.</p>
+        </div>
+        <label class="compact-field">
+          Umidade do ambiente (Humidity)
+          <input type="number" name="humidity_percent" min="0" step="0.01" value="{{ material['humidity_percent'] or 0 }}">
+        </label>
+        <label class="compact-field">
+          Secagem necessária (Drying required)
+          <span class="checkbox-field">
+            <input type="checkbox" name="drying_required" {% if material['drying_required'] %}checked{% endif %}>
+            <span>Sim</span>
+          </span>
+        </label>
+        <label class="full">
+          Observações
+          <textarea name="notes" rows="3">{{ material["notes"] or "" }}</textarea>
+        </label>
+        <div class="button-row full">
+          <a class="secondary-button" href="{{ url_for('registry_page', section='suppliers', return_to=url_for('edit_material', material_id=material['id'])) }}">Cadastrar fornecedor</a>
+          <button type="submit">Salvar alterações</button>
+        </div>
+      </form>
+    </article>
+  </section>
+{% endblock %}

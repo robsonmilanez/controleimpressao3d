@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Editar impressora{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Estrutura produtiva</p>
+    <h2>Editar impressora</h2>
+    <p class="subtitle">Atualize os dados técnicos, custos automáticos, AMS e manutenção desta máquina.</p>
+    <p class="back-link-wrap">
+      <a class="back-link" href="{{ url_for('registry_page', section='printers') }}">‹ Voltar para impressoras</a>
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Edição</p>
+          <h2>{{ printer["name"] }}</h2>
+        </div>
+        <span class="panel-badge">{{ printer["status"] or "Sem status" }}</span>
+      </div>
+      <form method="post" class="form-grid material-form">
+        <label class="span-3">
+          Nome
+          <input type="text" name="name" value="{{ printer['name'] }}" required>
+        </label>
+        <label class="span-2">
+          Marca
+          <input type="text" name="brand" value="{{ printer['brand'] or '' }}">
+        </label>
+        <label class="span-2">
+          Modelo
+          <input type="text" name="model" value="{{ printer['model'] or '' }}">
+        </label>
+        <label class="span-2">
+          Tem AMS
+          <span class="checkbox-field">
+            <input type="checkbox" name="has_ams" {% if printer["has_ams"] %}checked{% endif %}>
+            <span>Sim</span>
+          </span>
+        </label>
+        <label class="span-3">
+          Modelo do AMS
+          <input type="text" name="ams_model" value="{{ printer['ams_model'] or '' }}">
+        </label>
+        <label class="span-2">
+          Número de série
+          <input type="text" name="serial_number" value="{{ printer['serial_number'] or '' }}">
+        </label>
+        <label class="span-2">
+          Tecnologia
+          <input type="text" name="technology" value="{{ printer['technology'] or '' }}">
+        </label>
+        <label class="span-2">
+          Bico (mm)
+          <input type="number" name="nozzle_size" min="0" step="0.01" value="{% if printer['nozzle_size'] is not none %}{{ printer['nozzle_size'] }}{% endif %}">
+        </label>
+        <label class="span-3">
+          Volume útil
+          <input type="text" name="build_volume" value="{{ printer['build_volume'] or '' }}">
+        </label>
+        <label class="span-3">
+          Status
+          <select name="status">
+            <option value="">Nenhum</option>
+            {% for status in printer_statuses %}
+              <option value="{{ status }}" {% if printer["status"] == status %}selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="span-3">
+          Data da compra
+          <input type="hidden" name="purchase_date" value="{{ printer['purchase_date'] or '' }}">
+          <input type="text" class="date-mask-field" data-date-field="purchase_date" inputmode="numeric" maxlength="10" placeholder="dd/mm/aa" value="{{ printer['purchase_date'] or '' }}">
+        </label>
+        <label class="span-3">
+          Valor da impressora
+          <input type="text" name="purchase_value" class="currency-field" inputmode="decimal" value="{{ printer['purchase_value']|br_money }}">
+        </label>
+        <label class="span-3">
+          Potencia (W)
+          <input type="number" name="energy_watts" min="0" step="0.01" value="{{ printer['energy_watts'] }}">
+        </label>
+        <label class="span-3">
+          Vida util (horas)
+          <input type="number" name="useful_life_hours" min="0" step="1" value="{{ printer['useful_life_hours'] }}">
+        </label>
+        <label class="span-3">
+          Depreciacao/hora
+          <input type="text" name="depreciation_hourly_cost" inputmode="decimal" value="0,00" readonly>
+        </label>
+        <label class="span-3">
+          Valor kWh
+          <input type="text" name="kwh_cost" class="currency-field" inputmode="decimal" value="{{ printer['kwh_cost']|br_money }}">
+        </label>
+        <label class="span-3">
+          Energia/hora
+          <input type="text" name="energy_hourly_cost" inputmode="decimal" value="0,00" readonly>
+        </label>
+        <label class="span-3">
+          Custo total da impressora por hora
+          <input type="text" name="hourly_cost" inputmode="decimal" value="{{ printer['hourly_cost']|br_money }}" readonly>
+        </label>
+        <label class="full">
+          Observações
+          <textarea name="notes" rows="3">{{ printer["notes"] or "" }}</textarea>
+        </label>
+        <button type="submit">Salvar alterações</button>
+      </form>
+    </article>
+  </section>
+{% endblock %}

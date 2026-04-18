@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Consultar Ordens de Produção{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Consultas</p>
+    <h2>Consultar ordens de produção</h2>
+    <p class="subtitle">
+      Veja as ordens internas, abra o pedido relacionado e gere o PDF de produção sem entrar na tela comercial principal.
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Ordens cadastradas</h2>
+      </div>
+      {% if jobs %}
+        <div class="table-wrap">
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Item</th>
+                <th>Status</th>
+                <th>Produção</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for job in jobs %}
+                <tr>
+                  <td data-label="Pedido">#{{ "%04d"|format(job["id"]) }}</td>
+                  <td data-label="Cliente">{{ job["customer_display"] }}</td>
+                  <td data-label="Item">
+                    <strong>{{ job["item_name"] }}</strong><br>
+                    {{ job["material_lines_count"] }} linha(s) de produção · {{ job["component_lines_count"] }} componente(s)
+                  </td>
+                  <td data-label="Status">{{ job["status"] }}</td>
+                  <td data-label="Produção">
+                    {% if job["printer_name"] %}
+                      {{ job["printer_name"] }}{% if job["printer_model"] %} - {{ job["printer_model"] }}{% endif %}
+                    {% else %}
+                      Conforme linhas
+                    {% endif %}
+                  </td>
+                  <td data-label="Ações">
+                    <div class="action-group">
+                      <a class="action-link" href="{{ url_for('edit_production_order', job_id=job['id']) }}">Editar ordem</a>
+                      <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF da ordem</a>
+                      <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Abrir pedido</a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty">Nenhuma ordem de produção cadastrada.</p>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

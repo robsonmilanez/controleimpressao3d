@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Editar {{ panel_title }}{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">{{ eyebrow }}</p>
+    <h2>Editar {{ panel_title|lower }}</h2>
+    <p class="subtitle">{{ description }}</p>
+    <p class="back-link-wrap">
+      <a class="back-link" href="{{ return_to or url_for('registry_page', section=section) }}">‹ Voltar</a>
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Edicao</p>
+          <h2>{{ panel_title }}</h2>
+        </div>
+      </div>
+
+      <form method="post" class="form-grid {{ form_class|default('') }}">
+        {% if return_to %}
+          <input type="hidden" name="return_to" value="{{ return_to }}">
+        {% endif %}
+        {% for field in fields %}
+          <label class="{% if field.get('full') %}full{% endif %} {{ field.get('label_class', '') }}">
+            {{ field["label"] }}
+            {% if field["type"] == "textarea" %}
+              <textarea
+                name="{{ field['name'] }}"
+                rows="3"
+                {% if field.get('placeholder') %}placeholder="{{ field['placeholder'] }}"{% endif %}
+              >{{ field.get("value", "") }}</textarea>
+            {% elif field["type"] == "select" %}
+              <select name="{{ field['name'] }}" {% if field.get('required') %}required{% endif %}>
+                {% if not field.get('required') %}
+                  <option value="">Nenhum</option>
+                {% endif %}
+                {% for option in field["options"] %}
+                  <option value="{{ option }}" {% if field.get('value') == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            {% elif field["type"] == "checkbox" %}
+              <span class="checkbox-field">
+                <input type="checkbox" name="{{ field['name'] }}" {% if field.get('value') %}checked{% endif %}>
+                <span>{{ field.get("hint", "Sim") }}</span>
+              </span>
+            {% else %}
+              <input
+                type="{{ field['type'] }}"
+                name="{{ field['name'] }}"
+                {% if field.get('class') %}class="{{ field['class'] }}"{% endif %}
+                {% if field.get('inputmode') %}inputmode="{{ field['inputmode'] }}"{% endif %}
+                {% if field.get('placeholder') %}placeholder="{{ field['placeholder'] }}"{% endif %}
+                {% if field.get('min') is not none %}min="{{ field['min'] }}"{% endif %}
+                {% if field.get('step') is not none %}step="{{ field['step'] }}"{% endif %}
+                value="{{ field.get('value', '') }}"
+                {% if field.get('readonly') %}readonly{% endif %}
+                {% if field.get('required') %}required{% endif %}
+              >
+            {% endif %}
+          </label>
+        {% endfor %}
+        <div class="button-row full">
+          {% if section == 'components' %}
+            <a class="secondary-button" href="{{ url_for('registry_page', section='suppliers', return_to=url_for('edit_registry_item', section='components', record_id=record_id)) }}">Cadastrar fornecedor</a>
+          {% endif %}
+          <button type="submit">Salvar alterações</button>
+        </div>
+      </form>
+    </article>
+  </section>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Editar componente{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Estrutura produtiva</p>
+    <h2>Editar componente</h2>
+    <p class="subtitle">Atualize os dados de compra, compatibilidade e estoque deste componente.</p>
+    <p class="back-link-wrap">
+      <a class="back-link" href="{{ url_for('registry_page', section='components') }}">‹ Voltar para componentes</a>
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Edicao</p>
+          <h2>{{ component["name"] }}</h2>
+        </div>
+        <span class="panel-badge">{{ component["sku"] or "-" }}</span>
+      </div>
+      <form method="post" class="form-grid material-form component-form">
+        <label class="span-2">
+          Codigo interno
+          <input type="text" value="{{ component['sku'] or '-' }}" readonly>
+        </label>
+        <label class="span-5">
+          Nome
+          <input type="text" name="name" value="{{ component['name'] }}" required>
+        </label>
+        <label class="span-3">
+          Tipo
+          <input type="text" name="component_type" value="{{ component['component_type'] or '' }}">
+        </label>
+        <label class="span-3">
+          Fabricante
+          <input type="text" name="manufacturer_name" value="{{ component['manufacturer_name'] or '' }}">
+        </label>
+        <label class="span-2">
+          Modelo/codigo da peca
+          <input type="text" name="part_number" value="{{ component['part_number'] or '' }}">
+        </label>
+        <label class="span-3">
+          Unidade de medida
+          <input type="text" name="unit_measure" value="{{ component['unit_measure'] or '' }}">
+        </label>
+        <label class="span-3">
+          Valor medio do material
+          <input type="text" name="product_cost" class="currency-field" inputmode="decimal" value="{{ component['product_cost']|br_money }}">
+        </label>
+        <label class="span-3">
+          Estoque
+          <input type="number" name="stock_quantity" min="0" step="0.01" value="{{ component['stock_quantity'] }}" readonly>
+        </label>
+        <label class="span-3">
+          Minimo
+          <input type="number" name="minimum_quantity" min="0" step="0.01" value="{{ component['minimum_quantity'] }}">
+        </label>
+        <label class="span-3">
+          Localizacao
+          <input type="text" name="location" value="{{ component['location'] or '' }}">
+        </label>
+        <label class="full">
+          Link de compra
+          <input type="text" name="purchase_link" value="{{ component['purchase_link'] or '' }}">
+        </label>
+        <label class="full">
+          Observações
+          <textarea name="notes" rows="3">{{ component["notes"] or "" }}</textarea>
+        </label>
+        <div class="button-row full">
+          <a class="secondary-button" href="{{ url_for('registry_page', section='suppliers', return_to=url_for('edit_component', component_id=component['id'])) }}">Cadastrar fornecedor</a>
+          <button type="submit">Salvar alterações</button>
+        </div>
+      </form>
+    </article>
+  </section>
+{% endblock %}

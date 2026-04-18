@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}Pedidos e Vendas{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Pedidos/Vendas</p>
+    <h2>Novo pedido e lista comercial</h2>
+    <p class="subtitle">
+      Aqui ficam o lançamento comercial e a lista de pedidos/vendas. A ordem de produção e as consultas ficam separadas.
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Novo pedido ou venda</h2>
+      </div>
+      {% if error %}
+        <p class="error">{{ error }}</p>
+      {% endif %}
+      {% if materials and customers %}
+        <form method="post" class="form-grid job-form" enctype="multipart/form-data">
+          <div class="job-topic-block commercial-topic-block full">
+          <div class="form-section full">
+            <h3>Dados comerciais</h3>
+            <p>Esses dados aparecem no pedido do cliente.</p>
+          </div>
+          <div class="quote-number quote-number-form full">
+            <div>
+              <span>Próximo pedido ou orçamento</span>
+              <strong>#{{ "%04d"|format(next_job_number) }}</strong>
+            </div>
+            <label>
+              Data de cadastro
+              <input type="hidden" name="created_at" value="{{ today_date }}">
+              <input type="text" class="date-mask-field" data-date-field="created_at" inputmode="numeric" maxlength="10" placeholder="dd/mm/aa" value="{{ today_date }}" required>
+            </label>
+            <label>
+              Status
+              <select name="status">
+                {% for status in statuses %}
+                  <option>{{ status }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          </div>
+          <input type="hidden" name="due_date" value="">
+          <label class="customer-line-field">
+            Cliente
+            <select name="customer_id" required data-new-url="{{ url_for('registry_page', section='customers', return_to=url_for('jobs')) }}">
+              <option value="">Nenhum</option>
+              {% for customer in customers %}
+                <option value="{{ customer['id'] }}">{{ customer["name"] }}</option>
+              {% endfor %}
+              <option value="__new__">+ Cadastrar novo cliente</option>
+            </select>
+          </label>
+          <label>
+            Validade do orçamento
+            <input type="hidden" name="valid_until" value="{{ valid_until_date }}">
+            <input type="text" class="date-mask-field" data-date-field="valid_until" inputmode="numeric" maxlength="10" placeholder="dd/mm/aa" value="{{ valid_until_date }}">
+          </label>
+          <label>
+            Condicoes de pagamento
+            <select name="payment_terms" data-new-url="{{ url_for('registry_page', section='payment-terms', return_to=url_for('jobs')) }}">
+              <option value="">Nenhum</option>
+              {% for term in payment_terms %}
+                <option value="{{ term['name'] }}">{{ term["name"] }}</option>
+              {% endfor %}
+              <option value="__new__">+ Nova condicao</option>
+            </select>
+          </label>
+          <label>
+            Canal de venda
+            <select name="sale_channel" data-new-url="{{ url_for('registry_page', section='sales-channels', return_to=url_for('jobs')) }}">
+              <option value="">Nenhum</option>
+              {% for channel in sales_channels %}
+                <option value="{{ channel['name'] }}">{{ channel["name"] }}</option>
+              {% endfor %}
+              <option value="__new__">+ Novo canal</option>
+            </select>
+          </label>
+          <label>
+            Representante
+            <select name="representative_id">
+              <option value="">Nenhum</option>
+              {% for representative in representatives %}
+                <option value="{{ representative['id'] }}">{{ representative["name"] }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Loja parceira
+            <select name="partner_store_id">
+              <option value="">Nenhum</option>
+              {% for store in partner_stores %}
+                <option value="{{ store['id'] }}">{{ store["name"] }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          </div>
+
+          <div class="job-topic-block full">
+          <div class="form-section full">
+            <h3>Objeto do pedido</h3>
+            <p>Use este bloco para o item vendido ao cliente, com valor e eventuais ajustes.</p>
+          </div>
+          <div class="collection full" data-collection="services">
+            <div class="collection-row service-row">
+              <label>
+                Quantidade
+                <input type="number" name="quantity" class="order-quantity-field" min="1" step="1" value="1" required>
+              </label>
+              <input type="hidden" name="service_quantity" class="service-quantity-sync" value="1">
+              <label class="item-description-field">
+                Descricao do item
+                <span class="item-description-group">
+                  <select class="product-picker" data-new-url="{{ url_for('products', return_to=url_for('jobs')) }}">
+                    <option value="">Nenhum produto cadastrado</option>
+                    {% for product in products %}
+                      <option value="{{ product['id'] }}" data-name="{{ product['name'] }}" data-sale-price="{{ product['sale_price'] or 0 }}">{{ product["sku"] or "Produto" }} - {{ product["name"] }}</option>
+                    {% endfor %}
+                    <option value="__new__">+ Novo produto</option>
+                  </select>
+                  <input type="text" name="item_name" placeholder="Miniatura, suporte, prototipo..." required>
+                </span>
+              </label>
+              <input type="hidden" name="service_name" class="service-name-sync" value="">
+              <label>
+                Valor unitario
+                <input type="number" name="service_unit_price" min="0" step="0.01" value="0">
+              </label>
+              <label>
+                Acrescimos
+                <input type="number" name="service_additions" class="service-additions" min="0" step="0.01" value="0">
+              </label>
+              <label>
+                Descontos
+                <input type="number" name="service_discounts" class="service-discounts" min="0" step="0.01" value="0">
+              </label>
+              <input type="hidden" name="service_notes" class="service-notes-sync" value="">
+              <label>
+                Total
+                <input type="text" class="service-line-total" value="R$ 0,00" readonly>
+              </label>
+              <input type="hidden" name="service_hours" value="0">
+            </div>
+          </div>
+          <div class="button-row full">
+            <button type="button" class="secondary-button" data-add-row="services">Adicionar item</button>
+          </div>
+
+          <label class="full">
+            Link do modelo/arquivo
+            <input type="url" name="model_link" placeholder="https://...">
+          </label>
+          <label class="full">
+            Fotos do produto
+            <input type="file" name="product_photos" accept="image/*" multiple>
+          </label>
+
+          <label class="full">
+            Observações para o cliente
+            <textarea name="customer_notes" rows="3" placeholder="Prazo combinado, acabamento, tolerancias, cuidados de uso..."></textarea>
+          </label>
+          </div>
+          <button type="submit">Salvar pedido</button>
+        </form>
+      {% elif not customers %}
+        <p class="empty">Cadastre pelo menos um cliente antes de criar pedidos.</p>
+        <p>
+          <a class="action-link" href="{{ url_for('registry_page', section='customers', return_to=url_for('jobs')) }}">Cadastrar novo cliente</a>
+        </p>
+      {% else %}
+        <p class="empty">Cadastre materiais antes de criar pedidos.</p>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Lista de pedidos e vendas</h2>
+      </div>
+      {% if delete_error %}
+        <p class="error">{{ delete_error }}</p>
+      {% endif %}
+      {% if jobs %}
+        <div class="table-wrap">
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>Abrir</th>
+                <th>Cliente</th>
+                <th>Item</th>
+                <th>Status</th>
+                <th>Prazo</th>
+                <th>Valor</th>
+                <th>Excluir</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for job in jobs %}
+                <tr>
+                  <td data-label="Abrir">
+                    <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Abrir pedido</a>
+                  </td>
+                  <td data-label="Cliente">{{ job["customer_display"] }}</td>
+                  <td data-label="Item">
+                    <strong>{{ job["item_name"] }}</strong><br>
+                    {{ job["quantity"] }} un · {{ job["material_lines_count"] }} filamento(s) · {{ job["component_lines_count"] }} componente(s)
+                  </td>
+                  <td data-label="Status">{{ job["status"] }}</td>
+                  <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
+                  <td data-label="Valor">R$ {{ job["suggested_price"]|br_money }}</td>
+                  <td data-label="Excluir">
+                    <form method="post" action="{{ url_for('delete_job', job_id=job['id']) }}" class="inline-form" onsubmit="return confirm('Excluir este pedido?');">
+                      <button type="submit" class="danger-button">Excluir</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty">Ainda não existem pedidos ou orçamentos cadastrados.</p>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

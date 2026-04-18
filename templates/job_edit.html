@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Editar pedido #{{ job["id"] }}{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Pedido/Venda</p>
+    <h2>Pedido #{{ "%04d"|format(job["id"]) }}</h2>
+    <p class="subtitle">Abra o pedido, ajuste o que for necessário e gere os documentos a partir daqui.</p>
+    <div class="action-group hero-actions">
+      <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF do cliente</a>
+      <a class="action-link" href="{{ url_for('edit_production_order', job_id=job['id']) }}">Editar ordem de produção</a>
+      <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF da ordem</a>
+    </div>
+    <p class="back-link-wrap">
+      <a class="back-link" href="{{ url_for('jobs') }}">‹ Voltar para pedidos/vendas</a>
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      {% if error %}
+        <p class="error">{{ error }}</p>
+      {% endif %}
+      <form method="post" class="form-grid job-form" enctype="multipart/form-data">
+        <div class="job-topic-block commercial-topic-block full">
+        <div class="form-section full">
+          <h3>Dados comerciais</h3>
+        </div>
+        <div class="quote-number quote-number-form full">
+          <div>
+            <span>Pedido ou orçamento</span>
+            <strong>#{{ "%04d"|format(job["id"]) }}</strong>
+          </div>
+          <label>
+            Data de cadastro
+            <input type="hidden" name="created_at" value="{{ (job['created_at'] or today_date)[:10] }}">
+            <input type="text" class="date-mask-field" data-date-field="created_at" inputmode="numeric" maxlength="10" placeholder="dd/mm/aa" value="{{ (job['created_at'] or today_date)[:10] }}" required>
+          </label>
+          <label>
+            Status
+            <select name="status">
+              {% for status in statuses %}
+                <option {% if status == job["status"] %}selected{% endif %}>{{ status }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        <input type="hidden" name="due_date" value="{{ job['due_date'] or '' }}">
+        <label class="customer-line-field">
+          Cliente
+          <select name="customer_id" required data-new-url="{{ url_for('registry_page', section='customers', return_to=url_for('edit_job', job_id=job['id'])) }}">
+            <option value="">Nenhum</option>
+            {% for customer in customers %}
+              <option value="{{ customer['id'] }}" {% if customer['id'] == job['customer_id'] %}selected{% endif %}>{{ customer["name"] }}</option>
+            {% endfor %}
+            <option value="__new__">+ Cadastrar novo cliente</option>
+          </select>
+        </label>
+        <label>
+          Validade do orçamento
+          <input type="hidden" name="valid_until" value="{{ job['valid_until'] or '' }}">
+          <input type="text" class="date-mask-field" data-date-field="valid_until" inputmode="numeric" maxlength="10" placeholder="dd/mm/aa" value="{{ job['valid_until'] or '' }}">
+        </label>
+        <label>
+          Condições de pagamento
+          <select name="payment_terms" data-new-url="{{ url_for('registry_page', section='payment-terms', return_to=url_for('edit_job', job_id=job['id'])) }}">
+            <option value="">Nenhum</option>
+            {% set payment_term = namespace(found=false) %}
+            {% for term in payment_terms %}
+              {% if term['name'] == job['payment_terms'] %}
+                {% set payment_term.found = true %}
+              {% endif %}
+              <option value="{{ term['name'] }}" {% if term['name'] == job['payment_terms'] %}selected{% endif %}>{{ term["name"] }}</option>
+            {% endfor %}
+            {% if job['payment_terms'] and not payment_term.found %}
+              <option value="{{ job['payment_terms'] }}" selected>{{ job["payment_terms"] }}</option>
+            {% endif %}
+            <option value="__new__">+ Nova condição</option>
+          </select>
+        </label>
+        <label>
+          Canal de venda
+          <select name="sale_channel" data-new-url="{{ url_for('registry_page', section='sales-channels', return_to=url_for('edit_job', job_id=job['id'])) }}">
+            <option value="">Nenhum</option>
+            {% set sale_channel_ref = namespace(found=false) %}
+            {% for channel in sales_channels %}
+              {% if channel['name'] == job['sale_channel'] %}
+                {% set sale_channel_ref.found = true %}
+              {% endif %}
+              <option value="{{ channel['name'] }}" {% if channel['name'] == job['sale_channel'] %}selected{% endif %}>{{ channel["name"] }}</option>
+            {% endfor %}
+            {% if job['sale_channel'] and not sale_channel_ref.found %}
+              <option value="{{ job['sale_channel'] }}" selected>{{ job["sale_channel"] }}</option>
+            {% endif %}
+            <option value="__new__">+ Novo canal</option>
+          </select>
+        </label>
+        <label>
+          Representante
+          <select name="representative_id">
+            <option value="">Nenhum</option>
+            {% for representative in representatives %}
+              <option value="{{ representative['id'] }}" {% if representative['id'] == job['representative_id'] %}selected{% endif %}>{{ representative["name"] }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Loja parceira
+          <select name="partner_store_id">
+            <option value="">Nenhum</option>
+            {% for store in partner_stores %}
+              <option value="{{ store['id'] }}" {% if store['id'] == job['partner_store_id'] %}selected{% endif %}>{{ store["name"] }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        </div>
+
+        <div class="job-topic-block full">
+        <div class="form-section full">
+          <h3>Objeto do pedido</h3>
+        </div>
+        <div class="collection full" data-collection="services">
+          {% set existing_services = service_lines if service_lines else [none] %}
+          {% for service in existing_services %}
+            <div class="collection-row service-row">
+              <label>
+                Quantidade
+                <input type="number" name="quantity" class="order-quantity-field" min="1" step="1" value="{{ service['quantity'] if service else job['quantity'] }}" required>
+              </label>
+              <input type="hidden" name="service_quantity" class="service-quantity-sync" value="{{ service['quantity'] if service else job['quantity'] }}">
+              <label class="item-description-field">
+                Descricao do item
+                <span class="item-description-group">
+                  <select class="product-picker" data-new-url="{{ url_for('products', return_to=url_for('edit_job', job_id=job['id'])) }}">
+                    <option value="">Nenhum produto cadastrado</option>
+                    {% for product in products %}
+                      <option value="{{ product['id'] }}" data-name="{{ product['name'] }}" data-sale-price="{{ product['sale_price'] or 0 }}">{{ product["sku"] or "Produto" }} - {{ product["name"] }}</option>
+                    {% endfor %}
+                    <option value="__new__">+ Novo produto</option>
+                  </select>
+                  <input type="text" name="item_name" value="{{ service['service_name'] if service else job['item_name'] }}" required>
+                </span>
+              </label>
+              <input type="hidden" name="service_name" class="service-name-sync" value="{{ service['service_name'] if service else job['item_name'] }}">
+              <label>
+                Valor unitario
+                <input type="number" name="service_unit_price" min="0" step="0.01" value="{{ service['unit_price'] if service else 0 }}">
+              </label>
+              <label>
+                Acrescimos
+                <input type="number" name="service_additions" class="service-additions" min="0" step="0.01" value="0">
+              </label>
+              <label>
+                Descontos
+                <input type="number" name="service_discounts" class="service-discounts" min="0" step="0.01" value="0">
+              </label>
+              <input type="hidden" name="service_notes" class="service-notes-sync" value="{{ service['notes'] if service else '' }}">
+              <label>
+                Total
+                <input type="text" class="service-line-total" value="R$ {{ (service['total_price'] if service else 0)|br_money }}" readonly>
+              </label>
+              <input type="hidden" name="service_hours" value="{{ service['hours'] if service else 0 }}">
+            </div>
+          {% endfor %}
+        </div>
+        <div class="button-row full">
+          <button type="button" class="secondary-button" data-add-row="services">Adicionar item</button>
+        </div>
+
+        <label class="full">
+          Link do modelo/arquivo
+          <input type="url" name="model_link" value="{{ job['model_link'] or '' }}" placeholder="https://...">
+        </label>
+        <label class="full">
+          Adicionar fotos do produto
+          <input type="file" name="product_photos" accept="image/*" multiple>
+        </label>
+        {% if photo_lines %}
+          <div class="photo-strip full">
+            {% for photo in photo_lines %}
+              <img src="{{ url_for('uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
+            {% endfor %}
+          </div>
+        {% endif %}
+        <label class="full">
+          Observações para o cliente
+          <textarea name="customer_notes" rows="3">{{ job["customer_notes"] or "" }}</textarea>
+        </label>
+        </div>
+        <button type="submit">Salvar alterações</button>
+      </form>
+    </article>
+  </section>
+{% endblock %}

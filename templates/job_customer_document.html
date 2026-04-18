@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pedido do cliente #{{ job["id"] }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body class="print-body">
+    <main class="print-page">
+      <div class="print-actions">
+        <a class="action-link" href="{{ url_for('jobs') }}">Voltar</a>
+        <button type="button" onclick="window.print()">Gerar PDF</button>
+      </div>
+
+      <header class="document-header">
+        <div>
+          <p class="eyebrow">Documento do cliente</p>
+          <h1>{{ "Orcamento" if job["status"] == "Orcamento" else "Pedido" }} #{{ "%04d"|format(job["id"]) }}</h1>
+          <p>{{ job["item_name"] }}</p>
+        </div>
+        <dl>
+          <div>
+            <dt>Emissao</dt>
+            <dd>{{ job["created_at"][:10] }}</dd>
+          </div>
+          <div>
+            <dt>Validade</dt>
+            <dd>{{ job["valid_until"] or "-" }}</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>{{ job["status"] }}</dd>
+          </div>
+        </dl>
+      </header>
+
+      <section class="document-grid">
+        <article>
+          <h2>Cliente</h2>
+          <p><strong>{{ job["customer_display"] }}</strong></p>
+          <p>{{ job["customer_phone"] or "-" }}</p>
+          <p>{{ job["customer_email"] or "-" }}</p>
+          <p>{{ job["customer_city"] or "-" }}</p>
+        </article>
+        <article>
+          <h2>Dados do pedido</h2>
+          <p><strong>Emissao:</strong> {{ job["created_at"][:10] }}</p>
+          <p><strong>Validade:</strong> {{ job["valid_until"] or "-" }}</p>
+          <p><strong>Prazo:</strong> {{ job["due_date"] or "-" }}</p>
+          <p><strong>Status:</strong> {{ job["status"] }}</p>
+        </article>
+      </section>
+
+      <section class="document-section">
+        <h2>Detalhes do pedido</h2>
+        <table class="document-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qtd.</th>
+              <th>Valor unit.</th>
+              <th>Acrescimo</th>
+              <th>Desconto</th>
+              <th>Total</th>
+              <th>Obs.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if service_lines %}
+              {% for service in service_lines %}
+                <tr>
+                  <td>{{ service["service_name"] }}</td>
+                  <td>{{ service["quantity"]|br_decimal }}</td>
+                  <td>R$ {{ service["unit_price"]|br_money }}</td>
+                  <td>R$ {{ service["addition_value"]|br_money }}</td>
+                  <td>R$ {{ service["discount_value"]|br_money }}</td>
+                  <td>R$ {{ service["total_price"]|br_money }}</td>
+                  <td>{{ service["notes"] or "-" }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td>{{ job["item_name"] }}</td>
+                <td>{{ job["quantity"] }} un</td>
+                <td>R$ {{ job["suggested_price"]|br_money }}</td>
+                <td>R$ 0,00</td>
+                <td>R$ 0,00</td>
+                <td>R$ {{ job["suggested_price"]|br_money }}</td>
+                <td>-</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </section>
+
+      {% if photo_lines or job["model_link"] %}
+        <section class="document-section">
+          <h2>Referencia do produto</h2>
+          {% if job["model_link"] %}
+            <p><strong>Modelo:</strong> {{ job["model_link"] }}</p>
+          {% endif %}
+          {% if photo_lines %}
+            <div class="document-photos">
+              {% for photo in photo_lines %}
+                <img src="{{ url_for('uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
+              {% endfor %}
+            </div>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      {% if job["customer_notes"] %}
+        <section class="document-section">
+          <h2>Observações para cliente</h2>
+          <p>{{ job["customer_notes"] }}</p>
+        </section>
+      {% endif %}
+
+      <section class="document-total">
+        <div>
+          <span>Total</span>
+          <strong>R$ {{ job["suggested_price"]|br_money }}</strong>
+        </div>
+        <p><strong>Pagamento:</strong> {{ job["payment_terms"] or "A combinar" }}</p>
+      </section>
+    </main>
+  </body>
+</html>

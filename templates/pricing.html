@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Planilha de Custo{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Precificacao</p>
+    <h2>Simulador de custo e preço sugerido</h2>
+    <p class="subtitle">
+      Estime material, tempo, energia e margem antes de transformar a simulacao em pedido.
+    </p>
+  </section>
+
+  <section class="panel-grid">
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Simulador de preço</h2>
+      </div>
+      {% if materials %}
+        <form method="post" class="form-grid">
+          <label>
+            Material
+            <select name="material_id" required>
+              <option value="">Nenhum</option>
+              {% for item in materials %}
+                <option value="{{ item['id'] }}">{{ item["name"] }} - {{ item["color"] }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Peso (g)
+            <input type="number" name="weight_grams" min="0" step="0.01" required>
+          </label>
+          <label>
+            Tempo de impressão (h)
+            <input type="number" name="print_hours" min="0" step="0.01" required>
+          </label>
+          <label>
+            Energia por hora
+            <input type="number" name="energy_cost_per_hour" min="0" step="0.01" value="0.80" required>
+          </label>
+          <label>
+            Custo operacional por hora
+            <input type="number" name="operating_cost_per_hour" min="0" step="0.01" value="3.50" required>
+          </label>
+          <label>
+            Custos extras
+            <input type="number" name="extra_cost" min="0" step="0.01" value="0" required>
+          </label>
+          <label>
+            Margem (%)
+            <input type="number" name="margin_percent" min="0" max="99" step="0.01" value="0" required>
+          </label>
+          <button type="submit">Calcular</button>
+        </form>
+      {% else %}
+        <p class="empty">Cadastre materiais para usar a planilha de custo.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel result-panel">
+      <div class="panel-header">
+        <h2>Resultado</h2>
+      </div>
+      {% if result %}
+        <dl class="result-list">
+          <div>
+            <dt>Material</dt>
+            <dd>{{ result["material_name"] }} - {{ result["material_color"] }}</dd>
+          </div>
+          <div>
+            <dt>Custo por grama</dt>
+            <dd>R$ {{ "%.4f"|format(result["cost_per_gram"]) }}</dd>
+          </div>
+          <div>
+            <dt>Peso</dt>
+            <dd>{{ "%.2f"|format(result["weight_grams"]) }} g</dd>
+          </div>
+          <div>
+            <dt>Horas</dt>
+            <dd>{{ "%.2f"|format(result["print_hours"]) }} h</dd>
+          </div>
+          <div>
+            <dt>Custos extras</dt>
+            <dd>R$ {{ "%.2f"|format(result["extra_cost"]) }}</dd>
+          </div>
+          <div>
+            <dt>Margem</dt>
+            <dd>{{ "%.2f"|format(result["margin_percent"]) }}%</dd>
+          </div>
+          <div>
+            <dt>Custo total</dt>
+            <dd>R$ {{ "%.2f"|format(result["total_cost"]) }}</dd>
+          </div>
+          <div>
+            <dt>Preco sugerido</dt>
+            <dd class="price">R$ {{ "%.2f"|format(result["suggested_price"]) }}</dd>
+          </div>
+        </dl>
+      {% else %}
+        <p class="empty">Preencha os campos para simular o preço de venda.</p>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

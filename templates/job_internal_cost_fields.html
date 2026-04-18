@@ -1,0 +1,147 @@
+<div class="internal-cost-grid full">
+  <div class="internal-cost-heading">
+    <span>Categoria</span>
+    <span>Base</span>
+    <span>Taxa / valor</span>
+    <span>Total</span>
+  </div>
+
+  <div class="internal-cost-group">
+    <div class="internal-cost-row">
+      <strong>Filamentos e materiais</strong>
+      <output class="internal-material-weight-total">0,00 g</output>
+      <span>Conforme linhas acima</span>
+      <div class="internal-cost-total-group">
+        <output class="internal-material-cost-total">R$ 0,00</output>
+      </div>
+    </div>
+    <div class="internal-cost-subdetails internal-material-details"></div>
+  </div>
+
+  <div class="internal-cost-group">
+    <div class="internal-cost-row">
+      <strong>Componentes</strong>
+      <output class="internal-component-count">0 item(ns)</output>
+      <span>Conforme linhas acima</span>
+      <div class="internal-cost-total-group">
+        <output class="internal-component-cost-total">R$ 0,00</output>
+      </div>
+    </div>
+    <div class="internal-cost-subdetails internal-component-details"></div>
+  </div>
+
+  <div class="internal-cost-group">
+    <div class="internal-cost-row">
+      <strong>Energia</strong>
+      <output class="internal-print-hours-total">0,00 h</output>
+      <label class="internal-readonly-rate">
+        R$/h medio
+        <output class="internal-rate-display internal-energy-rate-display">R$ 0,0000/h</output>
+        <input type="hidden" class="internal-rate-field" name="energy_cost_per_hour" value="{{ job['energy_cost_per_hour'] if job is defined else 0 }}">
+      </label>
+      <div class="internal-cost-total-group">
+        <output class="internal-energy-total">R$ 0,00</output>
+      </div>
+    </div>
+    <div class="internal-cost-subdetails internal-energy-details"></div>
+  </div>
+
+  <div class="internal-cost-group">
+    <div class="internal-cost-row">
+      <strong>Custo operacional</strong>
+      <output class="internal-operating-hours-total">0,00 h</output>
+      <label class="internal-readonly-rate">
+        R$/h medio
+        <output class="internal-rate-display internal-operating-rate-display">R$ 0,0000/h</output>
+        <input type="hidden" class="internal-rate-field" name="operating_cost_per_hour" value="{{ job['operating_cost_per_hour'] if job is defined else 0 }}">
+      </label>
+      <div class="internal-cost-total-group">
+        <output class="internal-operating-total">R$ 0,00</output>
+      </div>
+    </div>
+    <div class="internal-cost-subdetails internal-operating-details"></div>
+  </div>
+
+  <div class="internal-cost-group">
+    <div class="internal-cost-row">
+      <strong>Secagem do filamento</strong>
+      <output class="internal-dryer-hours-total">0,00 h</output>
+      <label class="internal-readonly-rate">
+        R$/h medio
+        <output class="internal-rate-display internal-dryer-rate-display">R$ 0,0000/h</output>
+        <input type="hidden" class="internal-rate-field" name="dryer_cost_per_hour" value="{{ job['dryer_cost_per_hour'] if job is defined else 0 }}">
+      </label>
+      <div class="internal-cost-total-group">
+        <output class="internal-dryer-total">R$ 0,00</output>
+      </div>
+    </div>
+    <div class="internal-cost-subdetails internal-dryer-details"></div>
+  </div>
+
+  <div class="internal-cost-row">
+    <strong>Trabalho manual</strong>
+    <label>
+      Horas
+      <input type="number" name="labor_hours" min="0" step="0.01" value="{{ job['labor_hours'] if job is defined else 0 }}" required>
+    </label>
+    <label>
+      R$/h
+      <input type="number" name="labor_hourly_rate" min="0" step="0.01" value="{{ job['labor_hourly_rate'] if job is defined else 0 }}" required>
+    </label>
+    <output class="internal-labor-total">R$ 0,00</output>
+  </div>
+
+  <div class="internal-cost-row">
+    <strong>Design/modelagem</strong>
+    <label>
+      Horas
+      <input type="number" name="design_hours" min="0" step="0.01" value="{{ job['design_hours'] if job is defined else 0 }}" required>
+    </label>
+    <label>
+      R$/h
+      <input type="number" name="design_hourly_rate" min="0" step="0.01" value="{{ job['design_hourly_rate'] if job is defined else 0 }}" required>
+    </label>
+    <output class="internal-design-total">R$ 0,00</output>
+  </div>
+
+  <div class="internal-cost-row">
+    <strong>Custos extras</strong>
+    <span>-</span>
+    <span>-</span>
+    <label>
+      Total
+      <input type="number" name="extra_cost" min="0" step="0.01" value="{{ job['extra_cost'] if job is defined else 0 }}" required>
+    </label>
+  </div>
+
+  <div class="internal-cost-row internal-cost-row-strong">
+    <strong>Custo total</strong>
+    <span>-</span>
+    <span>-</span>
+    <output class="internal-total-cost">R$ 0,00</output>
+  </div>
+
+  <div class="internal-cost-row internal-cost-row-strong">
+    <strong>Preco vendido/sugerido</strong>
+    <span>Objeto do pedido</span>
+    <span>Conforme itens vendidos</span>
+    <output class="internal-sale-total">R$ 0,00</output>
+  </div>
+
+  <div class="internal-cost-row">
+    <strong>Margem desejada</strong>
+    <span>-</span>
+    <label>
+      %
+      <input type="number" name="margin_percent" min="0" max="99" step="0.01" value="{{ job['margin_percent'] if job is defined and job['margin_percent'] is not none else '' }}" placeholder="Opcional">
+    </label>
+    <span>Usada no preço sugerido</span>
+  </div>
+
+  <div class="internal-cost-row internal-cost-row-strong">
+    <strong>Lucro estimado</strong>
+    <span>-</span>
+    <span>Venda - custo</span>
+    <output class="internal-profit-total">R$ 0,00</output>
+  </div>
+</div>

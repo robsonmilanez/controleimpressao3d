@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Movimentacao de Filamentos{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Consultas</p>
+    <h2>Movimentacao de filamentos</h2>
+    <p class="subtitle">
+      Consulte o extrato de cada filamento por codigo, com entradas, saidas, valor movimentado e saldo atualizado linha a linha.
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Selecionar filamento</h2>
+        <a class="action-link" href="{{ url_for('inventory') }}">Registrar movimentação</a>
+      </div>
+      {% if materials %}
+        <form method="get" class="form-grid">
+          <label class="full">
+            Filamento
+            <select name="material_id" onchange="this.form.submit()" data-native-select="1">
+              {% for item in materials %}
+                <option value="{{ item['id'] }}" {% if item['id'] == selected_material_id %}selected{% endif %}>
+                  {{ item["sku"] or "Sem codigo" }} - {{ item["name"] }} - {{ item["color"] }}
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+        </form>
+      {% else %}
+        <p class="empty">Cadastre filamentos antes de consultar movimentações.</p>
+      {% endif %}
+    </article>
+  </section>
+
+  {% if material %}
+    <section class="panel-grid single">
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Filamento</p>
+            <h2>{{ material["sku"] or "Sem codigo" }} - {{ material["name"] }}</h2>
+          </div>
+          <span class="panel-badge">{{ material["stock_grams"]|br_decimal }} g em estoque</span>
+        </div>
+
+        <div class="document-commercial-grid movement-material-header">
+          <article>
+            <span>Codigo</span>
+            <strong>{{ material["sku"] or "-" }}</strong>
+          </article>
+          <article>
+            <span>Tipo</span>
+            <strong>{{ material["material_type"] or "-" }}</strong>
+          </article>
+          <article>
+            <span>Cor</span>
+            <strong>{{ material["color"] or "-" }}</strong>
+          </article>
+          <article>
+            <span>Fabricante</span>
+            <strong>{{ material["manufacturer_name"] or "-" }}</strong>
+          </article>
+          <article>
+            <span>Custo/kg</span>
+            <strong>R$ {{ material["cost_per_kg"]|br_money }}</strong>
+          </article>
+          <article>
+            <span>Estoque atual</span>
+            <strong>{{ material["stock_grams"]|br_decimal }} g</strong>
+          </article>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel-grid single">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>Extrato de movimentações</h2>
+        </div>
+        {% if statement_rows %}
+          <div class="table-wrap">
+            <table class="responsive-table movement-statement-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>OP/Pedido</th>
+                  <th>Descricao</th>
+                  <th>Quantidade</th>
+                  <th>Valor</th>
+                  <th>Saldo</th>
+                  <th>Obs.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in statement_rows %}
+                  <tr class="{% if row['direction'] == 'Saida' %}movement-out{% else %}movement-in{% endif %}">
+                    <td data-label="Data">{{ row["created_at"] }}</td>
+                    <td data-label="OP/Pedido">{{ row["reference"] }}</td>
+                    <td data-label="Descricao">{{ row["description"] }}</td>
+                    <td data-label="Quantidade">{{ row["quantity_label"] }}</td>
+                    <td data-label="Valor">{{ row["value_label"] }}</td>
+                    <td data-label="Saldo"><strong>{{ row["balance_label"] }}</strong></td>
+                    <td data-label="Obs.">{{ row["notes"] }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="empty">Nenhuma movimentação encontrada para este filamento.</p>
+        {% endif %}
+      </article>
+    </section>
+  {% endif %}
+{% endblock %}

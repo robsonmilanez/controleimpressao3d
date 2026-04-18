@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Consultas{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Consultas</p>
+    <h2>Central de consultas da operação</h2>
+    <p class="subtitle">
+      Aqui ficam apenas os tópicos e subtópicos de consulta. Cada clique abre a tela dedicada daquela consulta.
+    </p>
+  </section>
+
+  <section class="settings-groups settings-groups-compact">
+    <div class="settings-block">
+      <p class="settings-title">Consultas disponíveis</p>
+      <div class="settings-list">
+        <a class="settings-row" href="{{ url_for('sales_orders_query') }}">
+          <span class="settings-icon">◫</span>
+          <span class="settings-label">Pedido/venda</span>
+          <span class="settings-count">{{ totals["total_jobs"] }}</span>
+          <span class="settings-arrow">›</span>
+        </a>
+        <a class="settings-row" href="{{ url_for('production_orders') }}">
+          <span class="settings-icon">▤</span>
+          <span class="settings-label">Ordens de produção</span>
+          <span class="settings-count">{{ totals["active_orders"] }}</span>
+          <span class="settings-arrow">›</span>
+        </a>
+        <a class="settings-row" href="{{ url_for('filament_movements_query') }}">
+          <span class="settings-icon">▥</span>
+          <span class="settings-label">Movimentação de filamentos</span>
+          <span class="settings-count">{{ totals["total_movements"] }}</span>
+          <span class="settings-arrow">›</span>
+        </a>
+        <a class="settings-row" href="{{ url_for('sale_products_query') }}">
+          <span class="settings-icon">▧</span>
+          <span class="settings-label">Produtos para venda</span>
+          <span class="settings-count">{{ totals["total_products"] }}</span>
+          <span class="settings-arrow">›</span>
+        </a>
+      </div>
+    </div>
+  </section>
+{% endblock %}

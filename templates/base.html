@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#b65b2c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Impressão 3D">
+    <title>{% block title %}Controle de Impressão 3D{% endblock %}</title>
+    <style>
+      html[data-restoring-scroll="1"] body {
+        opacity: 0;
+      }
+    </style>
+    <script>
+      (function () {
+        try {
+          var raw = window.sessionStorage.getItem("codex-scroll-restore");
+          if (!raw) return;
+          var state = JSON.parse(raw);
+          var currentPath = window.location.pathname + window.location.search;
+          if (state.path === currentPath || state.path === window.location.pathname) {
+            document.documentElement.setAttribute("data-restoring-scroll", "1");
+          }
+        } catch (_error) {}
+      })();
+    </script>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260414-1515') }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand-block">
+        <p class="eyebrow">ERP leve para impressão 3D</p>
+        <h1>Gestão comercial, produção, estoque e parceiros</h1>
+        <p class="subtitle">
+          Organize clientes, materiais, representantes, pedidos e abastecimento em um único lugar.
+        </p>
+      </div>
+      <nav class="nav">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('commercial') }}">Comercial</a>
+        <a href="{{ url_for('crm') }}">Cadastros</a>
+        <a href="{{ url_for('jobs') }}">Pedidos/Vendas</a>
+        <a href="{{ url_for('queries') }}">Consultas</a>
+        <a href="{{ url_for('pricing') }}">Precificação</a>
+      </nav>
+    </header>
+
+    <main class="page">
+      {% block content %}{% endblock %}
+    </main>
+    <script src="{{ url_for('static', filename='app.js', v='20260414-1515') }}" defer></script>
+  </body>
+</html>
