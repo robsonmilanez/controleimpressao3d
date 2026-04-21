@@ -1274,13 +1274,18 @@ input[readonly].computed-field,
   display: none;
 }
 
+.material-mobile-card {
+  display: none;
+}
+
 .material-mobile-secondary,
 .material-mobile-stock-value,
 .material-mobile-stock,
 .material-mobile-manufacturer,
 .material-mobile-line,
 .material-line-desktop,
-.material-manufacturer-desktop {
+.material-manufacturer-desktop,
+.material-code-desktop {
   color: inherit;
 }
 
@@ -1984,11 +1989,9 @@ th {
   #materials-catalog-table tr[data-material-row] {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "main actions"
-      "secondary secondary";
-    gap: 0.45rem 0.8rem;
-    padding: 0.9rem 0.95rem;
+    grid-template-areas: "content actions";
+    gap: 0.75rem;
+    padding: 0.95rem;
     margin-bottom: 0.85rem;
     border: 1px solid var(--line);
     border-radius: 20px;
@@ -2011,66 +2014,79 @@ th {
 
   #materials-catalog-table tr[data-material-row] td[data-label="Excluir"] {
     grid-area: actions;
-    align-self: end;
+    align-self: start;
     justify-self: end;
-    margin-top: 2.6rem;
+    margin-top: 2.8rem;
   }
 
-  #materials-catalog-table tr[data-material-row] td[data-label="Cod"],
+  #materials-catalog-table tr[data-material-row] td[data-label="Tipo"],
+  #materials-catalog-table tr[data-material-row] td[data-label="Cor"],
+  #materials-catalog-table tr[data-material-row] td[data-label="Linha/Serie"],
+  #materials-catalog-table tr[data-material-row] td[data-label="Marca/Fabricante"],
   #materials-catalog-table tr[data-material-row] td[data-label="Lote"],
   #materials-catalog-table tr[data-material-row] td[data-label="Local"] {
     display: none;
   }
 
-  #materials-catalog-table tr[data-material-row] td[data-label="Tipo"],
-  #materials-catalog-table tr[data-material-row] td[data-label="Cor"],
-  #materials-catalog-table tr[data-material-row] td[data-label="Linha/Serie"] {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    width: auto;
-    margin-right: 0.4rem;
-    color: var(--text);
-    font-size: 0.9rem;
-    font-weight: 700;
+  #materials-catalog-table tr[data-material-row] td[data-label="Cod"] {
+    grid-area: content;
   }
 
-  #materials-catalog-table tr[data-material-row] td[data-label="Tipo"] {
-    grid-area: main;
-  }
-
-  #materials-catalog-table tr[data-material-row] td[data-label="Cor"],
-  #materials-catalog-table tr[data-material-row] td[data-label="Linha/Serie"] {
-    grid-area: main;
-  }
-
-  #materials-catalog-table tr[data-material-row] td[data-label="Marca/Fabricante"] {
-    grid-area: secondary;
-  }
-
-  #materials-catalog-table .color-swatch {
-    width: 18px;
-    height: 18px;
-    border-width: 1.5px;
-  }
-
+  #materials-catalog-table .material-code-desktop,
   #materials-catalog-table .material-line-desktop,
-  #materials-catalog-table .material-manufacturer-desktop {
+  #materials-catalog-table .material-manufacturer-desktop,
+  #materials-catalog-table .material-mobile-primary {
     display: none;
   }
 
-  #materials-catalog-table .material-mobile-primary {
+  #materials-catalog-table .material-mobile-card {
+    display: grid;
+    gap: 0.55rem;
+    min-width: 0;
+  }
+
+  #materials-catalog-table .material-mobile-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+  }
+
+  #materials-catalog-table .material-mobile-topline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.55rem;
+    min-width: 0;
+    color: var(--text);
+    font-size: 0.92rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  #materials-catalog-table .material-mobile-type,
+  #materials-catalog-table .material-mobile-line {
+    display: inline;
+  }
+
+  #materials-catalog-table .material-mobile-color {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
   }
 
+  #materials-catalog-table .color-swatch {
+    width: 16px;
+    height: 16px;
+    border-width: 1.5px;
+  }
+
   #materials-catalog-table .material-mobile-stock {
-    margin-left: 0.35rem;
-    padding-left: 0.55rem;
-    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    display: block;
+    white-space: nowrap;
     color: rgba(255, 255, 255, 0.92);
     font-weight: 800;
+    font-size: 0.95rem;
   }
 
   #materials-catalog-table .material-mobile-secondary {
@@ -2096,10 +2112,10 @@ th {
 
   #materials-catalog-table .action-link,
   #materials-catalog-table .danger-button {
-    min-height: 38px;
-    padding: 0.55rem 0.8rem;
+    min-height: 34px;
+    padding: 0.45rem 0.75rem;
     border-radius: 12px;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
   }
 }
 

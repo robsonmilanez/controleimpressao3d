@@ -335,7 +335,26 @@
                   <td data-label="Editar">
                     <a class="action-link" href="{{ url_for('edit_material', material_id=item['id']) }}">Editar</a>
                   </td>
-                  <td data-label="Cod" class="code-cell">{{ item["sku"] or "-" }}</td>
+                  <td data-label="Cod" class="code-cell">
+                    <span class="material-code-desktop">{{ item["sku"] or "-" }}</span>
+                    <div class="material-mobile-card">
+                      <div class="material-mobile-header">
+                        <div class="material-mobile-topline">
+                          <span class="material-mobile-type">{{ item["material_type"] or "-" }}</span>
+                          <span class="material-mobile-color">
+                            <span class="color-swatch" style="background: {{ item['color_hex'] or '#6b7280' }}"></span>
+                            <span>{{ item["color"] or "-" }}</span>
+                          </span>
+                          <span class="material-mobile-line">{{ item["name"] or "-" }}</span>
+                        </div>
+                        <span class="material-mobile-stock">{{ "%.2f"|format(stock_kg) }} kg</span>
+                      </div>
+                      <div class="material-mobile-secondary">
+                        <span class="material-mobile-manufacturer">{{ item["manufacturer_name"] or "-" }}</span>
+                        <span class="material-mobile-stock-value">R$ {{ "%.2f"|format(stock_value) }}</span>
+                      </div>
+                    </div>
+                  </td>
                   <td data-label="Tipo">
                     <span class="material-mobile-primary material-mobile-type">{{ item["material_type"] or "-" }}</span>
                   </td>
