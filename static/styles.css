@@ -1269,6 +1269,21 @@ input[readonly].computed-field,
   vertical-align: middle;
 }
 
+.material-mobile-primary,
+.material-mobile-secondary {
+  display: none;
+}
+
+.material-mobile-secondary,
+.material-mobile-stock-value,
+.material-mobile-stock,
+.material-mobile-manufacturer,
+.material-mobile-line,
+.material-line-desktop,
+.material-manufacturer-desktop {
+  color: inherit;
+}
+
 input,
 select,
 textarea {
@@ -1964,6 +1979,127 @@ th {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
+  }
+
+  #materials-catalog-table tr[data-material-row] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "main actions"
+      "secondary secondary";
+    gap: 0.45rem 0.8rem;
+    padding: 0.9rem 0.95rem;
+    margin-bottom: 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  #materials-catalog-table tr[data-material-row] td {
+    padding: 0;
+  }
+
+  #materials-catalog-table tr[data-material-row] td::before {
+    display: none;
+  }
+
+  #materials-catalog-table tr[data-material-row] td[data-label="Editar"] {
+    grid-area: actions;
+    align-self: start;
+    justify-self: end;
+  }
+
+  #materials-catalog-table tr[data-material-row] td[data-label="Excluir"] {
+    grid-area: actions;
+    align-self: end;
+    justify-self: end;
+    margin-top: 2.6rem;
+  }
+
+  #materials-catalog-table tr[data-material-row] td[data-label="Cod"],
+  #materials-catalog-table tr[data-material-row] td[data-label="Lote"],
+  #materials-catalog-table tr[data-material-row] td[data-label="Local"] {
+    display: none;
+  }
+
+  #materials-catalog-table tr[data-material-row] td[data-label="Tipo"],
+  #materials-catalog-table tr[data-material-row] td[data-label="Cor"],
+  #materials-catalog-table tr[data-material-row] td[data-label="Linha/Serie"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: auto;
+    margin-right: 0.4rem;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  #materials-catalog-table tr[data-material-row] td[data-label="Tipo"] {
+    grid-area: main;
+  }
+
+  #materials-catalog-table tr[data-material-row] td[data-label="Cor"],
+  #materials-catalog-table tr[data-material-row] td[data-label="Linha/Serie"] {
+    grid-area: main;
+  }
+
+  #materials-catalog-table tr[data-material-row] td[data-label="Marca/Fabricante"] {
+    grid-area: secondary;
+  }
+
+  #materials-catalog-table .color-swatch {
+    width: 18px;
+    height: 18px;
+    border-width: 1.5px;
+  }
+
+  #materials-catalog-table .material-line-desktop,
+  #materials-catalog-table .material-manufacturer-desktop {
+    display: none;
+  }
+
+  #materials-catalog-table .material-mobile-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  #materials-catalog-table .material-mobile-stock {
+    margin-left: 0.35rem;
+    padding-left: 0.55rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.92);
+    font-weight: 800;
+  }
+
+  #materials-catalog-table .material-mobile-secondary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.85rem;
+    padding-top: 0.15rem;
+    color: var(--muted);
+    font-size: 0.84rem;
+  }
+
+  #materials-catalog-table .material-mobile-manufacturer {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  #materials-catalog-table .material-mobile-stock-value {
+    white-space: nowrap;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.74);
+  }
+
+  #materials-catalog-table .action-link,
+  #materials-catalog-table .danger-button {
+    min-height: 38px;
+    padding: 0.55rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.82rem;
   }
 }
 

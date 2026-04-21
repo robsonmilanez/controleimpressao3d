@@ -320,6 +320,8 @@
             </thead>
             <tbody id="materials-catalog-body">
               {% for item in materials %}
+                {% set stock_kg = (item["stock_grams"] or 0) / 1000 %}
+                {% set stock_value = ((item["stock_grams"] or 0) * (item["cost_per_kg"] or 0)) / 1000 %}
                 <tr
                   data-material-row="1"
                   data-sku="{{ item['sku'] or '' }}"
@@ -334,15 +336,30 @@
                     <a class="action-link" href="{{ url_for('edit_material', material_id=item['id']) }}">Editar</a>
                   </td>
                   <td data-label="Cod" class="code-cell">{{ item["sku"] or "-" }}</td>
-                  <td data-label="Tipo">{{ item["material_type"] }}</td>
+                  <td data-label="Tipo">
+                    <span class="material-mobile-primary material-mobile-type">{{ item["material_type"] or "-" }}</span>
+                  </td>
                   <td data-label="Cor">
-                    <span class="color-swatch" style="background: {{ item['color_hex'] or '#6b7280' }}"></span> {{ item["color"] }}
+                    <span class="material-mobile-primary material-mobile-color">
+                      <span class="color-swatch" style="background: {{ item['color_hex'] or '#6b7280' }}"></span>
+                      <span>{{ item["color"] or "-" }}</span>
+                    </span>
                   </td>
                   <td data-label="Linha/Serie">
-                    <strong>{{ item["name"] }}</strong><br>
-                    min {{ "%.0f"|format(item["minimum_stock_grams"]) }} g
+                    <span class="material-line-desktop">
+                      <strong>{{ item["name"] }}</strong><br>
+                      min {{ "%.0f"|format(item["minimum_stock_grams"]) }} g
+                    </span>
+                    <span class="material-mobile-primary material-mobile-line">{{ item["name"] or "-" }}</span>
+                    <span class="material-mobile-primary material-mobile-stock">{{ "%.2f"|format(stock_kg) }} kg</span>
                   </td>
-                  <td data-label="Marca/Fabricante">{{ item["manufacturer_name"] or "-" }}</td>
+                  <td data-label="Marca/Fabricante">
+                    <span class="material-manufacturer-desktop">{{ item["manufacturer_name"] or "-" }}</span>
+                    <span class="material-mobile-secondary">
+                      <span class="material-mobile-manufacturer">{{ item["manufacturer_name"] or "-" }}</span>
+                      <span class="material-mobile-stock-value">R$ {{ "%.2f"|format(stock_value) }}</span>
+                    </span>
+                  </td>
                   <td data-label="Lote">{{ item["lot_number"] or "-" }}</td>
                   <td data-label="Local">{{ item["location"] or "-" }}</td>
                   <td data-label="Excluir">
