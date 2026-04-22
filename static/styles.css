@@ -920,17 +920,18 @@ textarea {
 .table-action-group {
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.38rem;
+  gap: 0.3rem;
   align-items: center;
 }
 
 .table-action-group .action-link {
-  min-height: 31px;
-  min-width: 102px;
-  padding: 0.36rem 0.58rem;
-  font-size: 0.76rem;
+  min-height: 29px;
+  min-width: 88px;
+  padding: 0.28rem 0.44rem;
+  font-size: 0.72rem;
   text-align: center;
-  border-radius: 10px;
+  border-radius: 9px;
+  line-height: 1.1;
 }
 
 .item-description-group {
@@ -945,64 +946,71 @@ textarea {
 
 .jobs-list-table th:nth-child(1),
 .jobs-list-table td:nth-child(1) {
-  width: 24rem;
+  width: 21rem;
 }
 
 .jobs-list-table th:nth-child(2),
 .jobs-list-table td:nth-child(2) {
-  width: 20rem;
+  width: 19rem;
 }
 
 .jobs-list-table th:nth-child(3),
 .jobs-list-table td:nth-child(3) {
-  width: 24rem;
+  width: 20rem;
 }
 
 .jobs-list-table th:nth-child(4),
 .jobs-list-table td:nth-child(4) {
-  width: 9rem;
+  width: 6rem;
 }
 
 .jobs-list-table th:nth-child(5),
 .jobs-list-table td:nth-child(5) {
-  width: 7rem;
+  width: 8rem;
 }
 
 .jobs-list-table th:nth-child(6),
 .jobs-list-table td:nth-child(6) {
-  width: 8rem;
+  width: 6rem;
 }
 
 .jobs-list-table th:nth-child(7),
 .jobs-list-table td:nth-child(7) {
+  width: 7rem;
+}
+
+.jobs-list-table th:nth-child(8),
+.jobs-list-table td:nth-child(8) {
   width: 8rem;
 }
 
 .jobs-list-table td[data-label="Cliente"],
 .jobs-list-table td[data-label="Item"] {
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .jobs-list-table td[data-label="Ações"] {
-  white-space: normal;
+  white-space: nowrap;
 }
 
 .jobs-list-table td[data-label="Cliente"] {
   white-space: normal;
 }
 
+.jobs-list-table td[data-label="Qtde"],
 .jobs-list-table td[data-label="Status"],
 .jobs-list-table td[data-label="Prazo"],
 .jobs-list-table td[data-label="Valor"],
 .jobs-list-table td[data-label="Excluir"] {
-  text-align: left;
+  text-align: center;
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .job-item-inline {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  justify-content: center;
   min-width: 0;
   white-space: nowrap;
 }
@@ -1010,13 +1018,6 @@ textarea {
 .job-item-inline strong {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.job-item-inline span {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-size: 0.88rem;
-  font-weight: 700;
 }
 
 .material-row {

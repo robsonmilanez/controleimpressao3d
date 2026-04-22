@@ -198,6 +198,7 @@
                 <th>Ações</th>
                 <th>Cliente</th>
                 <th>Item</th>
+                <th>Qtde</th>
                 <th>Status</th>
                 <th>Prazo</th>
                 <th>Valor</th>
@@ -219,9 +220,9 @@
                   <td data-label="Item">
                     <div class="job-item-inline">
                       <strong>{{ job["item_name"] }}</strong>
-                      <span>{{ job["quantity"] }} un</span>
                     </div>
                   </td>
+                  <td data-label="Qtde">{{ job["quantity"] }} un</td>
                   <td data-label="Status">{{ job["status"] }}</td>
                   <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
                   <td data-label="Valor">R$ {{ job["suggested_price"]|br_money }}</td>
