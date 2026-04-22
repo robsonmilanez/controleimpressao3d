@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Editar pedido #{{ job["id"] }}{% endblock %}
 {% block content %}
-  <section class="page-hero page-hero-compact jobs-page-hero">
+  <section class="page-hero jobs-page-hero jobs-page-hero-aligned">
     <p class="eyebrow">Pedido/Venda</p>
-    <h2>Pedido #{{ "%04d"|format(job["id"]) }}</h2>
+    <h2>Editar pedido #{{ "%04d"|format(job["id"]) }}</h2>
     <p class="subtitle">Abra o pedido, ajuste o que for necessário e gere os documentos a partir daqui.</p>
     <div class="action-group hero-actions">
       <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF do cliente</a>
@@ -16,11 +16,18 @@
   </section>
 
   <section class="panel-grid single">
-    <article class="panel panel-compact jobs-form-panel">
+    <article class="panel jobs-form-panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Edição</p>
+          <h2>Pedido ou venda</h2>
+        </div>
+        <span class="panel-badge">#{{ "%04d"|format(job["id"]) }}</span>
+      </div>
       {% if error %}
         <p class="error">{{ error }}</p>
       {% endif %}
-      <form method="post" class="form-grid job-form job-form-compact" enctype="multipart/form-data">
+      <form method="post" class="form-grid material-form job-form job-form-compact jobs-form-aligned" enctype="multipart/form-data">
         <div class="job-topic-block commercial-topic-block full">
         <div class="form-section full">
           <h3>Dados comerciais</h3>

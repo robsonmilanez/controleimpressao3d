@@ -1,24 +1,28 @@
 {% extends "base.html" %}
 {% block title %}Pedidos e Vendas{% endblock %}
 {% block content %}
-  <section class="page-hero page-hero-compact jobs-page-hero">
+  <section class="page-hero jobs-page-hero jobs-page-hero-aligned">
     <p class="eyebrow">Pedidos/Vendas</p>
-    <h2>Novo pedido e lista comercial</h2>
+    <h2>Cadastro de pedidos e vendas</h2>
     <p class="subtitle">
-      Aqui ficam o lançamento comercial e a lista de pedidos/vendas. A ordem de produção e as consultas ficam separadas.
+      Organize pedidos, clientes, condições comerciais e itens vendidos em um fluxo único.
     </p>
   </section>
 
   <section class="panel-grid single">
-    <article class="panel panel-compact jobs-form-panel">
+    <article class="panel jobs-form-panel">
       <div class="panel-header">
-        <h2>Novo pedido ou venda</h2>
+        <div>
+          <p class="panel-kicker">Novo cadastro</p>
+          <h2>Pedido ou venda</h2>
+        </div>
+        <span class="panel-badge">#{{ "%04d"|format(next_job_number) }}</span>
       </div>
       {% if error %}
         <p class="error">{{ error }}</p>
       {% endif %}
       {% if materials and customers %}
-        <form method="post" class="form-grid job-form job-form-compact" enctype="multipart/form-data">
+        <form method="post" class="form-grid material-form job-form job-form-compact jobs-form-aligned" enctype="multipart/form-data">
           <div class="job-topic-block commercial-topic-block full">
           <div class="form-section full">
             <h3>Dados comerciais</h3>
