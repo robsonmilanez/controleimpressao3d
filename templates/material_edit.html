@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Editar material{% endblock %}
 {% block content %}
-  <section class="page-hero">
+  <section class="page-hero page-hero-compact materials-page-hero">
     <p class="eyebrow">Materiais</p>
     <h2>Editar material</h2>
     <p class="subtitle">Atualize os dados técnicos, de calibração e de ambiente deste material.</p>
@@ -11,7 +11,7 @@
   </section>
 
   <section class="panel-grid single">
-    <article class="panel">
+    <article class="panel panel-compact materials-form-panel">
       <div class="panel-header">
         <div>
           <p class="panel-kicker">Edição</p>
@@ -19,7 +19,7 @@
         </div>
         <span class="panel-badge">{{ material["sku"] or "-" }}</span>
       </div>
-      <form method="post" class="form-grid material-form">
+      <form method="post" class="form-grid material-form material-form-compact">
         <input type="hidden" name="stock_grams" value="{{ material['stock_grams'] }}">
         <input type="hidden" name="product_cost" value="{{ material['product_cost']|br_money }}">
         <input type="hidden" name="shipping_cost" value="{{ material['shipping_cost']|br_money }}">
@@ -90,77 +90,55 @@
           <h3>Calibração</h3>
           <p>Parâmetros recomendados para repetir o comportamento do material.</p>
         </div>
-        <label class="compact-field">
-          Temperatura do bico (Nozzle temperature)
+        <label class="calibration-field">
+          Bico
           <input type="number" name="nozzle_temperature_c" min="0" step="0.01" value="{{ material['nozzle_temperature_c'] or 0 }}">
         </label>
-        <label class="compact-field">
-          Temperatura da mesa (Bed temperature)
+        <label class="calibration-field">
+          Mesa
           <input type="number" name="bed_temperature_c" min="0" step="0.01" value="{{ material['bed_temperature_c'] or 0 }}">
         </label>
-        <label class="compact-field">
-          Velocidade da ventoinha (Fan speed %)
-          <span class="split-input-group">
-            <span class="inline-prefix-field">
-              <span>Minimo:</span>
-              <input type="number" name="fan_speed_min_percent" min="0" step="0.01" value="{{ material['fan_speed_min_percent'] or material['fan_speed_percent'] or 0 }}">
-            </span>
-            <span class="inline-prefix-field">
-              <span>Maximo:</span>
-              <input type="number" name="fan_speed_max_percent" min="0" step="0.01" value="{{ material['fan_speed_max_percent'] or material['fan_speed_percent'] or 0 }}">
-            </span>
-          </span>
+        <label class="calibration-field">
+          Fan min
+          <input type="number" name="fan_speed_min_percent" min="0" step="0.01" value="{{ material['fan_speed_min_percent'] or material['fan_speed_percent'] or 0 }}">
         </label>
-        <label class="compact-field">
-          Fluxo (Flow %)
-          <span class="split-input-group">
-            <span class="inline-prefix-field">
-              <span>Teste 1:</span>
-              <input type="number" name="flow_test_1_percent" min="0" step="0.01" value="{{ material['flow_test_1_percent'] or material['flow_percent'] or 0 }}">
-            </span>
-            <span class="inline-prefix-field">
-              <span>Teste 2:</span>
-              <input type="number" name="flow_test_2_percent" min="0" step="0.01" value="{{ material['flow_test_2_percent'] or material['flow_percent'] or 0 }}">
-            </span>
-          </span>
+        <label class="calibration-field">
+          Fan max
+          <input type="number" name="fan_speed_max_percent" min="0" step="0.01" value="{{ material['fan_speed_max_percent'] or material['fan_speed_percent'] or 0 }}">
         </label>
-        <label class="compact-field">
-          Distância de retração (Retraction distance)
+        <label class="calibration-field">
+          Fluxo 1
+          <input type="number" name="flow_test_1_percent" min="0" step="0.01" value="{{ material['flow_test_1_percent'] or material['flow_percent'] or 0 }}">
+        </label>
+        <label class="calibration-field">
+          Fluxo 2
+          <input type="number" name="flow_test_2_percent" min="0" step="0.01" value="{{ material['flow_test_2_percent'] or material['flow_percent'] or 0 }}">
+        </label>
+        <label class="calibration-field">
+          Retr. mm
           <input type="number" name="retraction_distance_mm" min="0" step="0.01" value="{{ material['retraction_distance_mm'] or 0 }}">
         </label>
-        <label class="compact-field">
-          Velocidade de retração (Retraction speed)
+        <label class="calibration-field">
+          Retr. vel
           <input type="number" name="retraction_speed_mm_s" min="0" step="0.01" value="{{ material['retraction_speed_mm_s'] or 0 }}">
         </label>
-        <label class="compact-field">
-          Avanço de pressão (Pressure advance)
+        <label class="calibration-field">
+          Pressão
           <input type="number" name="pressure_advance" min="0" step="0.0001" value="{{ material['pressure_advance'] or 0 }}">
         </label>
-        <label class="compact-field">
-          Velocidade de impressão (Print speed)
+        <label class="calibration-field">
+          Print
           <input type="number" name="print_speed_mm_s" min="0" step="0.01" value="{{ material['print_speed_mm_s'] or 0 }}">
         </label>
-        <label class="compact-field">
-          Compensacao XY (XY compensation)
+        <label class="calibration-field">
+          XY
           <input type="number" name="xy_compensation_mm" step="0.01" value="{{ material['xy_compensation_mm'] or 0 }}">
         </label>
 
         <div class="form-section full">
-          <h3>Ambiente</h3>
-          <p>Condições de uso e preparo do material.</p>
+          <h3>Observações</h3>
         </div>
-        <label class="compact-field">
-          Umidade do ambiente (Humidity)
-          <input type="number" name="humidity_percent" min="0" step="0.01" value="{{ material['humidity_percent'] or 0 }}">
-        </label>
-        <label class="compact-field">
-          Secagem necessária (Drying required)
-          <span class="checkbox-field">
-            <input type="checkbox" name="drying_required" {% if material['drying_required'] %}checked{% endif %}>
-            <span>Sim</span>
-          </span>
-        </label>
-        <label class="full">
+        <label class="full material-notes-field">
           Observações
           <textarea name="notes" rows="3">{{ material["notes"] or "" }}</textarea>
         </label>

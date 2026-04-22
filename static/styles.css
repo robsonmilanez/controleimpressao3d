@@ -1114,6 +1114,10 @@ textarea {
   grid-column: span 5;
 }
 
+.material-form .calibration-field {
+  grid-column: span 1;
+}
+
 .computed-field input[readonly],
 .computed-field textarea[readonly],
 input[readonly].computed-field,
@@ -1418,6 +1422,22 @@ textarea {
 .materials-form-panel .button-row button {
   min-height: 40px;
   padding: 0.72rem 1rem;
+}
+
+.material-form-compact .calibration-field {
+  gap: 0.2rem;
+  font-size: 0.74rem;
+}
+
+.material-form-compact .calibration-field input {
+  min-height: 40px;
+  max-width: 100%;
+  padding: 0.52rem 0.58rem;
+  text-align: center;
+}
+
+.material-notes-field textarea {
+  min-height: 72px;
 }
 
 input[readonly],
@@ -2060,6 +2080,7 @@ th {
 
   .material-form label,
   .material-form .compact-field,
+  .material-form .calibration-field,
   .material-form .supplier-line-field,
   .material-form .span-2,
   .material-form .span-3,
