@@ -56,6 +56,16 @@ def normalize_upper_text(value: str | None) -> str:
     return str(value or "").strip().upper()
 
 
+def parse_loose_float(value: Any, default: float = 0.0) -> float:
+    raw = str(value or "").strip()
+    if not raw or raw.startswith("__"):
+        return default
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return default
+
+
 def material_order_clause(prefix: str = "") -> str:
     return (
         f"{prefix}color COLLATE NOCASE ASC, "
@@ -2194,12 +2204,12 @@ def build_product_form_data(
         if material is None:
             continue
         quantity_grams = (
-            float(material_quantities[index] or 0)
+            parse_loose_float(material_quantities[index], 0.0)
             if index < len(material_quantities)
             else 0.0
         )
         line_print_hours = (
-            float(material_print_hours[index] or 0)
+            parse_loose_float(material_print_hours[index], 0.0)
             if index < len(material_print_hours)
             else 0.0
         )
@@ -2230,7 +2240,7 @@ def build_product_form_data(
         if component is None:
             continue
         quantity = (
-            float(component_quantities[index] or 0)
+            parse_loose_float(component_quantities[index], 0.0)
             if index < len(component_quantities)
             else 0.0
         )
@@ -2261,16 +2271,18 @@ def build_product_form_data(
     operating_cost_per_hour = parse_brazilian_decimal(
         request.form.get("operating_cost_per_hour")
     )
-    labor_hours = float(request.form.get("labor_hours") or 0)
+    labor_hours = parse_loose_float(request.form.get("labor_hours"), 0.0)
     labor_hourly_rate = parse_brazilian_decimal(request.form.get("labor_hourly_rate"))
     design_hours = (
-        float(request.form.get("design_hours") or 0)
+        parse_loose_float(request.form.get("design_hours"), 0.0)
         if "design_hours" in request.form
-        else float(existing_product["design_hours"] or 0) if existing_product else 0.0
+        else parse_loose_float(existing_product["design_hours"], 0.0)
+        if existing_product
+        else 0.0
     )
     design_hourly_rate = parse_brazilian_decimal(request.form.get("design_hourly_rate"))
     extra_cost = parse_brazilian_decimal(request.form.get("extra_cost"))
-    margin_percent = float(request.form.get("margin_percent") or 0)
+    margin_percent = parse_loose_float(request.form.get("margin_percent"), 0.0)
     unit_cost, calculated_sale_price = calculate_detailed_job_values(
         material_lines=detailed_material_lines,
         component_lines=detailed_component_lines,
@@ -2307,8 +2319,8 @@ def build_product_form_data(
         "margin_percent": margin_percent,
         "unit_cost": unit_cost,
         "sale_price": sale_price,
-        "stock_quantity": float(request.form.get("stock_quantity") or 0),
-        "minimum_quantity": float(request.form.get("minimum_quantity") or 0),
+        "stock_quantity": parse_loose_float(request.form.get("stock_quantity"), 0.0),
+        "minimum_quantity": parse_loose_float(request.form.get("minimum_quantity"), 0.0),
         "sale_channel": (
             request.form.get("sale_channel", "").strip()
             if "sale_channel" in request.form
