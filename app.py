@@ -1646,6 +1646,8 @@ def parse_brazilian_decimal(value: str | None) -> float:
     if not value:
         return 0.0
     normalized = value.strip().replace("R$", "").replace(" ", "")
+    if normalized.startswith("__"):
+        return 0.0
     if "," in normalized:
         normalized = normalized.replace(".", "").replace(",", ".")
     return float(normalized or 0)
