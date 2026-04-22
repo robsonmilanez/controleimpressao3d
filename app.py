@@ -3858,74 +3858,80 @@ def products() -> str:
     materials_list = db.execute(
         f"SELECT * FROM materials ORDER BY {material_order_clause()}"
     ).fetchall()
+    product_error = None
 
     if request.method == "POST":
-        product_code = generate_sequential_code(db, "products", "sku", "P")
-        product_data = build_product_form_data(db)
-        cursor = db.execute(
-            """
-            INSERT INTO products (
-                sku,
-                name,
-                category,
-                description,
-                material_id,
-                additional_material_types,
-                accessories,
-                weight_grams,
-                print_hours,
-                energy_cost_per_hour,
-                operating_cost_per_hour,
-                labor_hours,
-                labor_hourly_rate,
-                design_hours,
-                design_hourly_rate,
-                extra_cost,
-                margin_percent,
-                unit_cost,
-                sale_price,
-                stock_quantity,
-                minimum_quantity,
-                sale_channel,
-                status,
-                model_link,
-                notes
+        try:
+            product_code = generate_sequential_code(db, "products", "sku", "P")
+            product_data = build_product_form_data(db)
+            cursor = db.execute(
+                """
+                INSERT INTO products (
+                    sku,
+                    name,
+                    category,
+                    description,
+                    material_id,
+                    additional_material_types,
+                    accessories,
+                    weight_grams,
+                    print_hours,
+                    energy_cost_per_hour,
+                    operating_cost_per_hour,
+                    labor_hours,
+                    labor_hourly_rate,
+                    design_hours,
+                    design_hourly_rate,
+                    extra_cost,
+                    margin_percent,
+                    unit_cost,
+                    sale_price,
+                    stock_quantity,
+                    minimum_quantity,
+                    sale_channel,
+                    status,
+                    model_link,
+                    notes
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    product_code,
+                    product_data["name"],
+                    product_data["category"],
+                    product_data["description"],
+                    product_data["material_id"],
+                    product_data["additional_material_types"],
+                    product_data["accessories"],
+                    product_data["weight_grams"],
+                    product_data["print_hours"],
+                    product_data["energy_cost_per_hour"],
+                    product_data["operating_cost_per_hour"],
+                    product_data["labor_hours"],
+                    product_data["labor_hourly_rate"],
+                    product_data["design_hours"],
+                    product_data["design_hourly_rate"],
+                    product_data["extra_cost"],
+                    product_data["margin_percent"],
+                    product_data["unit_cost"],
+                    product_data["sale_price"],
+                    product_data["stock_quantity"],
+                    product_data["minimum_quantity"],
+                    product_data["sale_channel"],
+                    product_data["status"],
+                    product_data["model_link"],
+                    product_data["notes"],
+                ),
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                product_code,
-                product_data["name"],
-                product_data["category"],
-                product_data["description"],
-                product_data["material_id"],
-                product_data["additional_material_types"],
-                product_data["accessories"],
-                product_data["weight_grams"],
-                product_data["print_hours"],
-                product_data["energy_cost_per_hour"],
-                product_data["operating_cost_per_hour"],
-                product_data["labor_hours"],
-                product_data["labor_hourly_rate"],
-                product_data["design_hours"],
-                product_data["design_hourly_rate"],
-                product_data["extra_cost"],
-                product_data["margin_percent"],
-                product_data["unit_cost"],
-                product_data["sale_price"],
-                product_data["stock_quantity"],
-                product_data["minimum_quantity"],
-                product_data["sale_channel"],
-                product_data["status"],
-                product_data["model_link"],
-                product_data["notes"],
-            ),
-        )
-        created_id = cursor.lastrowid
-        db.commit()
-        if return_to:
-            return redirect(append_query_value(return_to, "selected_product_id", created_id))
-        return redirect(url_for("products"))
+            created_id = cursor.lastrowid
+            db.commit()
+            if return_to:
+                return redirect(append_query_value(return_to, "selected_product_id", created_id))
+            return redirect(url_for("products"))
+        except Exception as error:
+            db.rollback()
+            app.logger.exception("Erro ao salvar produto")
+            product_error = f"Erro ao salvar produto: {error}"
 
     return render_template(
         "products.html",
@@ -3934,6 +3940,7 @@ def products() -> str:
         components=references["components"],
         next_product_code=generate_sequential_code(db, "products", "sku", "P"),
         return_to=return_to,
+        error=product_error,
         delete_error=request.args.get("delete_error", "").strip(),
     )
 
@@ -4559,39 +4566,328 @@ def jobs() -> str:
                 valid_until_date=(date.today() + timedelta(days=5)).isoformat(),
                 delete_error="",
             )
-        material_lines = build_job_material_lines(db)
-        component_lines = build_job_component_lines(db)
-        service_lines = build_job_service_lines(db)
-        requested_weight = sum(line["weight_grams"] for line in material_lines)
-        material_stock_usage: dict[int, float] = {}
-        component_stock_usage: dict[int, float] = {}
+        try:
+            material_lines = build_job_material_lines(db)
+            component_lines = build_job_component_lines(db)
+            service_lines = build_job_service_lines(db)
+            requested_weight = sum(line["weight_grams"] for line in material_lines)
+            material_stock_usage: dict[int, float] = {}
+            component_stock_usage: dict[int, float] = {}
 
-        for line in material_lines:
-            material_stock_usage[line["material_id"]] = (
-                material_stock_usage.get(line["material_id"], 0.0)
-                + line["weight_grams"]
+            for line in material_lines:
+                material_stock_usage[line["material_id"]] = (
+                    material_stock_usage.get(line["material_id"], 0.0)
+                    + line["weight_grams"]
+                )
+
+            for line in component_lines:
+                component_stock_usage[line["component_id"]] = (
+                    component_stock_usage.get(line["component_id"], 0.0)
+                    + line["quantity"]
+                )
+
+            insufficient_material = any(
+                usage > float(line["material"]["stock_grams"] or 0)
+                for line in material_lines
+                for material_id, usage in material_stock_usage.items()
+                if line["material_id"] == material_id
+            )
+            insufficient_component = any(
+                usage > float(line["component"]["stock_quantity"] or 0)
+                for line in component_lines
+                for component_id, usage in component_stock_usage.items()
+                if line["component_id"] == component_id
             )
 
-        for line in component_lines:
-            component_stock_usage[line["component_id"]] = (
-                component_stock_usage.get(line["component_id"], 0.0)
-                + line["quantity"]
+            if status != "Orcamento" and (insufficient_material or insufficient_component):
+                jobs_list = fetch_jobs(db)
+                return render_template(
+                    "jobs.html",
+                    jobs=jobs_list,
+                    materials=materials_list,
+                    components=references["components"],
+                    products=references["products"],
+                    statuses=JOB_STATUSES,
+                    error="Estoque insuficiente para esse pedido.",
+                    customers=references["customers"],
+                    representatives=references["representatives"],
+                    partner_stores=references["partner_stores"],
+                    payment_terms=references["payment_terms"],
+                    sales_channels=references["sales_channels"],
+                    printers=references["printers"],
+                    filament_dryers=references["filament_dryers"],
+                    next_job_number=get_next_job_number(db),
+                    today_date=date.today().isoformat(),
+                    valid_until_date=(date.today() + timedelta(days=5)).isoformat(),
+                    delete_error="",
+                )
+
+            extra_cost = parse_brazilian_decimal(request.form.get("extra_cost"))
+            margin_percent = float(request.form.get("margin_percent") or 0)
+            labor_hours = float(request.form.get("labor_hours") or 0)
+            labor_hourly_rate = parse_brazilian_decimal(
+                request.form.get("labor_hourly_rate")
+            )
+            design_hours = float(request.form.get("design_hours") or 0)
+            design_hourly_rate = parse_brazilian_decimal(
+                request.form.get("design_hourly_rate")
             )
 
-        insufficient_material = any(
-            usage > float(line["material"]["stock_grams"] or 0)
-            for line in material_lines
-            for material_id, usage in material_stock_usage.items()
-            if line["material_id"] == material_id
-        )
-        insufficient_component = any(
-            usage > float(line["component"]["stock_quantity"] or 0)
-            for line in component_lines
-            for component_id, usage in component_stock_usage.items()
-            if line["component_id"] == component_id
-        )
+            customer_total = sum(line["total_price"] for line in service_lines)
+            cost_summary = summarize_cost_lines(
+                material_lines=material_lines,
+                component_lines=component_lines,
+                labor_hours=labor_hours,
+                labor_hourly_rate=labor_hourly_rate,
+                design_hours=design_hours,
+                design_hourly_rate=design_hourly_rate,
+                extra_cost=extra_cost,
+                sale_total=customer_total,
+            )
+            total_cost = cost_summary["total_cost"]
+            suggested_price = (
+                customer_total
+                if customer_total > 0
+                else calculate_price_with_margin(total_cost, margin_percent)
+            )
+            print_hours = cost_summary["total_print_hours"]
+            dryer_hours = cost_summary["total_dryer_hours"]
+            energy_cost_per_hour = (
+                round(cost_summary["energy_cost"] / print_hours, 4) if print_hours else 0.0
+            )
+            operating_cost_per_hour = (
+                round(cost_summary["operating_cost"] / print_hours, 4) if print_hours else 0.0
+            )
+            dryer_cost_per_hour = (
+                round(cost_summary["dryer_cost"] / dryer_hours, 4) if dryer_hours else 0.0
+            )
 
-        if status != "Orcamento" and (insufficient_material or insufficient_component):
+            primary_material_id = (
+                material_lines[0]["material_id"]
+                if material_lines
+                else int(materials_list[0]["id"])
+            )
+
+            cursor = db.execute(
+                """
+                INSERT INTO jobs (
+                    customer_name,
+                    customer_id,
+                    item_name,
+                    status,
+                    created_at,
+                    material_id,
+                    weight_grams,
+                    print_hours,
+                    energy_cost_per_hour,
+                    operating_cost_per_hour,
+                    extra_cost,
+                    margin_percent,
+                    total_cost,
+                    suggested_price,
+                    notes,
+                    customer_notes,
+                    internal_notes,
+                    representative_id,
+                    partner_store_id,
+                    due_date,
+                    quantity,
+                    sale_channel,
+                    labor_hours,
+                    labor_hourly_rate,
+                    design_hours,
+                    design_hourly_rate,
+                    valid_until,
+                    payment_terms,
+                    model_link,
+                    printer_id,
+                    filament_dryer_id,
+                    dryer_hours,
+                    dryer_cost_per_hour
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    customer["name"],
+                    customer_id,
+                    item_name,
+                    status,
+                    request.form.get("created_at", "").strip() or date.today().isoformat(),
+                    primary_material_id,
+                    requested_weight,
+                    print_hours,
+                    energy_cost_per_hour,
+                    operating_cost_per_hour,
+                    extra_cost,
+                    margin_percent,
+                    total_cost,
+                    suggested_price,
+                    request.form.get("internal_notes", "").strip(),
+                    request.form.get("customer_notes", "").strip(),
+                    request.form.get("internal_notes", "").strip(),
+                    (
+                        int(request.form["representative_id"])
+                        if request.form.get("representative_id")
+                        else None
+                    ),
+                    (
+                        int(request.form["partner_store_id"])
+                        if request.form.get("partner_store_id")
+                        else None
+                    ),
+                    request.form.get("due_date") or None,
+                    parse_integerish(request.form.get("quantity"), 1),
+                    request.form.get("sale_channel", "").strip(),
+                    labor_hours,
+                    labor_hourly_rate,
+                    design_hours,
+                    design_hourly_rate,
+                    request.form.get("valid_until") or None,
+                    request.form.get("payment_terms", "").strip(),
+                    request.form.get("model_link", "").strip(),
+                    (
+                        material_lines[0]["printer_id"] if material_lines else None
+                    ),
+                    (
+                        material_lines[0]["filament_dryer_id"] if material_lines else None
+                    ),
+                    dryer_hours,
+                    dryer_cost_per_hour,
+                ),
+            )
+            job_id = int(cursor.lastrowid)
+
+            for line in material_lines:
+                db.execute(
+                    """
+                    INSERT INTO job_materials (
+                        job_id,
+                        material_id,
+                        weight_grams,
+                        print_hours,
+                        printer_id,
+                        energy_cost_per_hour,
+                        operating_cost_per_hour,
+                        filament_dryer_id,
+                        dryer_hours,
+                        dryer_cost_per_hour,
+                        notes
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        job_id,
+                        line["material_id"],
+                        line["weight_grams"],
+                        line["print_hours"],
+                        line["printer_id"],
+                        line["energy_cost_per_hour"],
+                        line["operating_cost_per_hour"],
+                        line["filament_dryer_id"],
+                        line["dryer_hours"],
+                        line["dryer_cost_per_hour"],
+                        line["notes"],
+                    ),
+                )
+
+            for line in component_lines:
+                db.execute(
+                    """
+                    INSERT INTO job_components (job_id, component_id, quantity, notes)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (
+                        job_id,
+                        line["component_id"],
+                        line["quantity"],
+                        line["notes"],
+                    ),
+                )
+
+            for line in service_lines:
+                db.execute(
+                    """
+                    INSERT INTO job_services (
+                        job_id,
+                        service_name,
+                        category,
+                        quantity,
+                        hours,
+                        unit_price,
+                        addition_value,
+                        discount_value,
+                        total_price,
+                        show_to_customer,
+                        notes
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    """,
+                    (
+                        job_id,
+                        line["service_name"],
+                        line["category"],
+                        line["quantity"],
+                        line["hours"],
+                        line["unit_price"],
+                        line["addition_value"],
+                        line["discount_value"],
+                        line["total_price"],
+                        line["notes"],
+                    ),
+                )
+
+            if status != "Orcamento":
+                for material_id, usage in material_stock_usage.items():
+                    material_line = next(
+                        (
+                            line
+                            for line in material_lines
+                            if int(line["material_id"]) == int(material_id)
+                        ),
+                        None,
+                    )
+                    db.execute(
+                        "UPDATE materials SET stock_grams = stock_grams - ? WHERE id = ?",
+                        (usage, material_id),
+                    )
+                    db.execute(
+                        """
+                        INSERT INTO inventory_movements (
+                            material_id,
+                            movement_type,
+                            quantity_grams,
+                            unit_cost_per_kg,
+                            related_job_id,
+                            notes
+                        )
+                        VALUES (?, 'Consumo manual', ?, ?, ?, ?)
+                        """,
+                        (
+                            material_id,
+                            usage,
+                            float(material_line["material"]["cost_per_kg"] or 0)
+                            if material_line
+                            else 0.0,
+                            job_id,
+                            f"Baixa automatica do pedido: {item_name}",
+                        ),
+                    )
+                for component_id, usage in component_stock_usage.items():
+                    db.execute(
+                        """
+                        UPDATE components
+                        SET stock_quantity = stock_quantity - ?
+                        WHERE id = ?
+                        """,
+                        (usage, component_id),
+                    )
+            db.commit()
+            save_job_photos(job_id)
+            db.commit()
+            return redirect(url_for("jobs"))
+        except Exception as error:
+            db.rollback()
+            app.logger.exception("Erro ao salvar pedido")
             jobs_list = fetch_jobs(db)
             return render_template(
                 "jobs.html",
@@ -4600,7 +4896,7 @@ def jobs() -> str:
                 components=references["components"],
                 products=references["products"],
                 statuses=JOB_STATUSES,
-                error="Estoque insuficiente para esse pedido.",
+                error=f"Erro ao salvar pedido: {error}",
                 customers=references["customers"],
                 representatives=references["representatives"],
                 partner_stores=references["partner_stores"],
@@ -4613,270 +4909,6 @@ def jobs() -> str:
                 valid_until_date=(date.today() + timedelta(days=5)).isoformat(),
                 delete_error="",
             )
-
-        extra_cost = parse_brazilian_decimal(request.form.get("extra_cost"))
-        margin_percent = float(request.form.get("margin_percent") or 0)
-        labor_hours = float(request.form.get("labor_hours") or 0)
-        labor_hourly_rate = parse_brazilian_decimal(
-            request.form.get("labor_hourly_rate")
-        )
-        design_hours = float(request.form.get("design_hours") or 0)
-        design_hourly_rate = parse_brazilian_decimal(
-            request.form.get("design_hourly_rate")
-        )
-
-        customer_total = sum(line["total_price"] for line in service_lines)
-        cost_summary = summarize_cost_lines(
-            material_lines=material_lines,
-            component_lines=component_lines,
-            labor_hours=labor_hours,
-            labor_hourly_rate=labor_hourly_rate,
-            design_hours=design_hours,
-            design_hourly_rate=design_hourly_rate,
-            extra_cost=extra_cost,
-            sale_total=customer_total,
-        )
-        total_cost = cost_summary["total_cost"]
-        suggested_price = (
-            customer_total
-            if customer_total > 0
-            else calculate_price_with_margin(total_cost, margin_percent)
-        )
-        print_hours = cost_summary["total_print_hours"]
-        dryer_hours = cost_summary["total_dryer_hours"]
-        energy_cost_per_hour = (
-            round(cost_summary["energy_cost"] / print_hours, 4) if print_hours else 0.0
-        )
-        operating_cost_per_hour = (
-            round(cost_summary["operating_cost"] / print_hours, 4) if print_hours else 0.0
-        )
-        dryer_cost_per_hour = (
-            round(cost_summary["dryer_cost"] / dryer_hours, 4) if dryer_hours else 0.0
-        )
-
-        primary_material_id = (
-            material_lines[0]["material_id"]
-            if material_lines
-            else int(materials_list[0]["id"])
-        )
-
-        cursor = db.execute(
-            """
-            INSERT INTO jobs (
-                customer_name,
-                customer_id,
-                item_name,
-                status,
-                created_at,
-                material_id,
-                weight_grams,
-                print_hours,
-                energy_cost_per_hour,
-                operating_cost_per_hour,
-                extra_cost,
-                margin_percent,
-                total_cost,
-                suggested_price,
-                notes,
-                customer_notes,
-                internal_notes,
-                representative_id,
-                partner_store_id,
-                due_date,
-                quantity,
-                sale_channel,
-                labor_hours,
-                labor_hourly_rate,
-                design_hours,
-                design_hourly_rate,
-                valid_until,
-                payment_terms,
-                model_link,
-                printer_id,
-                filament_dryer_id,
-                dryer_hours,
-                dryer_cost_per_hour
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                customer["name"],
-                customer_id,
-                item_name,
-                status,
-                request.form.get("created_at", "").strip() or date.today().isoformat(),
-                primary_material_id,
-                requested_weight,
-                print_hours,
-                energy_cost_per_hour,
-                operating_cost_per_hour,
-                extra_cost,
-                margin_percent,
-                total_cost,
-                suggested_price,
-                request.form.get("internal_notes", "").strip(),
-                request.form.get("customer_notes", "").strip(),
-                request.form.get("internal_notes", "").strip(),
-                (
-                    int(request.form["representative_id"])
-                    if request.form.get("representative_id")
-                    else None
-                ),
-                (
-                    int(request.form["partner_store_id"])
-                    if request.form.get("partner_store_id")
-                    else None
-                ),
-                request.form.get("due_date") or None,
-                parse_integerish(request.form.get("quantity"), 1),
-                request.form.get("sale_channel", "").strip(),
-                labor_hours,
-                labor_hourly_rate,
-                design_hours,
-                design_hourly_rate,
-                request.form.get("valid_until") or None,
-                request.form.get("payment_terms", "").strip(),
-                request.form.get("model_link", "").strip(),
-                (
-                    material_lines[0]["printer_id"] if material_lines else None
-                ),
-                (
-                    material_lines[0]["filament_dryer_id"] if material_lines else None
-                ),
-                dryer_hours,
-                dryer_cost_per_hour,
-            ),
-        )
-        job_id = int(cursor.lastrowid)
-
-        for line in material_lines:
-            db.execute(
-                """
-                INSERT INTO job_materials (
-                    job_id,
-                    material_id,
-                    weight_grams,
-                    print_hours,
-                    printer_id,
-                    energy_cost_per_hour,
-                    operating_cost_per_hour,
-                    filament_dryer_id,
-                    dryer_hours,
-                    dryer_cost_per_hour,
-                    notes
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    job_id,
-                    line["material_id"],
-                    line["weight_grams"],
-                    line["print_hours"],
-                    line["printer_id"],
-                    line["energy_cost_per_hour"],
-                    line["operating_cost_per_hour"],
-                    line["filament_dryer_id"],
-                    line["dryer_hours"],
-                    line["dryer_cost_per_hour"],
-                    line["notes"],
-                ),
-            )
-
-        for line in component_lines:
-            db.execute(
-                """
-                INSERT INTO job_components (job_id, component_id, quantity, notes)
-                VALUES (?, ?, ?, ?)
-                """,
-                (
-                    job_id,
-                    line["component_id"],
-                    line["quantity"],
-                    line["notes"],
-                ),
-            )
-
-        for line in service_lines:
-            db.execute(
-                """
-                INSERT INTO job_services (
-                    job_id,
-                    service_name,
-                    category,
-                    quantity,
-                    hours,
-                    unit_price,
-                    addition_value,
-                    discount_value,
-                    total_price,
-                    show_to_customer,
-                    notes
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
-                """,
-                (
-                    job_id,
-                    line["service_name"],
-                    line["category"],
-                    line["quantity"],
-                    line["hours"],
-                    line["unit_price"],
-                    line["addition_value"],
-                    line["discount_value"],
-                    line["total_price"],
-                    line["notes"],
-                ),
-            )
-
-        if status != "Orcamento":
-            for material_id, usage in material_stock_usage.items():
-                material_line = next(
-                    (
-                        line
-                        for line in material_lines
-                        if int(line["material_id"]) == int(material_id)
-                    ),
-                    None,
-                )
-                db.execute(
-                    "UPDATE materials SET stock_grams = stock_grams - ? WHERE id = ?",
-                    (usage, material_id),
-                )
-                db.execute(
-                    """
-                    INSERT INTO inventory_movements (
-                        material_id,
-                        movement_type,
-                        quantity_grams,
-                        unit_cost_per_kg,
-                        related_job_id,
-                        notes
-                    )
-                    VALUES (?, 'Consumo manual', ?, ?, ?, ?)
-                    """,
-                    (
-                        material_id,
-                        usage,
-                        float(material_line["material"]["cost_per_kg"] or 0)
-                        if material_line
-                        else 0.0,
-                        job_id,
-                        f"Baixa automatica do pedido: {item_name}",
-                    ),
-                )
-            for component_id, usage in component_stock_usage.items():
-                db.execute(
-                    """
-                    UPDATE components
-                    SET stock_quantity = stock_quantity - ?
-                    WHERE id = ?
-                    """,
-                    (usage, component_id),
-                )
-        db.commit()
-        save_job_photos(job_id)
-        db.commit()
-        return redirect(url_for("jobs"))
 
     jobs_list = fetch_jobs(db)
     return render_template(
