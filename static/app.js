@@ -1084,6 +1084,16 @@ function setupSearchableSelects(root = document) {
       closeFilteredList();
     };
 
+    select.addEventListener("change", () => {
+      const selectedOption = select.selectedOptions[0];
+      searchInput.value =
+        selectedOption && selectedOption.value
+          ? selectedOption.textContent.trim()
+          : "";
+      activeValue = select.value || "";
+      setActiveOption(activeValue);
+    });
+
     const openFilteredList = (showAllOptions = false) => {
       const searchTerm = showAllOptions ? "" : normalize(searchInput.value);
       resultsList.innerHTML = "";
