@@ -4830,6 +4830,14 @@ def jobs() -> str:
 
         if status != "Orcamento":
             for material_id, usage in material_stock_usage.items():
+                material_line = next(
+                    (
+                        line
+                        for line in material_lines
+                        if int(line["material_id"]) == int(material_id)
+                    ),
+                    None,
+                )
                 db.execute(
                     "UPDATE materials SET stock_grams = stock_grams - ? WHERE id = ?",
                     (usage, material_id),
@@ -4849,17 +4857,9 @@ def jobs() -> str:
                     (
                         material_id,
                         usage,
-                        float(
-                            next(
-                                (
-                                    line["material"]["cost_per_kg"]
-                                    for line in detail["material_lines"]
-                                    if int(line["material_id"]) == int(material_id)
-                                ),
-                                0,
-                            )
-                            or 0
-                        ),
+                        float(material_line["material"]["cost_per_kg"] or 0)
+                        if material_line
+                        else 0.0,
                         job_id,
                         f"Baixa automatica do pedido: {item_name}",
                     ),

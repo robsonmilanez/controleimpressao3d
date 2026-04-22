@@ -864,9 +864,9 @@ textarea {
 .job-form-compact .service-row {
   grid-template-columns:
     minmax(76px, 0.45fr)
-    minmax(220px, 1.2fr)
-    minmax(360px, 2.2fr)
-    minmax(150px, 0.95fr)
+    minmax(260px, 1.35fr)
+    minmax(520px, 3.2fr)
+    minmax(130px, 0.72fr)
     minmax(118px, 0.72fr)
     minmax(118px, 0.72fr)
     minmax(118px, 0.72fr)
@@ -877,8 +877,12 @@ textarea {
 }
 
 .job-form-compact .item-description-group {
-  grid-template-columns: minmax(170px, 0.8fr) minmax(0, 1.8fr);
+  grid-template-columns: minmax(190px, 0.8fr) minmax(0, 2.6fr);
   gap: 0.5rem;
+}
+
+.job-form-compact .item-description-field input[name="item_name"] {
+  font-size: 0.96rem;
 }
 
 .job-form-compact .service-category-field input {
