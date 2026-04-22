@@ -128,11 +128,11 @@
 <label class="span-2 computed-field">
   Energia total
   <input type="text" class="product-energy-total" value="0,00" readonly tabindex="-1">
-  <input type="hidden" name="energy_cost_per_hour" value="{{ product['energy_cost_per_hour']|br_money if product else '0,80' }}">
+  <input type="hidden" name="energy_cost_per_hour" value="{{ product['energy_cost_per_hour']|br_money if product else default_product_energy_cost_per_hour|br_money }}">
 </label>
 <label class="span-2">
   Operacional/h
-  <input type="text" name="operating_cost_per_hour" class="currency-field" inputmode="decimal" value="{{ product['operating_cost_per_hour']|br_money if product else '3,50' }}">
+  <input type="text" name="operating_cost_per_hour" class="currency-field" inputmode="decimal" value="{{ product['operating_cost_per_hour']|br_money if product else default_product_operating_cost_per_hour|br_money }}">
 </label>
 <label class="span-2">
   Trabalho (h)

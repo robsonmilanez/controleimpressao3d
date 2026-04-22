@@ -1470,32 +1470,8 @@ function setupCommercialDateDefaults() {
 }
 
 function setupPrinterHourlyCost() {
-  const purchaseValueField =
-    document.querySelector("[name='purchase_value']") ||
-    document.querySelector("[name='price']");
-  const usefulLifeField = document.querySelector("[name='useful_life_hours']");
-  const energyWattsField =
-    document.querySelector("[name='energy_watts']") ||
-    document.querySelector("[name='power_watts']");
-  const kwhCostField = document.querySelector("[name='kwh_cost']");
-  const depreciationHourlyCostField = document.querySelector(
-    "[name='depreciation_hourly_cost']"
-  );
-  const energyHourlyCostField = document.querySelector("[name='energy_hourly_cost']");
-  const hourlyCostField = document.querySelector("[name='hourly_cost']");
-
-  if (
-    !purchaseValueField ||
-    !usefulLifeField ||
-    !energyWattsField ||
-    !kwhCostField ||
-    !hourlyCostField
-  ) {
-    return;
-  }
-
   const parseBrazilianDecimal = (rawValue) => {
-    const normalized = rawValue
+    const normalized = String(rawValue || "")
       .replace("R$", "")
       .replace(/\s/g, "")
       .replace(/\./g, "")
@@ -1509,28 +1485,150 @@ function setupPrinterHourlyCost() {
       maximumFractionDigits: 2,
     }).format(value);
 
-  const updateHourlyCost = () => {
-    const purchaseValue = parseBrazilianDecimal(purchaseValueField.value);
-    const usefulLifeHours = Number(usefulLifeField.value) || 0;
-    const energyWatts = Number(energyWattsField.value) || 0;
-    const kwhCost = parseBrazilianDecimal(kwhCostField.value);
-    const depreciationCost = usefulLifeHours > 0 ? purchaseValue / usefulLifeHours : 0;
-    const energyCost = (energyWatts / 1000) * kwhCost;
-    const hourlyCost = depreciationCost + energyCost;
-    if (depreciationHourlyCostField) {
-      depreciationHourlyCostField.value = formatBrazilianDecimal(depreciationCost);
+  const forms = Array.from(document.querySelectorAll("form"));
+  forms.forEach((form) => {
+    const purchaseValueField =
+      form.querySelector("[name='purchase_value']") ||
+      form.querySelector("[name='price']");
+    const usefulLifeField = form.querySelector("[name='useful_life_hours']");
+    const energyWattsField =
+      form.querySelector("[name='energy_watts']") ||
+      form.querySelector("[name='power_watts']");
+    const kwhCostField = form.querySelector("[name='kwh_cost']");
+    const depreciationHourlyCostField = form.querySelector(
+      "[name='depreciation_hourly_cost']"
+    );
+    const maintenanceMonthlyCostField = form.querySelector(
+      "[name='monthly_maintenance_cost']"
+    );
+    const maintenanceHourlyCostField = form.querySelector(
+      "[name='maintenance_hourly_cost']"
+    );
+    const sharedOverheadHourlyCostField = form.querySelector(
+      "[name='shared_overhead_hourly_cost']"
+    );
+    const operatingHourlyCostField = form.querySelector(
+      "[name='operating_hourly_cost']"
+    );
+    const energyHourlyCostField = form.querySelector("[name='energy_hourly_cost']");
+    const hourlyCostField = form.querySelector("[name='hourly_cost']");
+
+    if (
+      !purchaseValueField ||
+      !usefulLifeField ||
+      !energyWattsField ||
+      !kwhCostField ||
+      !hourlyCostField
+    ) {
+      return;
     }
-    if (energyHourlyCostField) {
-      energyHourlyCostField.value = formatBrazilianDecimal(energyCost);
-    }
-    hourlyCostField.value = formatBrazilianDecimal(hourlyCost);
+
+    const monthlyFixedCost = parseBrazilianDecimal(
+      form.dataset.monthlyFixedCost || 0
+    );
+    const productiveHoursPerMonth =
+      Number(form.dataset.productiveHoursPerMonth) || 0;
+
+    const updateHourlyCost = () => {
+      const purchaseValue = parseBrazilianDecimal(purchaseValueField.value);
+      const usefulLifeHours = Number(usefulLifeField.value) || 0;
+      const energyWatts = Number(energyWattsField.value) || 0;
+      const kwhCost = parseBrazilianDecimal(kwhCostField.value);
+      const maintenanceMonthlyCost = parseBrazilianDecimal(
+        maintenanceMonthlyCostField?.value || 0
+      );
+      const depreciationCost =
+        usefulLifeHours > 0 ? purchaseValue / usefulLifeHours : 0;
+      const energyCost = (energyWatts / 1000) * kwhCost;
+      const maintenanceHourlyCost =
+        productiveHoursPerMonth > 0
+          ? maintenanceMonthlyCost / productiveHoursPerMonth
+          : 0;
+      const sharedOverheadHourlyCost =
+        productiveHoursPerMonth > 0
+          ? monthlyFixedCost / productiveHoursPerMonth
+          : 0;
+      const operatingHourlyCost =
+        depreciationCost + maintenanceHourlyCost + sharedOverheadHourlyCost;
+      const hourlyCost = operatingHourlyCost + energyCost;
+
+      if (depreciationHourlyCostField) {
+        depreciationHourlyCostField.value = formatBrazilianDecimal(depreciationCost);
+      }
+      if (maintenanceHourlyCostField) {
+        maintenanceHourlyCostField.value = formatBrazilianDecimal(
+          maintenanceHourlyCost
+        );
+      }
+      if (sharedOverheadHourlyCostField) {
+        sharedOverheadHourlyCostField.value = formatBrazilianDecimal(
+          sharedOverheadHourlyCost
+        );
+      }
+      if (operatingHourlyCostField) {
+        operatingHourlyCostField.value = formatBrazilianDecimal(
+          operatingHourlyCost
+        );
+      }
+      if (energyHourlyCostField) {
+        energyHourlyCostField.value = formatBrazilianDecimal(energyCost);
+      }
+      hourlyCostField.value = formatBrazilianDecimal(hourlyCost);
+    };
+
+    purchaseValueField.addEventListener("input", updateHourlyCost);
+    usefulLifeField.addEventListener("input", updateHourlyCost);
+    energyWattsField.addEventListener("input", updateHourlyCost);
+    kwhCostField.addEventListener("input", updateHourlyCost);
+    maintenanceMonthlyCostField?.addEventListener("input", updateHourlyCost);
+    updateHourlyCost();
+  });
+}
+
+function setupOperationalCostSettings() {
+  const form = document.querySelector(".operational-cost-form");
+  if (!form) {
+    return;
+  }
+
+  const monthlyFixedCostField = form.querySelector("[name='monthly_fixed_cost']");
+  const productiveHoursField = form.querySelector(
+    "[name='productive_hours_per_month']"
+  );
+  const sharedOverheadField = form.querySelector(
+    "[name='shared_overhead_hourly_cost']"
+  );
+
+  if (!monthlyFixedCostField || !productiveHoursField || !sharedOverheadField) {
+    return;
+  }
+
+  const parseBrazilianDecimal = (rawValue) => {
+    const normalized = String(rawValue || "")
+      .replace("R$", "")
+      .replace(/\s/g, "")
+      .replace(/\./g, "")
+      .replace(",", ".");
+    return Number(normalized) || 0;
   };
 
-  purchaseValueField.addEventListener("input", updateHourlyCost);
-  usefulLifeField.addEventListener("input", updateHourlyCost);
-  energyWattsField.addEventListener("input", updateHourlyCost);
-  kwhCostField.addEventListener("input", updateHourlyCost);
-  updateHourlyCost();
+  const formatBrazilianDecimal = (value) =>
+    new Intl.NumberFormat("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+
+  const updateOperationalHourly = () => {
+    const monthlyFixedCost = parseBrazilianDecimal(monthlyFixedCostField.value);
+    const productiveHours = Number(productiveHoursField.value) || 0;
+    const hourlyCost =
+      productiveHours > 0 ? monthlyFixedCost / productiveHours : 0;
+    sharedOverheadField.value = formatBrazilianDecimal(hourlyCost);
+  };
+
+  monthlyFixedCostField.addEventListener("input", updateOperationalHourly);
+  productiveHoursField.addEventListener("input", updateOperationalHourly);
+  updateOperationalHourly();
 }
 
 function setupJobPrinterCosts() {
@@ -2536,6 +2634,7 @@ setupCurrencyFields();
 setupDateMasks();
 setupCommercialDateDefaults();
 setupPrinterHourlyCost();
+setupOperationalCostSettings();
 setupJobPrinterCosts();
 setupJobDryerCosts();
 setupJobInlineTotals();

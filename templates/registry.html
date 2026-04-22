@@ -20,11 +20,25 @@
         <span class="panel-badge">{{ panel_badge }}</span>
       </div>
 
-      <form method="post" class="form-grid {{ form_class|default('') }}">
+      <form
+        method="post"
+        class="form-grid {{ form_class|default('') }}"
+        {% if section == 'printers' %}
+          data-monthly-fixed-cost="{{ operational_settings['monthly_fixed_cost'] if operational_settings else 0 }}"
+          data-productive-hours-per-month="{{ operational_settings['productive_hours_per_month'] if operational_settings else 0 }}"
+        {% endif %}
+      >
         {% if return_to %}
           <input type="hidden" name="return_to" value="{{ return_to }}">
         {% endif %}
         {% for field in fields %}
+          {% if field["type"] == "hidden" %}
+            <input
+              type="hidden"
+              name="{{ field['name'] }}"
+              {% if field.get('value') is not none %}value="{{ field.get('value') }}"{% endif %}
+            >
+          {% else %}
           <label class="{% if field.get('full') %}full{% endif %} {{ field.get('label_class', '') }}">
             {{ field["label"] }}
             {% if field["type"] == "textarea" %}
@@ -33,7 +47,7 @@
                 {% if field.get('class') %}class="{{ field['class'] }}"{% endif %}
                 rows="3"
                 {% if field.get('placeholder') %}placeholder="{{ field['placeholder'] }}"{% endif %}
-              ></textarea>
+              >{{ field.get("value", "") }}</textarea>
             {% elif field["type"] == "select" %}
               <select name="{{ field['name'] }}" {% if field.get('class') %}class="{{ field['class'] }}"{% endif %} {% if field.get('required') %}required{% endif %}>
                 {% if not field.get('required') %}
@@ -45,7 +59,7 @@
               </select>
             {% elif field["type"] == "checkbox" %}
               <span class="checkbox-field">
-                <input type="checkbox" name="{{ field['name'] }}">
+                <input type="checkbox" name="{{ field['name'] }}" {% if field.get('value') %}checked{% endif %}>
                 <span>{{ field.get("hint", "Sim") }}</span>
               </span>
             {% else %}
@@ -63,6 +77,7 @@
               >
             {% endif %}
           </label>
+          {% endif %}
         {% endfor %}
         <div class="button-row full">
           {% if section == 'components' %}
@@ -74,6 +89,7 @@
     </article>
   </section>
 
+  {% if not hide_records %}
   <section class="panel-grid single">
     <article class="panel {{ list_class|default('') }}">
       <div class="panel-header">
@@ -129,4 +145,5 @@
       {% endif %}
     </article>
   </section>
+  {% endif %}
 {% endblock %}

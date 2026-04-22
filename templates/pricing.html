@@ -35,11 +35,11 @@
           </label>
           <label>
             Energia por hora
-            <input type="number" name="energy_cost_per_hour" min="0" step="0.01" value="0.80" required>
+            <input type="number" name="energy_cost_per_hour" min="0" step="0.01" value="{{ '%.2f'|format(default_product_energy_cost_per_hour) }}" required>
           </label>
           <label>
             Custo operacional por hora
-            <input type="number" name="operating_cost_per_hour" min="0" step="0.01" value="3.50" required>
+            <input type="number" name="operating_cost_per_hour" min="0" step="0.01" value="{{ '%.2f'|format(default_product_operating_cost_per_hour) }}" required>
           </label>
           <label>
             Custos extras

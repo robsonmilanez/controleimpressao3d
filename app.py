@@ -270,6 +270,13 @@ def init_db() -> None:
             is_default INTEGER NOT NULL DEFAULT 0
         );
 
+        CREATE TABLE IF NOT EXISTS operational_cost_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            monthly_fixed_cost REAL NOT NULL DEFAULT 0,
+            productive_hours_per_month REAL NOT NULL DEFAULT 0,
+            notes TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS components (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -551,6 +558,22 @@ def init_db() -> None:
     ensure_column(db, "printers", "has_ams", "INTEGER NOT NULL DEFAULT 0")
     ensure_column(db, "printers", "ams_model", "TEXT")
     ensure_column(db, "printers", "kwh_cost", "REAL NOT NULL DEFAULT 0")
+    ensure_column(
+        db, "printers", "monthly_maintenance_cost", "REAL NOT NULL DEFAULT 0"
+    )
+    ensure_column(
+        db,
+        "operational_cost_settings",
+        "monthly_fixed_cost",
+        "REAL NOT NULL DEFAULT 0",
+    )
+    ensure_column(
+        db,
+        "operational_cost_settings",
+        "productive_hours_per_month",
+        "REAL NOT NULL DEFAULT 0",
+    )
+    ensure_column(db, "operational_cost_settings", "notes", "TEXT")
     ensure_column(db, "products", "additional_material_types", "TEXT")
     ensure_column(db, "products", "accessories", "TEXT")
     ensure_column(db, "filament_dryers", "brand", "TEXT")
@@ -656,6 +679,17 @@ def init_db() -> None:
     db.execute(
         "UPDATE jobs SET created_at = ? WHERE created_at IS NULL OR created_at = ''",
         (date.today().isoformat(),),
+    )
+    db.execute(
+        """
+        INSERT OR IGNORE INTO operational_cost_settings (
+            id,
+            monthly_fixed_cost,
+            productive_hours_per_month,
+            notes
+        )
+        VALUES (1, 0, 0, '')
+        """
     )
     seed_payment_terms(db)
     seed_sales_channels(db)
@@ -1474,20 +1508,134 @@ def calculate_printer_hourly_cost(
     useful_life_hours: float,
     energy_watts: float,
     kwh_cost: float,
+    monthly_maintenance_cost: float = 0.0,
+    monthly_fixed_cost: float = 0.0,
+    productive_hours_per_month: float = 0.0,
 ) -> float:
+    breakdown = calculate_printer_cost_breakdown(
+        purchase_value=purchase_value,
+        useful_life_hours=useful_life_hours,
+        energy_watts=energy_watts,
+        kwh_cost=kwh_cost,
+        monthly_maintenance_cost=monthly_maintenance_cost,
+        monthly_fixed_cost=monthly_fixed_cost,
+        productive_hours_per_month=productive_hours_per_month,
+    )
+    return round(breakdown["total_hourly_cost"], 2)
+
+
+def calculate_shared_operating_hourly_cost(
+    monthly_fixed_cost: float, productive_hours_per_month: float
+) -> float:
+    if productive_hours_per_month <= 0:
+        return 0.0
+    return round(monthly_fixed_cost / productive_hours_per_month, 4)
+
+
+def calculate_printer_cost_breakdown(
+    purchase_value: float,
+    useful_life_hours: float,
+    energy_watts: float,
+    kwh_cost: float,
+    monthly_maintenance_cost: float = 0.0,
+    monthly_fixed_cost: float = 0.0,
+    productive_hours_per_month: float = 0.0,
+) -> dict[str, float]:
     depreciation_cost = 0.0
     if useful_life_hours > 0:
         depreciation_cost = purchase_value / useful_life_hours
     energy_cost = (energy_watts / 1000) * kwh_cost
-    return round(depreciation_cost + energy_cost, 2)
+    maintenance_hourly_cost = (
+        monthly_maintenance_cost / productive_hours_per_month
+        if productive_hours_per_month > 0
+        else 0.0
+    )
+    shared_overhead_hourly_cost = calculate_shared_operating_hourly_cost(
+        monthly_fixed_cost, productive_hours_per_month
+    )
+    operating_hourly_cost = (
+        depreciation_cost + maintenance_hourly_cost + shared_overhead_hourly_cost
+    )
+    total_hourly_cost = operating_hourly_cost + energy_cost
+    return {
+        "depreciation_hourly_cost": round(depreciation_cost, 4),
+        "energy_hourly_cost": round(energy_cost, 4),
+        "maintenance_hourly_cost": round(maintenance_hourly_cost, 4),
+        "shared_overhead_hourly_cost": round(shared_overhead_hourly_cost, 4),
+        "operating_hourly_cost": round(operating_hourly_cost, 4),
+        "total_hourly_cost": round(total_hourly_cost, 4),
+    }
 
 
-def get_printer_cost_rates(printer: sqlite3.Row | None) -> tuple[float, float]:
+def get_operational_cost_settings(db: sqlite3.Connection) -> sqlite3.Row:
+    row = db.execute(
+        "SELECT * FROM operational_cost_settings WHERE id = 1"
+    ).fetchone()
+    if row is None:
+        db.execute(
+            """
+            INSERT INTO operational_cost_settings (
+                id,
+                monthly_fixed_cost,
+                productive_hours_per_month,
+                notes
+            )
+            VALUES (1, 0, 0, '')
+            """
+        )
+        db.commit()
+        row = db.execute(
+            "SELECT * FROM operational_cost_settings WHERE id = 1"
+        ).fetchone()
+    return row
+
+
+def get_default_product_cost_rates(db: sqlite3.Connection) -> tuple[float, float]:
+    settings = get_operational_cost_settings(db)
+    printers = db.execute("SELECT * FROM printers ORDER BY name ASC").fetchall()
+    rates = [
+        get_printer_cost_rates(printer, settings)
+        for printer in printers
+        if printer is not None
+    ]
+    populated_rates = [
+        (energy_rate, operating_rate)
+        for energy_rate, operating_rate in rates
+        if energy_rate > 0 or operating_rate > 0
+    ]
+    if populated_rates:
+        energy_average = sum(rate[0] for rate in populated_rates) / len(populated_rates)
+        operating_average = sum(rate[1] for rate in populated_rates) / len(
+            populated_rates
+        )
+        return round(energy_average, 4), round(operating_average, 4)
+    return 0.0, calculate_shared_operating_hourly_cost(
+        float(settings["monthly_fixed_cost"] or 0),
+        float(settings["productive_hours_per_month"] or 0),
+    )
+
+
+def get_printer_cost_rates(
+    printer: sqlite3.Row | None, operational_settings: sqlite3.Row | None = None
+) -> tuple[float, float]:
     if printer is None:
         return 0.0, 0.0
-    energy_cost = ((float(printer["energy_watts"] or 0) / 1000) * float(printer["kwh_cost"] or 0))
-    operating_cost = max(float(printer["hourly_cost"] or 0) - energy_cost, 0)
-    return round(energy_cost, 4), round(operating_cost, 4)
+    settings = operational_settings
+    if settings is None:
+        settings = get_operational_cost_settings(get_db())
+    breakdown = calculate_printer_cost_breakdown(
+        purchase_value=float(printer["purchase_value"] or 0),
+        useful_life_hours=float(printer["useful_life_hours"] or 0),
+        energy_watts=float(printer["energy_watts"] or 0),
+        kwh_cost=float(printer["kwh_cost"] or 0),
+        monthly_maintenance_cost=float(printer["monthly_maintenance_cost"] or 0),
+        monthly_fixed_cost=float(settings["monthly_fixed_cost"] or 0),
+        productive_hours_per_month=float(settings["productive_hours_per_month"] or 0),
+    )
+    return (
+        breakdown["energy_hourly_cost"],
+        breakdown["operating_hourly_cost"],
+    )
 
 
 def summarize_cost_lines(
@@ -1747,6 +1895,11 @@ def build_registry_menu(
     materials_count = db.execute("SELECT COUNT(*) AS total FROM materials").fetchone()[
         "total"
     ]
+    operational_settings = get_operational_cost_settings(db)
+    shared_operating_rate = calculate_shared_operating_hourly_cost(
+        float(operational_settings["monthly_fixed_cost"] or 0),
+        float(operational_settings["productive_hours_per_month"] or 0),
+    )
     return [
         {
             "title": "Estrutura produtiva",
@@ -1762,6 +1915,12 @@ def build_registry_menu(
                     "label": "Impressoras",
                     "count": len(references["printers"]),
                     "href": url_for("registry_page", section="printers"),
+                },
+                {
+                    "icon": "◐",
+                    "label": "Custos operacionais",
+                    "count": f"R$ {br_money(shared_operating_rate)}/h",
+                    "href": url_for("registry_page", section="operational-costs"),
                 },
                 {
                     "icon": "▥",
@@ -1831,6 +1990,19 @@ def build_registry_menu(
             ],
         },
     ]
+
+
+def build_operational_cost_settings_form_data() -> dict[str, Any]:
+    monthly_fixed_cost = parse_brazilian_decimal(request.form.get("monthly_fixed_cost"))
+    productive_hours_per_month = parse_loose_float(
+        request.form.get("productive_hours_per_month"), 0.0
+    )
+    notes = request.form.get("notes", "").strip()
+    return {
+        "monthly_fixed_cost": monthly_fixed_cost,
+        "productive_hours_per_month": productive_hours_per_month,
+        "notes": notes,
+    }
 
 
 def handle_registry_submission(db: sqlite3.Connection, section: str) -> int | None:
@@ -1952,8 +2124,32 @@ def handle_registry_submission(db: sqlite3.Connection, section: str) -> int | No
                 request.form["notes"].strip(),
             ),
         )
+    elif section == "operational-costs":
+        settings_data = build_operational_cost_settings_form_data()
+        db.execute(
+            """
+            INSERT INTO operational_cost_settings (
+                id,
+                monthly_fixed_cost,
+                productive_hours_per_month,
+                notes
+            )
+            VALUES (1, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                monthly_fixed_cost = excluded.monthly_fixed_cost,
+                productive_hours_per_month = excluded.productive_hours_per_month,
+                notes = excluded.notes
+            """,
+            (
+                settings_data["monthly_fixed_cost"],
+                settings_data["productive_hours_per_month"],
+                settings_data["notes"],
+            ),
+        )
+        db.commit()
+        return 1
     elif section == "printers":
-        printer_data = build_printer_form_data()
+        printer_data = build_printer_form_data(db)
         cursor = db.execute(
             """
             INSERT INTO printers (
@@ -1973,12 +2169,13 @@ def handle_registry_submission(db: sqlite3.Connection, section: str) -> int | No
                 energy_watts,
                 purchase_value,
                 useful_life_hours,
+                monthly_maintenance_cost,
                 has_ams,
                 ams_model,
                 kwh_cost,
                 notes
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 printer_data["name"],
@@ -1997,6 +2194,7 @@ def handle_registry_submission(db: sqlite3.Connection, section: str) -> int | No
                 printer_data["energy_watts"],
                 printer_data["purchase_value"],
                 printer_data["useful_life_hours"],
+                printer_data["monthly_maintenance_cost"],
                 printer_data["has_ams"],
                 printer_data["ams_model"],
                 printer_data["kwh_cost"],
@@ -2086,16 +2284,23 @@ def handle_registry_submission(db: sqlite3.Connection, section: str) -> int | No
     return int(cursor.lastrowid) if cursor.lastrowid is not None else None
 
 
-def build_printer_form_data() -> dict[str, Any]:
+def build_printer_form_data(db: sqlite3.Connection) -> dict[str, Any]:
+    settings = get_operational_cost_settings(db)
     purchase_value = parse_brazilian_decimal(request.form.get("purchase_value"))
     useful_life_hours = float(request.form["useful_life_hours"] or 0)
     energy_watts = float(request.form["energy_watts"] or 0)
     kwh_cost = parse_brazilian_decimal(request.form.get("kwh_cost"))
+    monthly_maintenance_cost = parse_brazilian_decimal(
+        request.form.get("monthly_maintenance_cost")
+    )
     hourly_cost = calculate_printer_hourly_cost(
         purchase_value=purchase_value,
         useful_life_hours=useful_life_hours,
         energy_watts=energy_watts,
         kwh_cost=kwh_cost,
+        monthly_maintenance_cost=monthly_maintenance_cost,
+        monthly_fixed_cost=float(settings["monthly_fixed_cost"] or 0),
+        productive_hours_per_month=float(settings["productive_hours_per_month"] or 0),
     )
     return {
         "name": request.form["name"].strip(),
@@ -2116,6 +2321,7 @@ def build_printer_form_data() -> dict[str, Any]:
         "energy_watts": energy_watts,
         "purchase_value": purchase_value,
         "useful_life_hours": useful_life_hours,
+        "monthly_maintenance_cost": monthly_maintenance_cost,
         "has_ams": 1 if request.form.get("has_ams") == "on" else 0,
         "ams_model": request.form["ams_model"].strip(),
         "kwh_cost": kwh_cost,
@@ -2340,8 +2546,19 @@ def build_product_form_data(
 
 
 def get_registry_page_context(
-    section: str, references: dict[str, list[sqlite3.Row]]
+    section: str,
+    references: dict[str, list[sqlite3.Row]],
+    db: sqlite3.Connection | None = None,
 ) -> dict[str, Any] | None:
+    active_db = db or get_db()
+    operational_settings = get_operational_cost_settings(active_db)
+    productive_hours_per_month = float(
+        operational_settings["productive_hours_per_month"] or 0
+    )
+    monthly_fixed_cost = float(operational_settings["monthly_fixed_cost"] or 0)
+    shared_operating_hourly_cost = calculate_shared_operating_hourly_cost(
+        monthly_fixed_cost, productive_hours_per_month
+    )
     page_map: dict[str, dict[str, Any]] = {
         "customers": {
             "eyebrow": "Cadastros",
@@ -2566,6 +2783,55 @@ def get_registry_page_context(
                 for row in references["material_types"]
             ],
         },
+        "operational-costs": {
+            "eyebrow": "Estrutura produtiva",
+            "title": "Base de custos operacionais",
+            "description": "Defina os custos fixos mensais e a capacidade produtiva para calcular automaticamente o operacional por hora.",
+            "panel_kicker": "Custos",
+            "panel_title": "Custos operacionais",
+            "panel_badge": f"R$ {br_money(shared_operating_hourly_cost)}/h",
+            "submit_label": "Salvar custos operacionais",
+            "form_class": "material-form operational-cost-form",
+            "hide_records": True,
+            "fields": [
+                {
+                    "name": "monthly_fixed_cost",
+                    "label": "Custos fixos mensais (R$)",
+                    "type": "text",
+                    "class": "currency-field",
+                    "inputmode": "decimal",
+                    "value": br_money(monthly_fixed_cost),
+                    "label_class": "span-3",
+                },
+                {
+                    "name": "productive_hours_per_month",
+                    "label": "Horas produtivas por mês",
+                    "type": "number",
+                    "min": "0",
+                    "step": "0.01",
+                    "value": productive_hours_per_month,
+                    "label_class": "span-3",
+                },
+                {
+                    "name": "shared_overhead_hourly_cost",
+                    "label": "Operacional base por hora",
+                    "type": "text",
+                    "value": br_money(shared_operating_hourly_cost),
+                    "readonly": True,
+                    "label_class": "span-3",
+                },
+                {
+                    "name": "notes",
+                    "label": "Observações",
+                    "type": "textarea",
+                    "full": True,
+                    "value": operational_settings["notes"] or "",
+                    "placeholder": "Aluguel, internet, bancada, limpeza, softwares, equipe indireta...",
+                },
+            ],
+            "columns": [],
+            "records": [],
+        },
         "printers": {
             "eyebrow": "Estrutura produtiva",
             "title": "Cadastro de impressoras",
@@ -2591,8 +2857,12 @@ def get_registry_page_context(
                 {"name": "energy_watts", "label": "Potencia (W)", "type": "number", "min": "0", "step": "0.01", "value": "0", "label_class": "span-3"},
                 {"name": "useful_life_hours", "label": "Vida util (horas)", "type": "number", "min": "0", "step": "1", "value": "0", "label_class": "span-3"},
                 {"name": "depreciation_hourly_cost", "label": "Depreciacao/hora", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
+                {"name": "monthly_maintenance_cost", "label": "Manutencao mensal (R$)", "type": "text", "class": "currency-field", "inputmode": "decimal", "value": "0,00", "label_class": "span-3"},
+                {"name": "maintenance_hourly_cost", "label": "Manutencao/hora", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
                 {"name": "kwh_cost", "label": "Valor kWh", "type": "text", "class": "currency-field", "inputmode": "decimal", "value": "0,00", "label_class": "span-3"},
                 {"name": "energy_hourly_cost", "label": "Energia/hora", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
+                {"name": "shared_overhead_hourly_cost", "label": "Rateio operacional/h", "type": "text", "inputmode": "decimal", "value": br_money(shared_operating_hourly_cost), "readonly": True, "label_class": "span-3"},
+                {"name": "operating_hourly_cost", "label": "Operacional/h", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
                 {"name": "hourly_cost", "label": "Custo total da impressora por hora", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
                 {"name": "notes", "label": "Observações", "type": "textarea", "full": True},
             ],
@@ -3299,7 +3569,7 @@ def registry_page(section: str) -> str:
 
     db = get_db()
     references = fetch_reference_data(db)
-    page = get_registry_page_context(section, references)
+    page = get_registry_page_context(section, references, db)
     if page is None:
         abort(404)
 
@@ -3351,6 +3621,7 @@ def registry_page(section: str) -> str:
         section=section,
         return_to=request.args.get("return_to", "").strip(),
         delete_error=request.args.get("delete_error", "").strip(),
+        operational_settings=get_operational_cost_settings(db),
         **page,
     )
 
@@ -3362,7 +3633,7 @@ def edit_registry_item(section: str, record_id: int) -> str:
 
     db = get_db()
     references = fetch_reference_data(db)
-    page = get_registry_page_context(section, references)
+    page = get_registry_page_context(section, references, db)
     if page is None:
         abort(404)
 
@@ -3424,7 +3695,7 @@ def edit_printer(printer_id: int) -> str:
         abort(404)
 
     if request.method == "POST":
-        printer_data = build_printer_form_data()
+        printer_data = build_printer_form_data(db)
         db.execute(
             """
             UPDATE printers
@@ -3445,6 +3716,7 @@ def edit_printer(printer_id: int) -> str:
                 energy_watts = ?,
                 purchase_value = ?,
                 useful_life_hours = ?,
+                monthly_maintenance_cost = ?,
                 has_ams = ?,
                 ams_model = ?,
                 kwh_cost = ?,
@@ -3468,6 +3740,7 @@ def edit_printer(printer_id: int) -> str:
                 printer_data["energy_watts"],
                 printer_data["purchase_value"],
                 printer_data["useful_life_hours"],
+                printer_data["monthly_maintenance_cost"],
                 printer_data["has_ams"],
                 printer_data["ams_model"],
                 printer_data["kwh_cost"],
@@ -3482,6 +3755,7 @@ def edit_printer(printer_id: int) -> str:
         "printer_edit.html",
         printer=printer,
         printer_statuses=PRINTER_STATUSES,
+        operational_settings=get_operational_cost_settings(db),
     )
 
 
@@ -3872,6 +4146,10 @@ def products() -> str:
     db = get_db()
     references = fetch_reference_data(db)
     return_to = request.values.get("return_to", "").strip()
+    (
+        default_product_energy_cost_per_hour,
+        default_product_operating_cost_per_hour,
+    ) = get_default_product_cost_rates(db)
     materials_list = db.execute(
         f"SELECT * FROM materials ORDER BY {material_order_clause()}"
     ).fetchall()
@@ -3959,6 +4237,8 @@ def products() -> str:
         return_to=return_to,
         error=product_error,
         delete_error=request.args.get("delete_error", "").strip(),
+        default_product_energy_cost_per_hour=default_product_energy_cost_per_hour,
+        default_product_operating_cost_per_hour=default_product_operating_cost_per_hour,
     )
 
 
@@ -3966,6 +4246,10 @@ def products() -> str:
 def edit_product(product_id: int) -> str:
     db = get_db()
     references = fetch_reference_data(db)
+    (
+        default_product_energy_cost_per_hour,
+        default_product_operating_cost_per_hour,
+    ) = get_default_product_cost_rates(db)
     product = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
     if product is None:
         abort(404)
@@ -4050,6 +4334,8 @@ def edit_product(product_id: int) -> str:
             product["accessories"],
             {row["id"]: row for row in references["components"]},
         ),
+        default_product_energy_cost_per_hour=default_product_energy_cost_per_hour,
+        default_product_operating_cost_per_hour=default_product_operating_cost_per_hour,
     )
 
 
@@ -5837,6 +6123,10 @@ def job_production_document(job_id: int) -> str:
 @app.route("/pricing", methods=["GET", "POST"])
 def pricing() -> str:
     db = get_db()
+    (
+        default_product_energy_cost_per_hour,
+        default_product_operating_cost_per_hour,
+    ) = get_default_product_cost_rates(db)
     materials_list = db.execute(
         f"SELECT * FROM materials ORDER BY {material_order_clause()}"
     ).fetchall()
@@ -5852,24 +6142,34 @@ def pricing() -> str:
             material_cost_per_kg=float(material["cost_per_kg"]),
             weight_grams=float(request.form["weight_grams"]),
             print_hours=float(request.form["print_hours"]),
-            energy_cost_per_hour=float(request.form["energy_cost_per_hour"]),
-            operating_cost_per_hour=float(request.form["operating_cost_per_hour"]),
-            extra_cost=float(request.form["extra_cost"]),
-            margin_percent=float(request.form["margin_percent"]),
+            energy_cost_per_hour=parse_brazilian_decimal(
+                request.form.get("energy_cost_per_hour")
+            ),
+            operating_cost_per_hour=parse_brazilian_decimal(
+                request.form.get("operating_cost_per_hour")
+            ),
+            extra_cost=parse_brazilian_decimal(request.form.get("extra_cost")),
+            margin_percent=parse_loose_float(request.form.get("margin_percent"), 0.0),
         )
         result = {
             "material_name": material["name"],
             "material_color": material["color"],
             "weight_grams": float(request.form["weight_grams"]),
             "print_hours": float(request.form["print_hours"]),
-            "extra_cost": float(request.form["extra_cost"]),
-            "margin_percent": float(request.form["margin_percent"]),
+            "extra_cost": parse_brazilian_decimal(request.form.get("extra_cost")),
+            "margin_percent": parse_loose_float(request.form.get("margin_percent"), 0.0),
             "total_cost": total_cost,
             "suggested_price": suggested_price,
             "cost_per_gram": round(float(material["cost_per_kg"]) / 1000, 4),
         }
 
-    return render_template("pricing.html", materials=materials_list, result=result)
+    return render_template(
+        "pricing.html",
+        materials=materials_list,
+        result=result,
+        default_product_energy_cost_per_hour=default_product_energy_cost_per_hour,
+        default_product_operating_cost_per_hour=default_product_operating_cost_per_hour,
+    )
 
 
 with app.app_context():

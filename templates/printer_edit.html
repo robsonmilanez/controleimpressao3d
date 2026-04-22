@@ -19,7 +19,12 @@
         </div>
         <span class="panel-badge">{{ printer["status"] or "Sem status" }}</span>
       </div>
-      <form method="post" class="form-grid material-form">
+      <form
+        method="post"
+        class="form-grid material-form"
+        data-monthly-fixed-cost="{{ operational_settings['monthly_fixed_cost'] if operational_settings else 0 }}"
+        data-productive-hours-per-month="{{ operational_settings['productive_hours_per_month'] if operational_settings else 0 }}"
+      >
         <label class="span-3">
           Nome
           <input type="text" name="name" value="{{ printer['name'] }}" required>
@@ -90,12 +95,28 @@
           <input type="text" name="depreciation_hourly_cost" inputmode="decimal" value="0,00" readonly>
         </label>
         <label class="span-3">
+          Manutencao mensal (R$)
+          <input type="text" name="monthly_maintenance_cost" class="currency-field" inputmode="decimal" value="{{ printer['monthly_maintenance_cost']|br_money }}">
+        </label>
+        <label class="span-3">
+          Manutencao/hora
+          <input type="text" name="maintenance_hourly_cost" inputmode="decimal" value="0,00" readonly>
+        </label>
+        <label class="span-3">
           Valor kWh
           <input type="text" name="kwh_cost" class="currency-field" inputmode="decimal" value="{{ printer['kwh_cost']|br_money }}">
         </label>
         <label class="span-3">
           Energia/hora
           <input type="text" name="energy_hourly_cost" inputmode="decimal" value="0,00" readonly>
+        </label>
+        <label class="span-3">
+          Rateio operacional/h
+          <input type="text" name="shared_overhead_hourly_cost" inputmode="decimal" value="0,00" readonly>
+        </label>
+        <label class="span-3">
+          Operacional/h
+          <input type="text" name="operating_hourly_cost" inputmode="decimal" value="0,00" readonly>
         </label>
         <label class="span-3">
           Custo total da impressora por hora

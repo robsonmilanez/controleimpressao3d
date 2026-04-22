@@ -24,6 +24,13 @@
           <input type="hidden" name="return_to" value="{{ return_to }}">
         {% endif %}
         {% for field in fields %}
+          {% if field["type"] == "hidden" %}
+            <input
+              type="hidden"
+              name="{{ field['name'] }}"
+              value="{{ field.get('value', '') }}"
+            >
+          {% else %}
           <label class="{% if field.get('full') %}full{% endif %} {{ field.get('label_class', '') }}">
             {{ field["label"] }}
             {% if field["type"] == "textarea" %}
@@ -62,6 +69,7 @@
               >
             {% endif %}
           </label>
+          {% endif %}
         {% endfor %}
         <div class="button-row full">
           {% if section == 'components' %}
