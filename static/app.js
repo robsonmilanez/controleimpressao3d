@@ -1661,8 +1661,14 @@ function setupJobInlineTotals() {
           if (serviceQuantitySync) {
             serviceQuantitySync.value = String(quantity);
           }
-          if (serviceNameSync && itemNameField) {
-            serviceNameSync.value = itemNameField.value;
+          const selectedProductOption = row.querySelector(".product-picker")?.selectedOptions?.[0];
+          const resolvedItemName =
+            selectedProductOption?.dataset?.name ||
+            itemNameField?.value ||
+            selectedProductOption?.textContent?.trim() ||
+            "";
+          if (serviceNameSync) {
+            serviceNameSync.value = resolvedItemName;
           }
           if (serviceCategorySync && serviceCategoryField) {
             serviceCategorySync.value = serviceCategoryField.value || "";

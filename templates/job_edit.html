@@ -139,9 +139,9 @@
                     {% endfor %}
                     <option value="__new__">+ Novo produto</option>
                   </select>
-                  <input type="text" name="item_name" value="{{ service['service_name'] if service else job['item_name'] }}" placeholder="Descreva o item vendido..." required>
                 </span>
               </label>
+              <input type="hidden" name="item_name" value="{{ service['service_name'] if service else job['item_name'] }}">
               <label class="service-category-field">
                 Categoria
                 <input type="text" class="service-category-display" value="{{ service['category'] if service else '' }}" readonly>
