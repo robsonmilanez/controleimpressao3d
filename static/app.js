@@ -2299,13 +2299,21 @@ function setupProductBuilder() {
     const energyTotalField = form.querySelector(".product-energy-total");
     const addMaterialButton = form.querySelector("[data-add-row='product-materials']");
     const energyRateField = form.querySelector("[name='energy_cost_per_hour']");
+    const operatingRateField = form.querySelector("[name='operating_cost_per_hour']");
+    const designRateField = form.querySelector("[name='design_hourly_rate']");
+    const extraCostField = form.querySelector("[name='extra_cost']");
+    const marginField = form.querySelector("[name='margin_percent']");
+    const salePriceField = form.querySelector("[name='sale_price']");
     if (
       !weightField ||
       !printHoursField ||
       !materialCostField ||
       !materialGrandTotal ||
       !energyTotalField ||
-      !energyRateField
+      !energyRateField ||
+      !operatingRateField ||
+      !marginField ||
+      !salePriceField
     ) {
       return;
     }
@@ -2364,10 +2372,56 @@ function setupProductBuilder() {
       );
     };
 
-    const updateTotals = () => {
+    let activePricingSource = "margin";
+
+    const calculateTotalCost = () => {
       const materialTotals = getMaterialTotals();
       const componentTotals = getComponentTotals();
-      const energyTotal = materialTotals.hours * parseCurrency(energyRateField.value);
+      const printHours = materialTotals.hours;
+      const energyTotal = printHours * parseCurrency(energyRateField.value);
+      const operatingTotal = printHours * parseCurrency(operatingRateField.value);
+      const designTotal = 0 * parseCurrency(designRateField?.value || 0);
+      const extraCost = parseCurrency(extraCostField?.value || 0);
+      const totalCost =
+        materialTotals.cost +
+        componentTotals.cost +
+        energyTotal +
+        operatingTotal +
+        designTotal +
+        extraCost;
+
+      return {
+        materialTotals,
+        componentTotals,
+        energyTotal,
+        totalCost,
+      };
+    };
+
+    const updatePricing = () => {
+      const { totalCost } = calculateTotalCost();
+      const marginPercent = Math.max(parseNumber(marginField.value), 0);
+      const salePrice = parseCurrency(salePriceField.value);
+
+      if (activePricingSource === "sale_price") {
+        if (salePrice > totalCost && salePrice > 0) {
+          marginField.value = formatDecimal(((salePrice - totalCost) / salePrice) * 100);
+        } else if (salePrice > 0 && totalCost <= 0) {
+          marginField.value = "100.00";
+        } else {
+          marginField.value = "0.00";
+        }
+        return;
+      }
+
+      const marginRatio = marginPercent / 100;
+      const calculatedSalePrice =
+        marginRatio >= 1 ? totalCost : totalCost / (1 - marginRatio);
+      salePriceField.value = formatCurrency(calculatedSalePrice);
+    };
+
+    const updateTotals = () => {
+      const { materialTotals, componentTotals, energyTotal } = calculateTotalCost();
 
       weightField.value = formatDecimal(materialTotals.weight);
       printHoursField.value = formatDecimal(materialTotals.hours);
@@ -2377,6 +2431,7 @@ function setupProductBuilder() {
         componentGrandTotal.textContent = `R$ ${formatCurrency(componentTotals.cost)}`;
       }
       energyTotalField.value = formatCurrency(energyTotal);
+      updatePricing();
     };
 
     form.addEventListener("keydown", (event) => {
@@ -2396,8 +2451,15 @@ function setupProductBuilder() {
         event.target.matches("[name='product_material_quantity']") ||
         event.target.matches("[name='product_material_print_hours']") ||
         event.target.matches("[name='product_component_quantity']") ||
-        event.target.matches("[name='energy_cost_per_hour']")
+        event.target.matches("[name='energy_cost_per_hour']") ||
+        event.target.matches("[name='operating_cost_per_hour']") ||
+        event.target.matches("[name='design_hourly_rate']") ||
+        event.target.matches("[name='extra_cost']") ||
+        event.target.matches("[name='margin_percent']")
       ) {
+        if (event.target.matches("[name='margin_percent']")) {
+          activePricingSource = "margin";
+        }
         updateTotals();
       }
     });
@@ -2409,10 +2471,27 @@ function setupProductBuilder() {
         event.target.matches("[name='product_material_id']") ||
         event.target.matches("[name='product_component_id']") ||
         event.target.matches("[name='product_component_quantity']") ||
-        event.target.matches("[name='energy_cost_per_hour']")
+        event.target.matches("[name='energy_cost_per_hour']") ||
+        event.target.matches("[name='operating_cost_per_hour']") ||
+        event.target.matches("[name='design_hourly_rate']") ||
+        event.target.matches("[name='extra_cost']") ||
+        event.target.matches("[name='margin_percent']")
       ) {
+        if (event.target.matches("[name='margin_percent']")) {
+          activePricingSource = "margin";
+        }
         updateTotals();
       }
+    });
+
+    salePriceField.addEventListener("input", () => {
+      activePricingSource = "sale_price";
+      updatePricing();
+    });
+
+    marginField.addEventListener("input", () => {
+      activePricingSource = "margin";
+      updatePricing();
     });
 
     materialCollection.addEventListener("input", updateTotals);
