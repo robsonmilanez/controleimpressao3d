@@ -44,16 +44,18 @@
             </label>
           </div>
           <input type="hidden" name="due_date" value="">
-          <label class="customer-line-field">
-            Cliente
-            <select name="customer_id" required data-new-url="{{ url_for('registry_page', section='customers', return_to=url_for('jobs')) }}">
-              <option value="">Nenhum</option>
-              {% for customer in customers %}
-                <option value="{{ customer['id'] }}">{{ customer["name"] }}</option>
-              {% endfor %}
-              <option value="__new__">+ Cadastrar novo cliente</option>
-            </select>
-          </label>
+          <div class="field-action-group customer-line-field">
+            <label>
+              Cliente
+              <select name="customer_id" required>
+                <option value="">Nenhum</option>
+                {% for customer in customers %}
+                  <option value="{{ customer['id'] }}">{{ customer["name"] }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <a class="secondary-button" href="{{ url_for('registry_page', section='customers', return_to=url_for('jobs')) }}">Cadastrar cliente</a>
+          </div>
           <label>
             Validade do orçamento
             <input type="hidden" name="valid_until" value="{{ valid_until_date }}">

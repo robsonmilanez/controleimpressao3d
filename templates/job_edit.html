@@ -45,16 +45,18 @@
           </label>
         </div>
         <input type="hidden" name="due_date" value="{{ job['due_date'] or '' }}">
-        <label class="customer-line-field">
-          Cliente
-          <select name="customer_id" required data-new-url="{{ url_for('registry_page', section='customers', return_to=url_for('edit_job', job_id=job['id'])) }}">
-            <option value="">Nenhum</option>
-            {% for customer in customers %}
-              <option value="{{ customer['id'] }}" {% if customer['id'] == job['customer_id'] %}selected{% endif %}>{{ customer["name"] }}</option>
-            {% endfor %}
-            <option value="__new__">+ Cadastrar novo cliente</option>
-          </select>
-        </label>
+        <div class="field-action-group customer-line-field">
+          <label>
+            Cliente
+            <select name="customer_id" required>
+              <option value="">Nenhum</option>
+              {% for customer in customers %}
+                <option value="{{ customer['id'] }}" {% if customer['id'] == job['customer_id'] %}selected{% endif %}>{{ customer["name"] }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <a class="secondary-button" href="{{ url_for('registry_page', section='customers', return_to=url_for('edit_job', job_id=job['id'])) }}">Cadastrar cliente</a>
+        </div>
         <label>
           Validade do orçamento
           <input type="hidden" name="valid_until" value="{{ job['valid_until'] or '' }}">
