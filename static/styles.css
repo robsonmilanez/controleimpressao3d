@@ -748,10 +748,32 @@ textarea {
   min-height: 82px;
 }
 
+.customer-registry-form .auto-uppercase {
+  text-transform: uppercase;
+}
+
 .registry-compact-panel .button-row a,
 .registry-compact-panel .button-row button {
   min-height: 40px;
   padding: 0.72rem 1rem;
+}
+
+.customer-records-panel .panel-header {
+  margin-bottom: 0.55rem;
+}
+
+.customer-records-table td[data-label="Nome"] {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.customer-records-table td[data-label="Tipo"] {
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 700;
+}
+
+.customer-records-table td[data-label="Origem"] {
+  color: var(--muted);
 }
 
 .job-form-compact {
@@ -2466,6 +2488,41 @@ th {
     padding: 0.24rem 0.5rem;
     border-radius: 10px;
     font-size: 0.66rem;
+  }
+
+  .customer-records-table tr {
+    padding: 0.8rem 0.85rem;
+    margin-bottom: 0.55rem;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .customer-records-table td[data-label="Nome"] {
+    font-size: 0.96rem;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .customer-records-table td[data-label="Tipo"],
+  .customer-records-table td[data-label="Cidade"] {
+    display: inline-block;
+    width: auto;
+    margin-right: 0.6rem;
+    padding-right: 0.6rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .customer-records-table td[data-label="Cidade"] {
+    border-right: 0;
+    margin-right: 0;
+    padding-right: 0;
+  }
+
+  .customer-records-table td[data-label="Contato"],
+  .customer-records-table td[data-label="Origem"] {
+    color: var(--muted);
+    font-size: 0.82rem;
   }
 }
 

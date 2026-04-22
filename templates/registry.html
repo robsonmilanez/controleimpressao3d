@@ -75,7 +75,7 @@
   </section>
 
   <section class="panel-grid single">
-    <article class="panel">
+    <article class="panel {{ list_class|default('') }}">
       <div class="panel-header">
         <div>
           <p class="panel-kicker">Base cadastrada</p>
@@ -87,7 +87,7 @@
       {% endif %}
       {% if records %}
         <div class="table-wrap">
-          <table class="responsive-table">
+          <table class="responsive-table {{ table_class|default('') }}">
             <thead>
               <tr>
                 <th>Editar</th>

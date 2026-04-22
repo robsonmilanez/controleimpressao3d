@@ -2408,6 +2408,25 @@ function setupCustomerPostalCodeAutofill() {
   });
 }
 
+function setupAutoUppercaseFields() {
+  const fields = Array.from(document.querySelectorAll(".auto-uppercase"));
+  fields.forEach((field) => {
+    if (field.dataset.uppercaseReady === "1") {
+      return;
+    }
+    field.dataset.uppercaseReady = "1";
+    const applyUppercase = () => {
+      if (!("value" in field) || field.readOnly || field.disabled) {
+        return;
+      }
+      field.value = String(field.value || "").toUpperCase();
+    };
+    field.addEventListener("input", applyUppercase);
+    field.addEventListener("blur", applyUppercase);
+    applyUppercase();
+  });
+}
+
 function setupServiceWorker() {
   if (!("serviceWorker" in navigator)) {
     return;
@@ -2435,6 +2454,7 @@ setupJobProfitWarning();
 setupProductBuilder();
 setupCommercialEntries();
 setupCustomerPostalCodeAutofill();
+setupAutoUppercaseFields();
 setupFormDraftPersistence();
 setupPendingSelections();
 setupScrollRestore();

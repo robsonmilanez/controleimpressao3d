@@ -154,7 +154,7 @@
                       <option value="__new__">+ Cadastrar novo filamento</option>
                       <option value="">Nenhum</option>
                       {% for item in materials %}
-                        <option value="{{ item['id'] }}" data-cost-per-kg="{{ item['cost_per_kg'] or 0 }}" {% if material_line and item['id'] == material_line['material_id'] %}selected{% endif %}>{{ item["material_type"] }} / {{ item["color"] }} / {{ item["manufacturer_name"] or item["name"] }} ({{ "%.0f"|format(item["stock_grams"]) }} g)</option>
+                        <option value="{{ item['id'] }}" data-cost-per-kg="{{ item['cost_per_kg'] or 0 }}" {% if material_line and item['id'] == material_line['material_id'] %}selected{% endif %}>{{ item|material_label }} ({{ "%.0f"|format(item["stock_grams"]) }} g)</option>
                       {% endfor %}
                     </select>
                   </label>

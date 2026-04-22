@@ -52,6 +52,10 @@ PRINTER_STATUSES = [
 ]
 
 
+def normalize_upper_text(value: str | None) -> str:
+    return str(value or "").strip().upper()
+
+
 def get_db() -> sqlite3.Connection:
     if "db" not in g:
         g.db = sqlite3.connect(DATABASE)
@@ -1029,10 +1033,16 @@ def build_material_code(material_type: str | None, sequence_number: int) -> str:
 def build_product_material_label(material: sqlite3.Row | dict[str, Any] | None) -> str:
     if not material:
         return ""
-    return (
-        f"{material['name']} / {material['color'] or '-'} / "
-        f"{material['manufacturer_name'] or '-'}"
-    )
+    color = str(material["color"] or "-").strip()
+    material_type = str(material["material_type"] or "-").strip()
+    line = str(material["line_series"] or material["name"] or "-").strip()
+    manufacturer = str(material["manufacturer_name"] or "-").strip()
+    return f"{color} / {material_type} / {line} / {manufacturer}"
+
+
+@app.template_filter("material_label")
+def material_label_filter(material: sqlite3.Row | dict[str, Any] | None) -> str:
+    return build_product_material_label(material)
 
 
 def build_product_component_label(component: sqlite3.Row | dict[str, Any] | None) -> str:
@@ -1151,7 +1161,7 @@ def fetch_commercial_item_options(db: sqlite3.Connection) -> list[dict[str, Any]
                 "color_name": material["color"] or "",
                 "unit_name": "g",
                 "site": material["purchase_link"] or "",
-                "label": f"{material['sku'] or '-'} - {material['line_series'] or material['name']} / {material['color'] or '-'}",
+                "label": build_product_material_label(material),
             }
         )
 
@@ -1753,21 +1763,21 @@ def handle_registry_submission(db: sqlite3.Connection, section: str) -> int | No
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                request.form["name"].strip(),
-                request.form["document"].strip(),
+                normalize_upper_text(request.form["name"]),
+                normalize_upper_text(request.form["document"]),
                 request.form["phone"].strip(),
-                request.form["email"].strip(),
-                request.form.get("customer_type", "").strip(),
+                request.form["email"].strip().lower(),
+                normalize_upper_text(request.form.get("customer_type", "")),
                 request.form.get("postal_code", "").strip(),
-                request.form.get("street", "").strip(),
-                request.form.get("address_number", "").strip(),
-                request.form.get("address_complement", "").strip(),
-                request.form.get("neighborhood", "").strip(),
-                request.form["city"].strip(),
-                request.form.get("state", "").strip(),
-                request.form.get("lead_source", "").strip(),
-                request.form.get("segment", "").strip(),
-                request.form["notes"].strip(),
+                normalize_upper_text(request.form.get("street", "")),
+                normalize_upper_text(request.form.get("address_number", "")),
+                normalize_upper_text(request.form.get("address_complement", "")),
+                normalize_upper_text(request.form.get("neighborhood", "")),
+                normalize_upper_text(request.form["city"]),
+                normalize_upper_text(request.form.get("state", "")),
+                normalize_upper_text(request.form.get("lead_source", "")),
+                normalize_upper_text(request.form.get("segment", "")),
+                normalize_upper_text(request.form["notes"]),
             ),
         )
     elif section == "suppliers":
@@ -2245,21 +2255,21 @@ def get_registry_page_context(
             "submit_label": "Salvar cliente",
             "form_class": "customer-registry-form",
             "fields": [
-                {"name": "name", "label": "Nome", "type": "text", "required": True},
-                {"name": "customer_type", "label": "Tipo de cliente", "type": "select", "options": ["Consumidor", "Revenda"]},
-                {"name": "document", "label": "Documento", "type": "text", "placeholder": "CPF ou CNPJ"},
+                {"name": "name", "label": "Nome", "type": "text", "required": True, "class": "auto-uppercase"},
+                {"name": "customer_type", "label": "Tipo de cliente", "type": "select", "options": ["CONSUMIDOR", "REVENDA"], "class": "auto-uppercase"},
+                {"name": "document", "label": "Documento", "type": "text", "placeholder": "CPF ou CNPJ", "class": "auto-uppercase"},
                 {"name": "phone", "label": "Telefone", "type": "text"},
                 {"name": "email", "label": "Email", "type": "email"},
-                {"name": "lead_source", "label": "Como conheceu nossa loja", "type": "text", "placeholder": "Instagram, indicação, Google..."},
+                {"name": "lead_source", "label": "Como conheceu nossa loja", "type": "text", "placeholder": "Instagram, indicação, Google...", "class": "auto-uppercase"},
                 {"name": "postal_code", "label": "CEP", "type": "text", "placeholder": "00000-000", "class": "customer-postal-code", "inputmode": "numeric"},
-                {"name": "street", "label": "Rua / Endereço", "type": "text", "placeholder": "Nome da rua", "full": True, "class": "customer-street"},
-                {"name": "address_number", "label": "Número", "type": "text", "placeholder": "S/N", "class": "customer-address-number"},
-                {"name": "address_complement", "label": "Complemento", "type": "text", "placeholder": "Apto, sala, bloco...", "class": "customer-address-complement"},
-                {"name": "neighborhood", "label": "Bairro", "type": "text", "placeholder": "Centro", "class": "customer-neighborhood"},
-                {"name": "city", "label": "Cidade", "type": "text", "placeholder": "Cidade", "class": "customer-city"},
-                {"name": "state", "label": "Estado", "type": "text", "placeholder": "UF", "class": "customer-state"},
-                {"name": "segment", "label": "Segmento / Interesse", "type": "text", "placeholder": "Arquitetura, brindes, games..."},
-                {"name": "notes", "label": "Observações", "type": "textarea", "full": True},
+                {"name": "street", "label": "Rua / Endereço", "type": "text", "placeholder": "Nome da rua", "full": True, "class": "customer-street auto-uppercase"},
+                {"name": "address_number", "label": "Número", "type": "text", "placeholder": "S/N", "class": "customer-address-number auto-uppercase"},
+                {"name": "address_complement", "label": "Complemento", "type": "text", "placeholder": "Apto, sala, bloco...", "class": "customer-address-complement auto-uppercase"},
+                {"name": "neighborhood", "label": "Bairro", "type": "text", "placeholder": "Centro", "class": "customer-neighborhood auto-uppercase"},
+                {"name": "city", "label": "Cidade", "type": "text", "placeholder": "Cidade", "class": "customer-city auto-uppercase"},
+                {"name": "state", "label": "Estado", "type": "text", "placeholder": "UF", "class": "customer-state auto-uppercase"},
+                {"name": "segment", "label": "Segmento / Interesse", "type": "text", "placeholder": "Arquitetura, brindes, games...", "class": "auto-uppercase"},
+                {"name": "notes", "label": "Observações", "type": "textarea", "full": True, "class": "auto-uppercase"},
             ],
             "columns": [
                 {"key": "name", "label": "Nome"},
@@ -2279,6 +2289,8 @@ def get_registry_page_context(
                 }
                 for row in references["customers"]
             ],
+            "list_class": "customer-records-panel",
+            "table_class": "customer-records-table",
         },
         "suppliers": {
             "eyebrow": "Cadastros",
@@ -2705,21 +2717,21 @@ def handle_registry_update(
             WHERE id = ?
             """,
             (
-                request.form["name"].strip(),
-                request.form["document"].strip(),
+                normalize_upper_text(request.form["name"]),
+                normalize_upper_text(request.form["document"]),
                 request.form["phone"].strip(),
-                request.form["email"].strip(),
-                request.form.get("customer_type", "").strip(),
+                request.form["email"].strip().lower(),
+                normalize_upper_text(request.form.get("customer_type", "")),
                 request.form.get("postal_code", "").strip(),
-                request.form.get("street", "").strip(),
-                request.form.get("address_number", "").strip(),
-                request.form.get("address_complement", "").strip(),
-                request.form.get("neighborhood", "").strip(),
-                request.form["city"].strip(),
-                request.form.get("state", "").strip(),
-                request.form.get("lead_source", "").strip(),
-                request.form.get("segment", "").strip(),
-                request.form["notes"].strip(),
+                normalize_upper_text(request.form.get("street", "")),
+                normalize_upper_text(request.form.get("address_number", "")),
+                normalize_upper_text(request.form.get("address_complement", "")),
+                normalize_upper_text(request.form.get("neighborhood", "")),
+                normalize_upper_text(request.form["city"]),
+                normalize_upper_text(request.form.get("state", "")),
+                normalize_upper_text(request.form.get("lead_source", "")),
+                normalize_upper_text(request.form.get("segment", "")),
+                normalize_upper_text(request.form["notes"]),
                 record_id,
             ),
         )

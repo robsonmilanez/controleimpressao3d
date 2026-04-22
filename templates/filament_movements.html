@@ -22,7 +22,7 @@
             <select name="material_id" onchange="this.form.submit()" data-native-select="1">
               {% for item in materials %}
                 <option value="{{ item['id'] }}" {% if item['id'] == selected_material_id %}selected{% endif %}>
-                  {{ item["sku"] or "Sem codigo" }} - {{ item["name"] }} - {{ item["color"] }}
+                  {{ item|material_label }}
                 </option>
               {% endfor %}
             </select>
