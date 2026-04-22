@@ -2626,6 +2626,14 @@ th {
     grid-template-columns: 1fr;
   }
 
+  .product-material-row {
+    grid-template-columns: minmax(220px, 2.6fr) minmax(84px, 0.75fr) minmax(90px, 0.78fr) minmax(112px, 0.82fr);
+  }
+
+  .product-component-row {
+    grid-template-columns: minmax(240px, 2.9fr) minmax(92px, 0.85fr) minmax(112px, 0.9fr);
+  }
+
   .internal-cost-heading {
     display: none;
   }
@@ -2876,6 +2884,11 @@ th {
 }
 
 @media (max-width: 640px) {
+  .product-material-row,
+  .product-component-row {
+    grid-template-columns: 1fr;
+  }
+
   .page {
     padding-top: 0.95rem;
   }
