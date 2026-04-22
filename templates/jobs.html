@@ -217,8 +217,10 @@
                   </td>
                   <td data-label="Cliente">{{ job["customer_display"] }}</td>
                   <td data-label="Item">
-                    <strong>{{ job["item_name"] }}</strong><br>
-                    {{ job["quantity"] }} un · {{ job["material_lines_count"] }} filamento(s) · {{ job["component_lines_count"] }} componente(s)
+                    <div class="job-item-inline">
+                      <strong>{{ job["item_name"] }}</strong>
+                      <span>{{ job["quantity"] }} un</span>
+                    </div>
                   </td>
                   <td data-label="Status">{{ job["status"] }}</td>
                   <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>

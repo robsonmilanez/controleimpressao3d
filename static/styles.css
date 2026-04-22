@@ -919,16 +919,18 @@ textarea {
 
 .table-action-group {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
+  flex-wrap: nowrap;
+  gap: 0.38rem;
+  align-items: center;
 }
 
 .table-action-group .action-link {
-  min-height: 34px;
-  min-width: 118px;
-  padding: 0.45rem 0.72rem;
-  font-size: 0.82rem;
+  min-height: 31px;
+  min-width: 102px;
+  padding: 0.36rem 0.58rem;
+  font-size: 0.76rem;
   text-align: center;
+  border-radius: 10px;
 }
 
 .item-description-group {
@@ -943,37 +945,37 @@ textarea {
 
 .jobs-list-table th:nth-child(1),
 .jobs-list-table td:nth-child(1) {
-  width: 30rem;
+  width: 24rem;
 }
 
 .jobs-list-table th:nth-child(2),
 .jobs-list-table td:nth-child(2) {
-  width: 18rem;
+  width: 20rem;
 }
 
 .jobs-list-table th:nth-child(3),
 .jobs-list-table td:nth-child(3) {
-  width: 26rem;
+  width: 24rem;
 }
 
 .jobs-list-table th:nth-child(4),
 .jobs-list-table td:nth-child(4) {
-  width: 10rem;
+  width: 9rem;
 }
 
 .jobs-list-table th:nth-child(5),
 .jobs-list-table td:nth-child(5) {
-  width: 8rem;
+  width: 7rem;
 }
 
 .jobs-list-table th:nth-child(6),
 .jobs-list-table td:nth-child(6) {
-  width: 10rem;
+  width: 8rem;
 }
 
 .jobs-list-table th:nth-child(7),
 .jobs-list-table td:nth-child(7) {
-  width: 10rem;
+  width: 8rem;
 }
 
 .jobs-list-table td[data-label="Cliente"],
@@ -989,9 +991,32 @@ textarea {
   white-space: normal;
 }
 
-.jobs-list-table td[data-label="Item"] strong {
-  display: block;
-  margin-bottom: 0.2rem;
+.jobs-list-table td[data-label="Status"],
+.jobs-list-table td[data-label="Prazo"],
+.jobs-list-table td[data-label="Valor"],
+.jobs-list-table td[data-label="Excluir"] {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.job-item-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.job-item-inline strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.job-item-inline span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .material-row {
