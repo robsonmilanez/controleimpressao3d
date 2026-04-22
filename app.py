@@ -1656,7 +1656,10 @@ def parse_brazilian_decimal(value: str | None) -> float:
 def parse_integerish(value: str | None, default: int = 0) -> int:
     if value in (None, ""):
         return default
-    return int(float(str(value).strip().replace(",", ".")))
+    normalized = str(value).strip().replace(",", ".")
+    if normalized.startswith("__"):
+        return default
+    return int(float(normalized))
 
 
 def inventory_delta_for_type(movement_type: str, quantity_grams: float) -> float:
