@@ -282,12 +282,46 @@ function setupFormDraftPersistence() {
 }
 
 function setupPendingSelections() {
-  if (!window.sessionStorage) {
-    return;
-  }
-
   const url = new URL(window.location.href);
   let shouldCleanUrl = false;
+  const directQueryMap = [
+    { queryKey: "selected_customer_id", selector: 'select[name="customer_id"]' },
+    { queryKey: "selected_product_id", selector: "select.product-picker" },
+    { queryKey: "selected_payment_term", selector: 'select[name="payment_terms"]' },
+    { queryKey: "selected_sale_channel", selector: 'select[name="sale_channel"]' },
+    { queryKey: "selected_supplier_id", selector: 'select[name="supplier_id"], select#material-supplier-select' },
+    { queryKey: "selected_material_id", selector: 'select[name="material_id"]' },
+    { queryKey: "selected_component_id", selector: 'select[name="component_id"]' },
+  ];
+
+  directQueryMap.forEach(({ queryKey, selector }) => {
+    const nextValue = url.searchParams.get(queryKey);
+    if (!nextValue) {
+      return;
+    }
+    const candidates = Array.from(document.querySelectorAll(selector));
+    const targetSelect = candidates.find((select) => !select.value) || candidates[0];
+    if (!targetSelect) {
+      return;
+    }
+    const targetOption = Array.from(targetSelect.options).find(
+      (option) => option.value === nextValue
+    );
+    if (!targetOption) {
+      return;
+    }
+    targetSelect.value = nextValue;
+    targetSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    url.searchParams.delete(queryKey);
+    shouldCleanUrl = true;
+  });
+
+  if (!window.sessionStorage) {
+    if (shouldCleanUrl) {
+      window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : "") + url.hash);
+    }
+    return;
+  }
 
   document.querySelectorAll("form").forEach((form) => {
     const pendingKey = getPendingSelectionKey(form);
