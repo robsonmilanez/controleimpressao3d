@@ -31,7 +31,7 @@
 <div class="collection full" data-collection="product-materials">
   {% for row in material_rows %}
     <div class="collection-row product-material-row">
-      <label class="span-4">
+      <label class="product-material-select-field">
         Filamento
         <select name="product_material_id" data-new-url="{{ url_for('materials', return_to=(url_for('edit_product', product_id=product['id']) if product else url_for('products'))) }}">
           <option value="__new__">+ Cadastrar novo filamento</option>
@@ -41,15 +41,15 @@
           {% endfor %}
         </select>
       </label>
-      <label class="span-1">
+      <label class="product-material-metric-field">
         Qtde (g)
         <input type="number" name="product_material_quantity" min="0" step="0.01" value="{{ row['quantity_grams'] or 0 }}">
       </label>
-      <label class="span-1">
+      <label class="product-material-metric-field">
         Impressão (h)
         <input type="number" name="product_material_print_hours" min="0" step="0.01" value="{{ row['print_hours'] or 0 }}">
       </label>
-      <label class="span-1 computed-field">
+      <label class="product-material-total-field computed-field">
         Total
         <input type="text" class="product-material-line-total" value="0,00" readonly tabindex="-1">
       </label>
@@ -68,7 +68,7 @@
 <div class="collection full" data-collection="product-components">
   {% for row in component_rows %}
     <div class="collection-row product-component-row">
-      <label class="span-4">
+      <label class="product-component-select-field">
         Componente
         <select name="product_component_id" data-new-url="{{ url_for('registry_page', section='components', return_to=(url_for('edit_product', product_id=product['id']) if product else url_for('products'))) }}">
           <option value="__new__">+ Cadastrar novo componente</option>
@@ -78,11 +78,11 @@
           {% endfor %}
         </select>
       </label>
-      <label class="span-2">
+      <label class="product-component-metric-field">
         Quantidade
         <input type="number" name="product_component_quantity" min="0" step="0.01" value="{{ row['quantity'] or 0 }}">
       </label>
-      <label class="span-2 computed-field">
+      <label class="product-component-total-field computed-field">
         Total
         <input type="text" class="product-component-line-total" value="0,00" readonly tabindex="-1">
       </label>

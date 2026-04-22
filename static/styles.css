@@ -1488,11 +1488,37 @@ input[readonly].computed-field,
 }
 
 .product-material-row {
-  grid-template-columns: minmax(280px, 3.7fr) minmax(100px, 1fr) minmax(110px, 1fr) minmax(130px, 1.2fr);
+  grid-template-columns: minmax(260px, 2.85fr) minmax(90px, 0.72fr) minmax(96px, 0.78fr) minmax(122px, 0.88fr);
+  align-items: end;
 }
 
 .product-component-row {
-  grid-template-columns: minmax(320px, 4fr) minmax(110px, 1fr) minmax(130px, 1.2fr);
+  grid-template-columns: minmax(280px, 3fr) minmax(100px, 0.85fr) minmax(122px, 0.9fr);
+  align-items: end;
+}
+
+.product-material-select-field,
+.product-component-select-field,
+.product-material-metric-field,
+.product-component-metric-field,
+.product-material-total-field,
+.product-component-total-field {
+  min-width: 0;
+}
+
+.product-material-select-field .searchable-select-wrapper,
+.product-component-select-field .searchable-select-wrapper,
+.product-material-select-field .select-search-input,
+.product-component-select-field .select-search-input {
+  width: 100%;
+}
+
+.product-material-metric-field input,
+.product-component-metric-field input,
+.product-material-total-field input,
+.product-component-total-field input {
+  min-height: 40px;
+  padding: 0.5rem 0.7rem;
 }
 
 .product-collection-summary {
