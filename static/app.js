@@ -2299,10 +2299,12 @@ function setupProductBuilder() {
     const energyTotalField = form.querySelector(".product-energy-total");
     const addMaterialButton = form.querySelector("[data-add-row='product-materials']");
     const energyRateField = form.querySelector("[name='energy_cost_per_hour']");
+    const operationalHoursField = form.querySelector("[name='labor_hours']");
     const operatingRateField = form.querySelector("[name='operating_cost_per_hour']");
     const designRateField = form.querySelector("[name='design_hourly_rate']");
     const extraCostField = form.querySelector("[name='extra_cost']");
     const marginField = form.querySelector("[name='margin_percent']");
+    const marginValueField = form.querySelector(".product-margin-value");
     const salePriceField = form.querySelector("[name='sale_price']");
     if (
       !weightField ||
@@ -2310,9 +2312,11 @@ function setupProductBuilder() {
       !materialCostField ||
       !materialGrandTotal ||
       !energyTotalField ||
+      !operationalHoursField ||
       !energyRateField ||
       !operatingRateField ||
       !marginField ||
+      !marginValueField ||
       !salePriceField
     ) {
       return;
@@ -2378,8 +2382,10 @@ function setupProductBuilder() {
       const materialTotals = getMaterialTotals();
       const componentTotals = getComponentTotals();
       const printHours = materialTotals.hours;
+      const operationalHours = parseNumber(operationalHoursField.value);
       const energyTotal = printHours * parseCurrency(energyRateField.value);
-      const operatingTotal = printHours * parseCurrency(operatingRateField.value);
+      const operatingTotal =
+        operationalHours * parseCurrency(operatingRateField.value);
       const designTotal = 0 * parseCurrency(designRateField?.value || 0);
       const extraCost = parseCurrency(extraCostField?.value || 0);
       const totalCost =
@@ -2394,6 +2400,7 @@ function setupProductBuilder() {
         materialTotals,
         componentTotals,
         energyTotal,
+        operatingTotal,
         totalCost,
       };
     };
@@ -2406,10 +2413,13 @@ function setupProductBuilder() {
       if (activePricingSource === "sale_price") {
         if (salePrice > totalCost && salePrice > 0) {
           marginField.value = formatDecimal(((salePrice - totalCost) / salePrice) * 100);
+          marginValueField.value = formatCurrency(salePrice - totalCost);
         } else if (salePrice > 0 && totalCost <= 0) {
           marginField.value = "100.00";
+          marginValueField.value = formatCurrency(salePrice);
         } else {
           marginField.value = "0.00";
+          marginValueField.value = "0,00";
         }
         return;
       }
@@ -2418,6 +2428,7 @@ function setupProductBuilder() {
       const calculatedSalePrice =
         marginRatio >= 1 ? totalCost : totalCost / (1 - marginRatio);
       salePriceField.value = formatCurrency(calculatedSalePrice);
+      marginValueField.value = formatCurrency(calculatedSalePrice - totalCost);
     };
 
     const updateTotals = () => {
@@ -2451,6 +2462,7 @@ function setupProductBuilder() {
         event.target.matches("[name='product_material_quantity']") ||
         event.target.matches("[name='product_material_print_hours']") ||
         event.target.matches("[name='product_component_quantity']") ||
+        event.target.matches("[name='labor_hours']") ||
         event.target.matches("[name='energy_cost_per_hour']") ||
         event.target.matches("[name='operating_cost_per_hour']") ||
         event.target.matches("[name='design_hourly_rate']") ||
@@ -2471,6 +2483,7 @@ function setupProductBuilder() {
         event.target.matches("[name='product_material_id']") ||
         event.target.matches("[name='product_component_id']") ||
         event.target.matches("[name='product_component_quantity']") ||
+        event.target.matches("[name='labor_hours']") ||
         event.target.matches("[name='energy_cost_per_hour']") ||
         event.target.matches("[name='operating_cost_per_hour']") ||
         event.target.matches("[name='design_hourly_rate']") ||
@@ -2493,6 +2506,10 @@ function setupProductBuilder() {
       activePricingSource = "margin";
       updatePricing();
     });
+
+    if (!parseNumber(operationalHoursField.value) && parseNumber(printHoursField.value)) {
+      operationalHoursField.value = formatDecimal(parseNumber(printHoursField.value));
+    }
 
     materialCollection.addEventListener("input", updateTotals);
     if (componentCollection) {

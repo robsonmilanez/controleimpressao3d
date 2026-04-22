@@ -2482,7 +2482,7 @@ def build_product_form_data(
     operating_cost_per_hour = parse_brazilian_decimal(
         request.form.get("operating_cost_per_hour")
     )
-    labor_hours = 0.0
+    labor_hours = parse_loose_float(request.form.get("labor_hours"), 0.0)
     labor_hourly_rate = 0.0
     design_hours = (
         parse_loose_float(request.form.get("design_hours"), 0.0)
