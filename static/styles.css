@@ -943,27 +943,46 @@ textarea {
 
 .jobs-list-table th:nth-child(1),
 .jobs-list-table td:nth-child(1) {
-  width: 10rem;
+  width: 30rem;
 }
 
 .jobs-list-table th:nth-child(2),
 .jobs-list-table td:nth-child(2) {
-  width: 24rem;
+  width: 18rem;
 }
 
 .jobs-list-table th:nth-child(3),
 .jobs-list-table td:nth-child(3) {
-  width: 16rem;
+  width: 26rem;
 }
 
 .jobs-list-table th:nth-child(4),
 .jobs-list-table td:nth-child(4) {
-  width: 24rem;
+  width: 10rem;
+}
+
+.jobs-list-table th:nth-child(5),
+.jobs-list-table td:nth-child(5) {
+  width: 8rem;
+}
+
+.jobs-list-table th:nth-child(6),
+.jobs-list-table td:nth-child(6) {
+  width: 10rem;
+}
+
+.jobs-list-table th:nth-child(7),
+.jobs-list-table td:nth-child(7) {
+  width: 10rem;
 }
 
 .jobs-list-table td[data-label="Cliente"],
 .jobs-list-table td[data-label="Item"] {
   vertical-align: top;
+}
+
+.jobs-list-table td[data-label="Ações"] {
+  white-space: normal;
 }
 
 .jobs-list-table td[data-label="Cliente"] {

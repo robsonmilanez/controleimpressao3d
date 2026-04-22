@@ -195,7 +195,6 @@
           <table class="responsive-table jobs-list-table">
             <thead>
               <tr>
-                <th>Abrir</th>
                 <th>Ações</th>
                 <th>Cliente</th>
                 <th>Item</th>
@@ -208,11 +207,9 @@
             <tbody>
               {% for job in jobs %}
                 <tr>
-                  <td data-label="Abrir">
-                    <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Abrir pedido</a>
-                  </td>
                   <td data-label="Ações">
                     <div class="table-action-group">
+                      <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Abrir pedido</a>
                       <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF do pedido</a>
                       <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF da ordem</a>
                       <a class="action-link" href="{{ url_for('edit_production_order', job_id=job['id']) }}">Abrir ordem</a>
