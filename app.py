@@ -56,6 +56,17 @@ def normalize_upper_text(value: str | None) -> str:
     return str(value or "").strip().upper()
 
 
+def material_order_clause(prefix: str = "") -> str:
+    return (
+        f"{prefix}color COLLATE NOCASE ASC, "
+        f"{prefix}material_type COLLATE NOCASE ASC, "
+        f"COALESCE(NULLIF(TRIM({prefix}line_series), ''), NULLIF(TRIM({prefix}name), ''), '') COLLATE NOCASE ASC, "
+        f"{prefix}manufacturer_name COLLATE NOCASE ASC, "
+        f"{prefix}sku ASC, "
+        f"{prefix}id ASC"
+    )
+
+
 def normalize_existing_customer_data(db: sqlite3.Connection) -> None:
     rows = db.execute(
         """
@@ -1211,7 +1222,7 @@ def parse_product_component_lines(
 def fetch_commercial_item_options(db: sqlite3.Connection) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     materials = db.execute(
-        "SELECT * FROM materials ORDER BY sku ASC, name ASC, color ASC"
+        f"SELECT * FROM materials ORDER BY {material_order_clause()}"
     ).fetchall()
     components = db.execute(
         "SELECT * FROM components ORDER BY sku ASC, name ASC"
@@ -2161,7 +2172,9 @@ def build_product_form_data(
 ) -> dict[str, Any]:
     materials_by_id = {
         row["id"]: row
-        for row in db.execute("SELECT * FROM materials ORDER BY name ASC, color ASC").fetchall()
+        for row in db.execute(
+            f"SELECT * FROM materials ORDER BY {material_order_clause()}"
+        ).fetchall()
     }
     components_by_id = {
         row["id"]: row
@@ -3814,7 +3827,9 @@ def fetch_products(db: sqlite3.Connection) -> list[dict[str, Any]]:
     ).fetchall()
     materials_by_id = {
         row["id"]: row
-        for row in db.execute("SELECT * FROM materials ORDER BY name ASC, color ASC").fetchall()
+        for row in db.execute(
+            f"SELECT * FROM materials ORDER BY {material_order_clause()}"
+        ).fetchall()
     }
     components_by_id = {
         row["id"]: row
@@ -3841,7 +3856,7 @@ def products() -> str:
     references = fetch_reference_data(db)
     return_to = request.values.get("return_to", "").strip()
     materials_list = db.execute(
-        "SELECT * FROM materials ORDER BY name ASC, color ASC"
+        f"SELECT * FROM materials ORDER BY {material_order_clause()}"
     ).fetchall()
 
     if request.method == "POST":
@@ -3932,7 +3947,7 @@ def edit_product(product_id: int) -> str:
         abort(404)
 
     materials_list = db.execute(
-        "SELECT * FROM materials ORDER BY name ASC, color ASC"
+        f"SELECT * FROM materials ORDER BY {material_order_clause()}"
     ).fetchall()
 
     if request.method == "POST":
@@ -4039,7 +4054,7 @@ def inventory() -> str:
 
         if float(material["stock_grams"]) + delta < 0:
             materials_list = db.execute(
-                "SELECT * FROM materials ORDER BY name ASC, color ASC"
+                f"SELECT * FROM materials ORDER BY {material_order_clause()}"
             ).fetchall()
             movements = db.execute(
                 """
@@ -4091,7 +4106,9 @@ def inventory() -> str:
         """
         SELECT *
         FROM materials
-        ORDER BY stock_grams ASC, name ASC, color ASC
+        ORDER BY stock_grams ASC, color COLLATE NOCASE ASC, material_type COLLATE NOCASE ASC,
+            COALESCE(NULLIF(TRIM(line_series), ''), NULLIF(TRIM(name), ''), '') COLLATE NOCASE ASC,
+            manufacturer_name COLLATE NOCASE ASC, sku ASC, id ASC
         """
     ).fetchall()
     movements = db.execute(
@@ -4122,7 +4139,9 @@ def filament_movements_query() -> str:
         """
         SELECT *
         FROM materials
-        ORDER BY sku ASC, name ASC, color ASC
+        ORDER BY color COLLATE NOCASE ASC, material_type COLLATE NOCASE ASC,
+            COALESCE(NULLIF(TRIM(line_series), ''), NULLIF(TRIM(name), ''), '') COLLATE NOCASE ASC,
+            manufacturer_name COLLATE NOCASE ASC, sku ASC, id ASC
         """
     ).fetchall()
 
@@ -4322,7 +4341,9 @@ def edit_production_order(job_id: int) -> str:
             suppliers.name AS supplier_name
         FROM materials
         LEFT JOIN suppliers ON suppliers.id = materials.supplier_id
-        ORDER BY materials.name ASC, materials.color ASC
+        ORDER BY materials.color COLLATE NOCASE ASC, materials.material_type COLLATE NOCASE ASC,
+            COALESCE(NULLIF(TRIM(materials.line_series), ''), NULLIF(TRIM(materials.name), ''), '') COLLATE NOCASE ASC,
+            materials.manufacturer_name COLLATE NOCASE ASC, materials.sku ASC, materials.id ASC
         """
     ).fetchall()
     detail = fetch_job_detail(db, job_id)
@@ -4480,7 +4501,9 @@ def jobs() -> str:
             suppliers.name AS supplier_name
         FROM materials
         LEFT JOIN suppliers ON suppliers.id = materials.supplier_id
-        ORDER BY materials.name ASC, materials.color ASC
+        ORDER BY materials.color COLLATE NOCASE ASC, materials.material_type COLLATE NOCASE ASC,
+            COALESCE(NULLIF(TRIM(materials.line_series), ''), NULLIF(TRIM(materials.name), ''), '') COLLATE NOCASE ASC,
+            materials.manufacturer_name COLLATE NOCASE ASC, materials.sku ASC, materials.id ASC
         """
     ).fetchall()
 
@@ -5176,7 +5199,9 @@ def edit_job(job_id: int) -> str:
             suppliers.name AS supplier_name
         FROM materials
         LEFT JOIN suppliers ON suppliers.id = materials.supplier_id
-        ORDER BY materials.name ASC, materials.color ASC
+        ORDER BY materials.color COLLATE NOCASE ASC, materials.material_type COLLATE NOCASE ASC,
+            COALESCE(NULLIF(TRIM(materials.line_series), ''), NULLIF(TRIM(materials.name), ''), '') COLLATE NOCASE ASC,
+            materials.manufacturer_name COLLATE NOCASE ASC, materials.sku ASC, materials.id ASC
         """
     ).fetchall()
     detail = fetch_job_detail(db, job_id)
@@ -5764,7 +5789,7 @@ def job_production_document(job_id: int) -> str:
 def pricing() -> str:
     db = get_db()
     materials_list = db.execute(
-        "SELECT * FROM materials ORDER BY name ASC, color ASC"
+        f"SELECT * FROM materials ORDER BY {material_order_clause()}"
     ).fetchall()
     result = None
 
