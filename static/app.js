@@ -15,6 +15,27 @@ function setupSupplierShortcut() {
   });
 }
 
+function buildShortcutReturnUrl(select, rawUrl) {
+  if (!rawUrl) {
+    return rawUrl;
+  }
+
+  const url = new URL(rawUrl, window.location.origin);
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+  const isJobForm = select.form?.classList?.contains("job-form");
+  const isJobCreationTarget =
+    url.pathname === "/products" ||
+    url.pathname === "/registry/customers" ||
+    url.pathname === "/registry/payment-terms" ||
+    url.pathname === "/registry/sales-channels";
+
+  if (isJobForm && isJobCreationTarget) {
+    url.searchParams.set("return_to", currentPath);
+  }
+
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 function setupSelectShortcuts(root = document) {
   const selects = Array.from(root.querySelectorAll("select[data-new-url]"));
   selects.forEach((select) => {
@@ -34,7 +55,7 @@ function setupSelectShortcuts(root = document) {
         select.value = "";
         select.dispatchEvent(new Event("change", { bubbles: true }));
         saveFormDraft(select.form);
-        window.location.href = select.dataset.newUrl;
+        window.location.href = buildShortcutReturnUrl(select, select.dataset.newUrl);
       }
     });
   });
