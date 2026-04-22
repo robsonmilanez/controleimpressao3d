@@ -1487,14 +1487,11 @@ input[readonly].computed-field,
   background: rgba(10, 132, 255, 0.55);
 }
 
-.product-material-row {
-  grid-template-columns: minmax(260px, 2.85fr) minmax(90px, 0.72fr) minmax(96px, 0.78fr) minmax(122px, 0.88fr);
-  align-items: end;
-}
-
+.product-material-row,
 .product-component-row {
-  grid-template-columns: minmax(280px, 3fr) minmax(100px, 0.85fr) minmax(122px, 0.9fr);
-  align-items: end;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.8rem;
 }
 
 .product-material-select-field,
@@ -1504,6 +1501,24 @@ input[readonly].computed-field,
 .product-material-total-field,
 .product-component-total-field {
   min-width: 0;
+}
+
+.product-material-select-field {
+  flex: 1 1 52%;
+}
+
+.product-component-select-field {
+  flex: 1 1 64%;
+}
+
+.product-material-metric-field,
+.product-component-metric-field {
+  flex: 0 0 120px;
+}
+
+.product-material-total-field,
+.product-component-total-field {
+  flex: 0 0 132px;
 }
 
 .product-material-select-field .searchable-select-wrapper,
@@ -2658,10 +2673,12 @@ th {
   }
 
   .product-material-row {
+    display: grid;
     grid-template-columns: minmax(220px, 2.6fr) minmax(84px, 0.75fr) minmax(90px, 0.78fr) minmax(112px, 0.82fr);
   }
 
   .product-component-row {
+    display: grid;
     grid-template-columns: minmax(240px, 2.9fr) minmax(92px, 0.85fr) minmax(112px, 0.9fr);
   }
 
@@ -2917,6 +2934,7 @@ th {
 @media (max-width: 640px) {
   .product-material-row,
   .product-component-row {
+    display: grid;
     grid-template-columns: 1fr;
   }
 
