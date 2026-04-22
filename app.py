@@ -56,6 +56,72 @@ def normalize_upper_text(value: str | None) -> str:
     return str(value or "").strip().upper()
 
 
+def normalize_existing_customer_data(db: sqlite3.Connection) -> None:
+    rows = db.execute(
+        """
+        SELECT
+            id,
+            name,
+            document,
+            phone,
+            email,
+            customer_type,
+            postal_code,
+            street,
+            address_number,
+            address_complement,
+            neighborhood,
+            city,
+            state,
+            lead_source,
+            segment,
+            notes
+        FROM customers
+        """
+    ).fetchall()
+    for row in rows:
+        db.execute(
+            """
+            UPDATE customers
+            SET
+                name = ?,
+                document = ?,
+                phone = ?,
+                email = ?,
+                customer_type = ?,
+                postal_code = ?,
+                street = ?,
+                address_number = ?,
+                address_complement = ?,
+                neighborhood = ?,
+                city = ?,
+                state = ?,
+                lead_source = ?,
+                segment = ?,
+                notes = ?
+            WHERE id = ?
+            """,
+            (
+                normalize_upper_text(row["name"]),
+                normalize_upper_text(row["document"]),
+                str(row["phone"] or "").strip(),
+                str(row["email"] or "").strip().lower(),
+                normalize_upper_text(row["customer_type"]),
+                str(row["postal_code"] or "").strip(),
+                normalize_upper_text(row["street"]),
+                normalize_upper_text(row["address_number"]),
+                normalize_upper_text(row["address_complement"]),
+                normalize_upper_text(row["neighborhood"]),
+                normalize_upper_text(row["city"]),
+                normalize_upper_text(row["state"]),
+                normalize_upper_text(row["lead_source"]),
+                normalize_upper_text(row["segment"]),
+                normalize_upper_text(row["notes"]),
+                row["id"],
+            ),
+        )
+
+
 def get_db() -> sqlite3.Connection:
     if "db" not in g:
         g.db = sqlite3.connect(DATABASE)
@@ -478,6 +544,8 @@ def init_db() -> None:
     ensure_column(db, "components", "component_type", "TEXT")
     ensure_column(db, "components", "sku", "TEXT")
     ensure_column(db, "components", "manufacturer_name", "TEXT")
+    normalize_existing_customer_data(db)
+    db.commit()
     ensure_column(db, "components", "part_number", "TEXT")
     ensure_column(db, "components", "compatible_with", "TEXT")
     ensure_column(db, "components", "location", "TEXT")
