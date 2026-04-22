@@ -28,6 +28,14 @@
 </div>
 
 {% set material_rows = product_material_lines if product_material_lines is defined and product_material_lines else ([{'material_id': (product['material_id'] if product and product['material_id'] else None), 'quantity_grams': (product['weight_grams'] if product else 0), 'print_hours': (product['print_hours'] if product else 0)}] if product else [{'material_id': None, 'quantity_grams': 0, 'print_hours': 0}]) %}
+<div class="collection-subsection full">
+  <div class="collection-subsection-header">
+    <div>
+      <h4>Filamentos</h4>
+      <p>Filamento, quantidade, horas de impressão e total na mesma linha.</p>
+    </div>
+    <button type="button" class="secondary-button" data-add-row="product-materials">Adicionar filamento</button>
+  </div>
 <div class="collection full" data-collection="product-materials">
   {% for row in material_rows %}
     <div class="collection-row product-material-row">
@@ -56,15 +64,21 @@
     </div>
   {% endfor %}
 </div>
-<div class="button-row full">
-  <button type="button" class="secondary-button" data-add-row="product-materials">Adicionar filamento</button>
-</div>
 <div class="button-row full product-collection-summary">
   <span class="summary-label">Total dos filamentos</span>
   <strong class="product-material-grand-total">R$ 0,00</strong>
 </div>
+</div>
 
 {% set component_rows = product_component_lines if product_component_lines is defined and product_component_lines else [{'component_id': None, 'quantity': 0}] %}
+<div class="collection-subsection full">
+  <div class="collection-subsection-header">
+    <div>
+      <h4>Componentes</h4>
+      <p>Componente, quantidade e total organizados em uma linha.</p>
+    </div>
+    <button type="button" class="secondary-button" data-add-row="product-components">Adicionar componente</button>
+  </div>
 <div class="collection full" data-collection="product-components">
   {% for row in component_rows %}
     <div class="collection-row product-component-row">
@@ -89,12 +103,10 @@
     </div>
   {% endfor %}
 </div>
-<div class="button-row full">
-  <button type="button" class="secondary-button" data-add-row="product-components">Adicionar componente</button>
-</div>
 <div class="button-row full product-collection-summary">
   <span class="summary-label">Total dos componentes</span>
   <strong class="product-component-grand-total">R$ 0,00</strong>
+</div>
 </div>
 
 <label class="span-2 computed-field">

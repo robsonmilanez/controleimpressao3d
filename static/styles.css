@@ -1521,6 +1521,37 @@ input[readonly].computed-field,
   padding: 0.5rem 0.7rem;
 }
 
+.collection-subsection {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.collection-subsection-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.collection-subsection-header h4 {
+  margin: 0;
+  font-size: 0.98rem;
+  color: var(--text);
+}
+
+.collection-subsection-header p {
+  margin: 0.14rem 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
+.collection-subsection-header .secondary-button {
+  min-height: 38px;
+  padding: 0.55rem 0.86rem;
+  white-space: nowrap;
+}
+
 .product-collection-summary {
   justify-content: flex-end;
   padding: 0 0.2rem 0.2rem;
