@@ -87,7 +87,15 @@ def init_db() -> None:
             document TEXT,
             phone TEXT,
             email TEXT,
+            customer_type TEXT,
+            postal_code TEXT,
+            street TEXT,
+            address_number TEXT,
+            address_complement TEXT,
+            neighborhood TEXT,
             city TEXT,
+            state TEXT,
+            lead_source TEXT,
             segment TEXT,
             notes TEXT
         );
@@ -430,6 +438,14 @@ def init_db() -> None:
     ensure_column(db, "materials", "humidity_percent", "REAL NOT NULL DEFAULT 0")
     ensure_column(db, "materials", "drying_required", "INTEGER NOT NULL DEFAULT 0")
     ensure_column(db, "materials", "notes", "TEXT")
+    ensure_column(db, "customers", "customer_type", "TEXT")
+    ensure_column(db, "customers", "postal_code", "TEXT")
+    ensure_column(db, "customers", "street", "TEXT")
+    ensure_column(db, "customers", "address_number", "TEXT")
+    ensure_column(db, "customers", "address_complement", "TEXT")
+    ensure_column(db, "customers", "neighborhood", "TEXT")
+    ensure_column(db, "customers", "state", "TEXT")
+    ensure_column(db, "customers", "lead_source", "TEXT")
     ensure_column(db, "printers", "brand", "TEXT")
     ensure_column(db, "printers", "serial_number", "TEXT")
     ensure_column(db, "printers", "technology", "TEXT")
@@ -1717,16 +1733,40 @@ def handle_registry_submission(db: sqlite3.Connection, section: str) -> int | No
     if section == "customers":
         cursor = db.execute(
             """
-            INSERT INTO customers (name, document, phone, email, city, segment, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO customers (
+                name,
+                document,
+                phone,
+                email,
+                customer_type,
+                postal_code,
+                street,
+                address_number,
+                address_complement,
+                neighborhood,
+                city,
+                state,
+                lead_source,
+                segment,
+                notes
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 request.form["name"].strip(),
                 request.form["document"].strip(),
                 request.form["phone"].strip(),
                 request.form["email"].strip(),
+                request.form.get("customer_type", "").strip(),
+                request.form.get("postal_code", "").strip(),
+                request.form.get("street", "").strip(),
+                request.form.get("address_number", "").strip(),
+                request.form.get("address_complement", "").strip(),
+                request.form.get("neighborhood", "").strip(),
                 request.form["city"].strip(),
-                request.form["segment"].strip(),
+                request.form.get("state", "").strip(),
+                request.form.get("lead_source", "").strip(),
+                request.form.get("segment", "").strip(),
                 request.form["notes"].strip(),
             ),
         )
@@ -2203,28 +2243,39 @@ def get_registry_page_context(
             "panel_title": "Clientes",
             "panel_badge": f"{len(references['customers'])} cadastrados",
             "submit_label": "Salvar cliente",
+            "form_class": "customer-registry-form",
             "fields": [
                 {"name": "name", "label": "Nome", "type": "text", "required": True},
+                {"name": "customer_type", "label": "Tipo de cliente", "type": "select", "options": ["Consumidor", "Revenda"]},
                 {"name": "document", "label": "Documento", "type": "text", "placeholder": "CPF ou CNPJ"},
                 {"name": "phone", "label": "Telefone", "type": "text"},
                 {"name": "email", "label": "Email", "type": "email"},
-                {"name": "city", "label": "Cidade", "type": "text"},
-                {"name": "segment", "label": "Segmento", "type": "text", "placeholder": "Arquitetura, brindes, games..."},
+                {"name": "lead_source", "label": "Como conheceu nossa loja", "type": "text", "placeholder": "Instagram, indicação, Google..."},
+                {"name": "postal_code", "label": "CEP", "type": "text", "placeholder": "00000-000", "class": "customer-postal-code", "inputmode": "numeric"},
+                {"name": "street", "label": "Rua / Endereço", "type": "text", "placeholder": "Nome da rua", "full": True, "class": "customer-street"},
+                {"name": "address_number", "label": "Número", "type": "text", "placeholder": "S/N", "class": "customer-address-number"},
+                {"name": "address_complement", "label": "Complemento", "type": "text", "placeholder": "Apto, sala, bloco...", "class": "customer-address-complement"},
+                {"name": "neighborhood", "label": "Bairro", "type": "text", "placeholder": "Centro", "class": "customer-neighborhood"},
+                {"name": "city", "label": "Cidade", "type": "text", "placeholder": "Cidade", "class": "customer-city"},
+                {"name": "state", "label": "Estado", "type": "text", "placeholder": "UF", "class": "customer-state"},
+                {"name": "segment", "label": "Segmento / Interesse", "type": "text", "placeholder": "Arquitetura, brindes, games..."},
                 {"name": "notes", "label": "Observações", "type": "textarea", "full": True},
             ],
             "columns": [
                 {"key": "name", "label": "Nome"},
+                {"key": "customer_type", "label": "Tipo"},
                 {"key": "contact", "label": "Contato"},
                 {"key": "city", "label": "Cidade"},
-                {"key": "segment", "label": "Segmento"},
+                {"key": "lead_source", "label": "Origem"},
             ],
             "records": [
                 {
                     "id": row["id"],
                     "name": row["name"],
+                    "customer_type": row["customer_type"] or "-",
                     "contact": row["phone"] or row["email"] or "-",
                     "city": row["city"] or "-",
-                    "segment": row["segment"] or "-",
+                    "lead_source": row["lead_source"] or "-",
                 }
                 for row in references["customers"]
             ],
@@ -2635,7 +2686,22 @@ def handle_registry_update(
         db.execute(
             """
             UPDATE customers
-            SET name = ?, document = ?, phone = ?, email = ?, city = ?, segment = ?, notes = ?
+            SET
+                name = ?,
+                document = ?,
+                phone = ?,
+                email = ?,
+                customer_type = ?,
+                postal_code = ?,
+                street = ?,
+                address_number = ?,
+                address_complement = ?,
+                neighborhood = ?,
+                city = ?,
+                state = ?,
+                lead_source = ?,
+                segment = ?,
+                notes = ?
             WHERE id = ?
             """,
             (
@@ -2643,8 +2709,16 @@ def handle_registry_update(
                 request.form["document"].strip(),
                 request.form["phone"].strip(),
                 request.form["email"].strip(),
+                request.form.get("customer_type", "").strip(),
+                request.form.get("postal_code", "").strip(),
+                request.form.get("street", "").strip(),
+                request.form.get("address_number", "").strip(),
+                request.form.get("address_complement", "").strip(),
+                request.form.get("neighborhood", "").strip(),
                 request.form["city"].strip(),
-                request.form["segment"].strip(),
+                request.form.get("state", "").strip(),
+                request.form.get("lead_source", "").strip(),
+                request.form.get("segment", "").strip(),
                 request.form["notes"].strip(),
                 record_id,
             ),

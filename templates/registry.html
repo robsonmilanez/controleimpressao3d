@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ panel_title }}{% endblock %}
 {% block content %}
-  <section class="page-hero">
+  <section class="page-hero {% if form_class == 'customer-registry-form' %}page-hero-compact customers-page-hero{% endif %}">
     <p class="eyebrow">{{ eyebrow }}</p>
     <h2>{{ title }}</h2>
     <p class="subtitle">{{ description }}</p>
@@ -11,7 +11,7 @@
   </section>
 
   <section class="panel-grid single">
-    <article class="panel">
+    <article class="panel {% if form_class == 'customer-registry-form' %}panel-compact registry-compact-panel{% endif %}">
       <div class="panel-header">
         <div>
           <p class="panel-kicker">{{ panel_kicker }}</p>
@@ -30,11 +30,12 @@
             {% if field["type"] == "textarea" %}
               <textarea
                 name="{{ field['name'] }}"
+                {% if field.get('class') %}class="{{ field['class'] }}"{% endif %}
                 rows="3"
                 {% if field.get('placeholder') %}placeholder="{{ field['placeholder'] }}"{% endif %}
               ></textarea>
             {% elif field["type"] == "select" %}
-              <select name="{{ field['name'] }}" {% if field.get('required') %}required{% endif %}>
+              <select name="{{ field['name'] }}" {% if field.get('class') %}class="{{ field['class'] }}"{% endif %} {% if field.get('required') %}required{% endif %}>
                 {% if not field.get('required') %}
                   <option value="">Nenhum</option>
                 {% endif %}

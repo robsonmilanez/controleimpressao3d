@@ -695,6 +695,65 @@ textarea {
   margin-bottom: 0.6rem;
 }
 
+.customers-page-hero {
+  margin-bottom: 0.8rem;
+}
+
+.customers-page-hero .eyebrow {
+  margin-bottom: 0.16rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.15em;
+}
+
+.customers-page-hero h2 {
+  font-size: clamp(1.16rem, 2vw, 1.42rem);
+  line-height: 1.08;
+}
+
+.customers-page-hero .subtitle {
+  max-width: 44rem;
+  font-size: 0.86rem;
+  line-height: 1.28;
+}
+
+.registry-compact-panel .panel-header {
+  margin-bottom: 0.65rem;
+}
+
+.customer-registry-form {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.72rem 0.8rem;
+}
+
+.customer-registry-form label {
+  grid-column: span 3;
+  gap: 0.28rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.customer-registry-form .full {
+  grid-column: 1 / -1;
+}
+
+.customer-registry-form input,
+.customer-registry-form select,
+.customer-registry-form textarea {
+  min-height: 42px;
+  padding: 0.66rem 0.78rem;
+  border-radius: 14px;
+}
+
+.customer-registry-form textarea {
+  min-height: 82px;
+}
+
+.registry-compact-panel .button-row a,
+.registry-compact-panel .button-row button {
+  min-height: 40px;
+  padding: 0.72rem 1rem;
+}
+
 .job-form-compact {
   gap: 0.8rem;
 }
@@ -2216,6 +2275,7 @@ th {
   .material-form label,
   .material-form .compact-field,
   .material-form .calibration-field,
+  .customer-registry-form label,
   .material-form .supplier-line-field,
   .material-form .span-2,
   .material-form .span-3,

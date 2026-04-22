@@ -2343,6 +2343,71 @@ function setupCommercialEntries() {
   });
 }
 
+function setupCustomerPostalCodeAutofill() {
+  const forms = Array.from(document.querySelectorAll(".customer-registry-form"));
+  forms.forEach((form) => {
+    const postalCodeField = form.querySelector("[name='postal_code']");
+    const streetField = form.querySelector("[name='street']");
+    const neighborhoodField = form.querySelector("[name='neighborhood']");
+    const cityField = form.querySelector("[name='city']");
+    const stateField = form.querySelector("[name='state']");
+    if (!postalCodeField) {
+      return;
+    }
+
+    let lastFetchedPostalCode = "";
+
+    const normalizePostalCode = (value) => String(value || "").replace(/\D/g, "").slice(0, 8);
+
+    const applyPostalCodeMask = () => {
+      const digits = normalizePostalCode(postalCodeField.value);
+      postalCodeField.value = digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+      return digits;
+    };
+
+    const maybeFillField = (field, value) => {
+      if (!field || !value) {
+        return;
+      }
+      if (!String(field.value || "").trim()) {
+        field.value = value;
+      }
+    };
+
+    const fetchAddress = async () => {
+      const postalCode = applyPostalCodeMask();
+      if (postalCode.length !== 8 || postalCode === lastFetchedPostalCode) {
+        return;
+      }
+      lastFetchedPostalCode = postalCode;
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${postalCode}/json/`);
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+        if (data.erro) {
+          return;
+        }
+        maybeFillField(streetField, data.logradouro || "");
+        maybeFillField(neighborhoodField, data.bairro || "");
+        maybeFillField(cityField, data.localidade || "");
+        maybeFillField(stateField, data.uf || "");
+      } catch (_error) {
+        // Manual entry remains available if CEP lookup fails.
+      }
+    };
+
+    postalCodeField.addEventListener("input", () => {
+      applyPostalCodeMask();
+      if (normalizePostalCode(postalCodeField.value).length < 8) {
+        lastFetchedPostalCode = "";
+      }
+    });
+    postalCodeField.addEventListener("blur", fetchAddress);
+  });
+}
+
 function setupServiceWorker() {
   if (!("serviceWorker" in navigator)) {
     return;
@@ -2369,6 +2434,7 @@ setupJobCollections();
 setupJobProfitWarning();
 setupProductBuilder();
 setupCommercialEntries();
+setupCustomerPostalCodeAutofill();
 setupFormDraftPersistence();
 setupPendingSelections();
 setupScrollRestore();
