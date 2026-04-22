@@ -1591,6 +1591,51 @@ function setupJobInlineTotals() {
     }).format(value);
 
   forms.forEach((form) => {
+    const applySelectedProductMetadata = (select, options = {}) => {
+      const { overwriteModelLink = false } = options;
+      if (!select) {
+        return;
+      }
+      const row = select.closest(".collection-row");
+      const selectedOption = select.selectedOptions[0];
+      const itemNameField = row?.querySelector("[name='item_name']");
+      const categoryField = row?.querySelector(".service-category-display");
+      const categorySync = row?.querySelector(".service-category-sync");
+      const unitPriceField = row?.querySelector("[name='service_unit_price']");
+      const modelLinkField = form.querySelector("[name='model_link']");
+
+      if (selectedOption?.value && selectedOption.value !== "__new__") {
+        if (itemNameField) {
+          itemNameField.value = selectedOption.dataset.name || selectedOption.textContent.trim();
+        }
+        if (categoryField) {
+          categoryField.value = selectedOption.dataset.category || "";
+        }
+        if (categorySync) {
+          categorySync.value = selectedOption.dataset.category || "";
+        }
+        if (unitPriceField) {
+          unitPriceField.value = String(
+            Math.max(Number(selectedOption.dataset.salePrice) || 0, 0).toFixed(2)
+          );
+        }
+        if (
+          modelLinkField &&
+          (overwriteModelLink || !modelLinkField.value.trim())
+        ) {
+          modelLinkField.value = selectedOption.dataset.modelLink || "";
+        }
+      } else {
+        if (categoryField) {
+          categoryField.value = "";
+        }
+        if (categorySync) {
+          categorySync.value = "";
+        }
+      }
+      updateServiceTotals();
+    };
+
     const getServiceTotal = (row) => {
       const quantity = parseNumber(row.querySelector(".order-quantity-field")?.value) || 1;
       const unitPrice = parseNumber(row.querySelector("[name='service_unit_price']")?.value);
@@ -1909,43 +1954,7 @@ function setupJobInlineTotals() {
 
     form.addEventListener("change", (event) => {
       if (event.target.matches(".product-picker")) {
-        const row = event.target.closest(".collection-row");
-        const selectedOption = event.target.selectedOptions[0];
-        const itemNameField = row?.querySelector("[name='item_name']");
-        const categoryField = row?.querySelector(".service-category-display");
-        const categorySync = row?.querySelector(".service-category-sync");
-        const unitPriceField = row?.querySelector("[name='service_unit_price']");
-        const modelLinkField = form.querySelector("[name='model_link']");
-        if (selectedOption?.value && selectedOption.value !== "__new__") {
-          if (itemNameField) {
-            itemNameField.value = selectedOption.dataset.name || selectedOption.textContent.trim();
-          }
-          if (categoryField) {
-            categoryField.value = selectedOption.dataset.category || "";
-          }
-          if (categorySync) {
-            categorySync.value = selectedOption.dataset.category || "";
-          }
-          if (unitPriceField) {
-            unitPriceField.value = String(
-              Math.max(Number(selectedOption.dataset.salePrice) || 0, 0).toFixed(2)
-            );
-          }
-          if (modelLinkField) {
-            modelLinkField.value = selectedOption.dataset.modelLink || "";
-          }
-          updateServiceTotals();
-        } else {
-          if (categoryField) {
-            categoryField.value = "";
-          }
-          if (categorySync) {
-            categorySync.value = "";
-          }
-          if (modelLinkField) {
-            modelLinkField.value = "";
-          }
-        }
+        applySelectedProductMetadata(event.target, { overwriteModelLink: true });
       }
       if (
         event.target.matches("[name='material_id']") ||
@@ -1961,6 +1970,9 @@ function setupJobInlineTotals() {
     updateServiceTotals();
     updateMaterialTotals();
     updateInternalCostTotals();
+    form
+      .querySelectorAll(".product-picker")
+      .forEach((select) => applySelectedProductMetadata(select));
   });
 }
 

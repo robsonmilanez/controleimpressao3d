@@ -108,7 +108,7 @@
           </div>
           <div class="collection full" data-collection="services">
             <div class="collection-row service-row">
-              <label>
+              <label class="service-qty-field">
                 Quantidade
                 <input type="number" name="quantity" class="order-quantity-field" min="1" step="1" value="1" required>
               </label>
@@ -132,20 +132,20 @@
               </label>
               <input type="hidden" name="service_name" class="service-name-sync" value="">
               <input type="hidden" name="service_category" class="service-category-sync" value="">
-              <label>
+              <label class="service-value-field">
                 Valor unitario
                 <input type="number" name="service_unit_price" min="0" step="0.01" value="0">
               </label>
-              <label>
+              <label class="service-value-field">
                 Acrescimos
                 <input type="number" name="service_additions" class="service-additions" min="0" step="0.01" value="0">
               </label>
-              <label>
+              <label class="service-value-field">
                 Descontos
                 <input type="number" name="service_discounts" class="service-discounts" min="0" step="0.01" value="0">
               </label>
               <input type="hidden" name="service_notes" class="service-notes-sync" value="">
-              <label>
+              <label class="service-value-field service-total-field">
                 Total
                 <input type="text" class="service-line-total" value="R$ 0,00" readonly>
               </label>
@@ -192,7 +192,7 @@
       {% endif %}
       {% if jobs %}
         <div class="table-wrap">
-          <table class="responsive-table">
+          <table class="responsive-table jobs-list-table">
             <thead>
               <tr>
                 <th>Abrir</th>
