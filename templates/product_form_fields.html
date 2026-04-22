@@ -34,7 +34,6 @@
       <h4>Filamentos</h4>
       <p>Filamento, quantidade, horas de impressão e total na mesma linha.</p>
     </div>
-    <button type="button" class="secondary-button" data-add-row="product-materials">Adicionar filamento</button>
   </div>
 <div class="collection full" data-collection="product-materials">
   {% for row in material_rows %}
@@ -64,6 +63,9 @@
     </div>
   {% endfor %}
 </div>
+<div class="button-row full product-collection-actions">
+  <button type="button" class="secondary-button" data-add-row="product-materials">Adicionar filamento</button>
+</div>
 <div class="button-row full product-collection-summary">
   <span class="summary-label">Total dos filamentos</span>
   <strong class="product-material-grand-total">R$ 0,00</strong>
@@ -77,7 +79,6 @@
       <h4>Componentes</h4>
       <p>Componente, quantidade e total organizados em uma linha.</p>
     </div>
-    <button type="button" class="secondary-button" data-add-row="product-components">Adicionar componente</button>
   </div>
 <div class="collection full" data-collection="product-components">
   {% for row in component_rows %}
@@ -102,6 +103,9 @@
       </label>
     </div>
   {% endfor %}
+</div>
+<div class="button-row full product-collection-actions">
+  <button type="button" class="secondary-button" data-add-row="product-components">Adicionar componente</button>
 </div>
 <div class="button-row full product-collection-summary">
   <span class="summary-label">Total dos componentes</span>

@@ -1567,6 +1567,16 @@ input[readonly].computed-field,
   white-space: nowrap;
 }
 
+.product-collection-actions {
+  justify-content: flex-end;
+  padding-top: 0.1rem;
+}
+
+.product-collection-actions .secondary-button {
+  min-height: 38px;
+  padding: 0.55rem 0.86rem;
+}
+
 .product-collection-summary {
   justify-content: flex-end;
   padding: 0 0.2rem 0.2rem;
