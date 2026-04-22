@@ -2771,6 +2771,43 @@ th {
     grid-template-columns: 1fr;
   }
 
+  .job-form-compact .service-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .job-form-compact .service-row > label,
+  .job-form-compact .service-row > span,
+  .job-form-compact .service-row > input[type="hidden"] {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .job-form-compact .item-description-group {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .job-form-compact .item-description-field,
+  .job-form-compact .service-category-field,
+  .job-form-compact .service-value-field,
+  .job-form-compact .service-total-field,
+  .job-form-compact .service-qty-field {
+    width: 100%;
+  }
+
+  .jobs-list-table .table-action-group {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .jobs-list-table .table-action-group .action-link {
+    min-width: 0;
+    flex: 1 1 calc(50% - 0.25rem);
+    justify-content: center;
+    text-align: center;
+  }
+
   .product-material-row {
     display: grid;
     grid-template-columns: minmax(220px, 2.6fr) minmax(84px, 0.75fr) minmax(90px, 0.78fr) minmax(112px, 0.82fr);
@@ -3114,9 +3151,14 @@ th {
   }
 
   .job-form-compact .service-row {
+    grid-template-columns: 1fr;
     gap: 0.5rem;
     padding: 0.58rem;
     border-radius: 14px;
+  }
+
+  .jobs-list-table .table-action-group .action-link {
+    flex-basis: 100%;
   }
 
   .job-form-compact .service-value-field label,
