@@ -1915,6 +1915,7 @@ function setupJobInlineTotals() {
         const categoryField = row?.querySelector(".service-category-display");
         const categorySync = row?.querySelector(".service-category-sync");
         const unitPriceField = row?.querySelector("[name='service_unit_price']");
+        const modelLinkField = form.querySelector("[name='model_link']");
         if (selectedOption?.value && selectedOption.value !== "__new__") {
           if (itemNameField) {
             itemNameField.value = selectedOption.dataset.name || selectedOption.textContent.trim();
@@ -1930,6 +1931,9 @@ function setupJobInlineTotals() {
               Math.max(Number(selectedOption.dataset.salePrice) || 0, 0).toFixed(2)
             );
           }
+          if (modelLinkField) {
+            modelLinkField.value = selectedOption.dataset.modelLink || "";
+          }
           updateServiceTotals();
         } else {
           if (categoryField) {
@@ -1937,6 +1941,9 @@ function setupJobInlineTotals() {
           }
           if (categorySync) {
             categorySync.value = "";
+          }
+          if (modelLinkField) {
+            modelLinkField.value = "";
           }
         }
       }

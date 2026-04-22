@@ -864,9 +864,9 @@ textarea {
 .job-form-compact .service-row {
   grid-template-columns:
     minmax(76px, 0.45fr)
-    minmax(260px, 1.35fr)
-    minmax(520px, 3.2fr)
-    minmax(130px, 0.72fr)
+    minmax(180px, 0.9fr)
+    minmax(660px, 3.7fr)
+    minmax(110px, 0.54fr)
     minmax(118px, 0.72fr)
     minmax(118px, 0.72fr)
     minmax(118px, 0.72fr)
@@ -877,7 +877,7 @@ textarea {
 }
 
 .job-form-compact .item-description-group {
-  grid-template-columns: minmax(190px, 0.8fr) minmax(0, 2.6fr);
+  grid-template-columns: minmax(170px, 0.72fr) minmax(0, 3fr);
   gap: 0.5rem;
 }
 
@@ -904,6 +904,18 @@ textarea {
 
 .job-actions-row {
   justify-content: flex-start;
+}
+
+.table-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.table-action-group .action-link {
+  min-height: 34px;
+  padding: 0.45rem 0.72rem;
+  font-size: 0.82rem;
 }
 
 .item-description-group {

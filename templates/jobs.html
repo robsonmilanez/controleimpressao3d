@@ -119,11 +119,11 @@
                   <select class="product-picker" name="product_id" data-new-url="{{ url_for('products', return_to=url_for('jobs')) }}">
                     <option value="">Nenhum produto cadastrado</option>
                     {% for product in products %}
-                      <option value="{{ product['id'] }}" data-name="{{ product['name'] }}" data-sale-price="{{ product['sale_price'] or 0 }}" data-category="{{ product['category'] or '' }}">{{ product["sku"] or "Produto" }} - {{ product["name"] }}</option>
+                      <option value="{{ product['id'] }}" data-name="{{ product['name'] }}" data-sale-price="{{ product['sale_price'] or 0 }}" data-category="{{ product['category'] or '' }}" data-model-link="{{ product['model_link'] or '' }}">{{ product["sku"] or "Produto" }} - {{ product["name"] }}</option>
                     {% endfor %}
                     <option value="__new__">+ Novo produto</option>
                   </select>
-                  <input type="text" name="item_name" placeholder="Miniatura, suporte, prototipo..." required>
+                  <input type="text" name="item_name" placeholder="Descreva o item vendido..." required>
                 </span>
               </label>
               <label class="service-category-field">
@@ -196,6 +196,7 @@
             <thead>
               <tr>
                 <th>Abrir</th>
+                <th>Ações</th>
                 <th>Cliente</th>
                 <th>Item</th>
                 <th>Status</th>
@@ -209,6 +210,13 @@
                 <tr>
                   <td data-label="Abrir">
                     <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Abrir pedido</a>
+                  </td>
+                  <td data-label="Ações">
+                    <div class="table-action-group">
+                      <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF do pedido</a>
+                      <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF da ordem</a>
+                      <a class="action-link" href="{{ url_for('edit_production_order', job_id=job['id']) }}">Abrir ordem</a>
+                    </div>
                   </td>
                   <td data-label="Cliente">{{ job["customer_display"] }}</td>
                   <td data-label="Item">
