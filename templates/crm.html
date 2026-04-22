@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Cadastros{% endblock %}
 {% block content %}
-  <section class="page-hero">
+  <section class="page-hero crm-page-hero">
     <p class="eyebrow">Cadastros</p>
     <h2>Central de configurações da operação</h2>
     <p class="subtitle">
@@ -9,13 +9,13 @@
     </p>
   </section>
 
-  <section class="settings-groups settings-groups-compact">
+  <section class="settings-groups settings-groups-compact crm-settings-groups">
     {% for group in menu_groups %}
-      <div class="settings-block">
+      <div class="settings-block crm-settings-block">
         <p class="settings-title">{{ group["title"] }}</p>
-        <div class="settings-list">
+        <div class="settings-list crm-settings-list">
           {% for item in group["items"] %}
-            <a class="settings-row" href="{{ item['href'] }}">
+            <a class="settings-row crm-settings-row" href="{{ item['href'] }}">
               <span class="settings-icon">{{ item["icon"] }}</span>
               <span class="settings-label">{{ item["label"] }}</span>
               <span class="settings-count">{{ item["count"] }}</span>
