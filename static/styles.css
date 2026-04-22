@@ -670,6 +670,141 @@ textarea {
   grid-template-columns: minmax(52px, 0.32fr) minmax(460px, 3.35fr) repeat(4, minmax(68px, 0.38fr));
 }
 
+.jobs-page-hero {
+  margin-bottom: 0.85rem;
+}
+
+.jobs-page-hero .eyebrow {
+  margin-bottom: 0.16rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.15em;
+}
+
+.jobs-page-hero h2 {
+  font-size: clamp(1.18rem, 2vw, 1.48rem);
+  line-height: 1.08;
+}
+
+.jobs-page-hero .subtitle {
+  max-width: 48rem;
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.jobs-form-panel .panel-header {
+  margin-bottom: 0.6rem;
+}
+
+.job-form-compact {
+  gap: 0.8rem;
+}
+
+.job-form-compact .job-topic-block {
+  gap: 0.72rem;
+  padding: 0.82rem;
+}
+
+.job-form-compact .commercial-topic-block {
+  gap: 0.68rem;
+}
+
+.job-form-compact .form-section {
+  padding-bottom: 0.4rem;
+}
+
+.job-form-compact .form-section h3 {
+  font-size: 0.98rem;
+}
+
+.job-form-compact .form-section p {
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.job-form-compact label {
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.job-form-compact input,
+.job-form-compact select,
+.job-form-compact textarea {
+  min-height: 42px;
+  padding: 0.62rem 0.78rem;
+  border-radius: 14px;
+}
+
+.job-form-compact textarea {
+  min-height: 86px;
+}
+
+.job-form-compact .quote-number {
+  padding: 0.55rem 0.7rem;
+  border-radius: 14px;
+}
+
+.job-form-compact .quote-number-form > div,
+.job-form-compact .quote-number-form label {
+  min-height: 68px;
+}
+
+.job-form-compact .quote-number span,
+.job-form-compact .quote-number-form label {
+  font-size: 0.78rem;
+}
+
+.job-form-compact .quote-number strong {
+  font-size: 1rem;
+}
+
+.job-form-compact .quote-number-form input,
+.job-form-compact .quote-number-form select {
+  min-height: 40px;
+  padding: 0.56rem 0.72rem;
+}
+
+.job-form-compact .service-row {
+  grid-template-columns:
+    minmax(76px, 0.45fr)
+    minmax(220px, 1.2fr)
+    minmax(360px, 2.2fr)
+    minmax(150px, 0.95fr)
+    minmax(118px, 0.72fr)
+    minmax(118px, 0.72fr)
+    minmax(118px, 0.72fr)
+    minmax(132px, 0.82fr);
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border-radius: 14px;
+}
+
+.job-form-compact .item-description-group {
+  grid-template-columns: minmax(170px, 0.8fr) minmax(0, 1.8fr);
+  gap: 0.5rem;
+}
+
+.job-form-compact .service-category-field input {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.job-form-compact [name="service_unit_price"],
+.job-form-compact .service-additions,
+.job-form-compact .service-discounts,
+.job-form-compact .service-line-total {
+  min-height: 48px;
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.job-form-compact .service-line-total {
+  text-align: center;
+}
+
+.job-actions-row {
+  justify-content: flex-start;
+}
+
 .item-description-group {
   display: grid;
   grid-template-columns: minmax(150px, 0.55fr) minmax(300px, 1.45fr);

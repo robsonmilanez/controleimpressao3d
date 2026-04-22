@@ -1541,6 +1541,8 @@ function setupJobInlineTotals() {
           const itemNameField = row.querySelector("[name='item_name']");
           const serviceQuantitySync = row.querySelector(".service-quantity-sync");
           const serviceNameSync = row.querySelector(".service-name-sync");
+          const serviceCategoryField = row.querySelector(".service-category-display");
+          const serviceCategorySync = row.querySelector(".service-category-sync");
           const serviceNotesSync = row.querySelector(".service-notes-sync");
           const additions = parseNumber(row.querySelector(".service-additions")?.value);
           const discounts = parseNumber(row.querySelector(".service-discounts")?.value);
@@ -1551,6 +1553,9 @@ function setupJobInlineTotals() {
           }
           if (serviceNameSync && itemNameField) {
             serviceNameSync.value = itemNameField.value;
+          }
+          if (serviceCategorySync && serviceCategoryField) {
+            serviceCategorySync.value = serviceCategoryField.value || "";
           }
           if (serviceNotesSync) {
             const notes = [];
@@ -1842,10 +1847,18 @@ function setupJobInlineTotals() {
         const row = event.target.closest(".collection-row");
         const selectedOption = event.target.selectedOptions[0];
         const itemNameField = row?.querySelector("[name='item_name']");
+        const categoryField = row?.querySelector(".service-category-display");
+        const categorySync = row?.querySelector(".service-category-sync");
         const unitPriceField = row?.querySelector("[name='service_unit_price']");
         if (selectedOption?.value && selectedOption.value !== "__new__") {
           if (itemNameField) {
             itemNameField.value = selectedOption.dataset.name || selectedOption.textContent.trim();
+          }
+          if (categoryField) {
+            categoryField.value = selectedOption.dataset.category || "";
+          }
+          if (categorySync) {
+            categorySync.value = selectedOption.dataset.category || "";
           }
           if (unitPriceField) {
             unitPriceField.value = String(
@@ -1853,6 +1866,13 @@ function setupJobInlineTotals() {
             );
           }
           updateServiceTotals();
+        } else {
+          if (categoryField) {
+            categoryField.value = "";
+          }
+          if (categorySync) {
+            categorySync.value = "";
+          }
         }
       }
       if (
@@ -1906,6 +1926,14 @@ function setupJobCollections() {
           field.value = "";
           return;
         }
+        if (field.name === "product_id") {
+          field.selectedIndex = 0;
+          return;
+        }
+        if (field.name === "service_category") {
+          field.value = "";
+          return;
+        }
         if (
           field.name === "service_quantity" ||
           field.name === "component_quantity"
@@ -1920,9 +1948,10 @@ function setupJobCollections() {
         if (
           field.name === "service_hours" ||
           field.name === "service_unit_price" ||
+          field.classList.contains("service-category-display") ||
           field.type === "number"
         ) {
-          field.value = "0";
+          field.value = field.classList.contains("service-category-display") ? "" : "0";
           return;
         }
         field.value = "";

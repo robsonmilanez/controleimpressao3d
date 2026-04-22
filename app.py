@@ -302,6 +302,7 @@ def init_db() -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             job_id INTEGER NOT NULL,
             service_name TEXT NOT NULL,
+            category TEXT,
             quantity REAL NOT NULL DEFAULT 1,
             hours REAL NOT NULL DEFAULT 0,
             unit_price REAL NOT NULL DEFAULT 0,
@@ -509,6 +510,7 @@ def init_db() -> None:
     )
     ensure_column(db, "job_services", "addition_value", "REAL NOT NULL DEFAULT 0")
     ensure_column(db, "job_services", "discount_value", "REAL NOT NULL DEFAULT 0")
+    ensure_column(db, "job_services", "category", "TEXT")
     ensure_column(db, "products", "sku", "TEXT")
     ensure_column(db, "products", "category", "TEXT")
     ensure_column(db, "products", "description", "TEXT")
@@ -871,8 +873,11 @@ def build_job_component_lines(db: sqlite3.Connection) -> list[dict[str, Any]]:
     return lines
 
 
-def build_job_service_lines() -> list[dict[str, Any]]:
+def build_job_service_lines(db: sqlite3.Connection) -> list[dict[str, Any]]:
     names = get_form_list("service_name")
+    item_names = get_form_list("item_name")
+    product_ids = get_form_list("product_id")
+    categories = get_form_list("service_category")
     quantities = get_form_list("service_quantity")
     hours = get_form_list("service_hours")
     unit_prices = get_form_list("service_unit_price")
@@ -882,6 +887,20 @@ def build_job_service_lines() -> list[dict[str, Any]]:
     lines = []
     for index, service_name in enumerate(names):
         service_name = service_name.strip()
+        item_name = item_names[index].strip() if index < len(item_names) else ""
+        product_id = product_ids[index].strip() if index < len(product_ids) else ""
+        category = categories[index].strip() if index < len(categories) else ""
+        if not service_name:
+            service_name = item_name
+        if product_id and not category and not product_id.startswith("__"):
+            product = db.execute(
+                "SELECT category, name FROM products WHERE id = ?",
+                (int(product_id),),
+            ).fetchone()
+            if product is not None:
+                category = (product["category"] or "").strip()
+                if not service_name:
+                    service_name = (product["name"] or "").strip()
         if not service_name:
             continue
         quantity = float(quantities[index] or 1) if index < len(quantities) else 1.0
@@ -905,6 +924,7 @@ def build_job_service_lines() -> list[dict[str, Any]]:
         lines.append(
             {
                 "service_name": service_name,
+                "category": category,
                 "quantity": quantity,
                 "hours": service_hours,
                 "unit_price": unit_price,
@@ -4364,7 +4384,7 @@ def jobs() -> str:
             )
         material_lines = build_job_material_lines(db)
         component_lines = build_job_component_lines(db)
-        service_lines = build_job_service_lines()
+        service_lines = build_job_service_lines(db)
         requested_weight = sum(line["weight_grams"] for line in material_lines)
         material_stock_usage: dict[int, float] = {}
         component_stock_usage: dict[int, float] = {}
@@ -4605,6 +4625,7 @@ def jobs() -> str:
                 INSERT INTO job_services (
                     job_id,
                     service_name,
+                    category,
                     quantity,
                     hours,
                     unit_price,
@@ -4614,11 +4635,12 @@ def jobs() -> str:
                     show_to_customer,
                     notes
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
                 """,
                 (
                     job_id,
                     line["service_name"],
+                    line["category"],
                     line["quantity"],
                     line["hours"],
                     line["unit_price"],
@@ -4897,7 +4919,7 @@ def save_job_commercial_data(
     ).fetchone()
     if customer is None:
         raise ValueError("Cliente invalido para atualizacao comercial.")
-    service_lines = build_job_service_lines()
+    service_lines = build_job_service_lines(db)
     customer_total = sum(line["total_price"] for line in service_lines)
     suggested_price = (
         round(customer_total, 2)
@@ -4961,6 +4983,7 @@ def save_job_commercial_data(
             INSERT INTO job_services (
                 job_id,
                 service_name,
+                category,
                 quantity,
                 hours,
                 unit_price,
@@ -4970,11 +4993,12 @@ def save_job_commercial_data(
                 show_to_customer,
                 notes
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
             """,
             (
                 job_id,
                 line["service_name"],
+                line["category"],
                 line["quantity"],
                 line["hours"],
                 line["unit_price"],
@@ -5073,7 +5097,7 @@ def edit_job(job_id: int) -> str:
             )
         material_lines = build_job_material_lines(db)
         component_lines = build_job_component_lines(db)
-        service_lines = build_job_service_lines()
+        service_lines = build_job_service_lines(db)
         requested_weight = sum(line["weight_grams"] for line in material_lines)
         extra_cost = parse_brazilian_decimal(request.form.get("extra_cost"))
         margin_percent = float(request.form.get("margin_percent") or 0)
@@ -5258,6 +5282,7 @@ def edit_job(job_id: int) -> str:
                 INSERT INTO job_services (
                     job_id,
                     service_name,
+                    category,
                     quantity,
                     hours,
                     unit_price,
@@ -5267,11 +5292,12 @@ def edit_job(job_id: int) -> str:
                     show_to_customer,
                     notes
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
                 """,
                 (
                     job_id,
                     line["service_name"],
+                    line["category"],
                     line["quantity"],
                     line["hours"],
                     line["unit_price"],

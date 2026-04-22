@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Editar pedido #{{ job["id"] }}{% endblock %}
 {% block content %}
-  <section class="page-hero">
+  <section class="page-hero page-hero-compact jobs-page-hero">
     <p class="eyebrow">Pedido/Venda</p>
     <h2>Pedido #{{ "%04d"|format(job["id"]) }}</h2>
     <p class="subtitle">Abra o pedido, ajuste o que for necessário e gere os documentos a partir daqui.</p>
@@ -16,11 +16,11 @@
   </section>
 
   <section class="panel-grid single">
-    <article class="panel">
+    <article class="panel panel-compact jobs-form-panel">
       {% if error %}
         <p class="error">{{ error }}</p>
       {% endif %}
-      <form method="post" class="form-grid job-form" enctype="multipart/form-data">
+      <form method="post" class="form-grid job-form job-form-compact" enctype="multipart/form-data">
         <div class="job-topic-block commercial-topic-block full">
         <div class="form-section full">
           <h3>Dados comerciais</h3>
@@ -130,17 +130,22 @@
               <label class="item-description-field">
                 Descricao do item
                 <span class="item-description-group">
-                  <select class="product-picker" data-new-url="{{ url_for('products', return_to=url_for('edit_job', job_id=job['id'])) }}">
+                  <select class="product-picker" name="product_id" data-new-url="{{ url_for('products', return_to=url_for('edit_job', job_id=job['id'])) }}">
                     <option value="">Nenhum produto cadastrado</option>
                     {% for product in products %}
-                      <option value="{{ product['id'] }}" data-name="{{ product['name'] }}" data-sale-price="{{ product['sale_price'] or 0 }}">{{ product["sku"] or "Produto" }} - {{ product["name"] }}</option>
+                      <option value="{{ product['id'] }}" data-name="{{ product['name'] }}" data-sale-price="{{ product['sale_price'] or 0 }}" data-category="{{ product['category'] or '' }}">{{ product["sku"] or "Produto" }} - {{ product["name"] }}</option>
                     {% endfor %}
                     <option value="__new__">+ Novo produto</option>
                   </select>
                   <input type="text" name="item_name" value="{{ service['service_name'] if service else job['item_name'] }}" required>
                 </span>
               </label>
+              <label class="service-category-field">
+                Categoria
+                <input type="text" class="service-category-display" value="{{ service['category'] if service else '' }}" readonly>
+              </label>
               <input type="hidden" name="service_name" class="service-name-sync" value="{{ service['service_name'] if service else job['item_name'] }}">
+              <input type="hidden" name="service_category" class="service-category-sync" value="{{ service['category'] if service else '' }}">
               <label>
                 Valor unitario
                 <input type="number" name="service_unit_price" min="0" step="0.01" value="{{ service['unit_price'] if service else 0 }}">
@@ -162,10 +167,6 @@
             </div>
           {% endfor %}
         </div>
-        <div class="button-row full">
-          <button type="button" class="secondary-button" data-add-row="services">Adicionar item</button>
-        </div>
-
         <label class="full">
           Link do modelo/arquivo
           <input type="url" name="model_link" value="{{ job['model_link'] or '' }}" placeholder="https://...">
@@ -186,7 +187,10 @@
           <textarea name="customer_notes" rows="3">{{ job["customer_notes"] or "" }}</textarea>
         </label>
         </div>
-        <button type="submit">Salvar alterações</button>
+        <div class="button-row full job-actions-row">
+          <button type="button" class="secondary-button" data-add-row="services">Adicionar outro item</button>
+          <button type="submit">Salvar alterações</button>
+        </div>
       </form>
     </article>
   </section>
