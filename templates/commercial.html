@@ -213,6 +213,7 @@
               <tr>
                 <th>Editar</th>
                 <th>Data</th>
+                <th>Nota fiscal</th>
                 <th>Fornecedor</th>
                 <th>Código</th>
                 <th>Tipo</th>
@@ -231,6 +232,7 @@
                     <a class="action-link" href="{{ url_for('edit_commercial_entry', entry_id=entry['id']) }}">Editar</a>
                   </td>
                   <td data-label="Data">{{ entry["invoice_date"]|br_date if entry["invoice_date"] else entry["created_at"]|br_date }}</td>
+                  <td data-label="Nota fiscal">{{ entry["invoice_number"] or entry["document_number"] or "-" }}</td>
                   <td data-label="Fornecedor">
                     {% if entry["supplier_name"] %}
                       <strong>{{ entry["supplier_name"] }}</strong>
