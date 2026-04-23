@@ -1539,6 +1539,13 @@ def build_commercial_entries_from_form(
     freights = get_form_list("freight")
     taxes = get_form_list("tax")
     discounts = get_form_list("discount")
+    invoice_freight_total = parse_brazilian_decimal(
+        request.form.get("invoice_freight_total")
+    )
+    invoice_tax_total = parse_brazilian_decimal(request.form.get("invoice_tax_total"))
+    invoice_discount_total = parse_brazilian_decimal(
+        request.form.get("invoice_discount_total")
+    )
 
     entry_date = request.form.get("entry_date") or None
     invoice_date = request.form.get("invoice_date") or None
@@ -1570,14 +1577,14 @@ def build_commercial_entries_from_form(
         amount = (
             parse_brazilian_decimal(amounts[index]) if index < len(amounts) else 0.0
         )
-        freight = (
+        raw_freight = (
             parse_brazilian_decimal(freights[index]) if index < len(freights) else 0.0
         )
-        tax = parse_brazilian_decimal(taxes[index]) if index < len(taxes) else 0.0
-        discount = (
+        raw_tax = parse_brazilian_decimal(taxes[index]) if index < len(taxes) else 0.0
+        raw_discount = (
             parse_brazilian_decimal(discounts[index]) if index < len(discounts) else 0.0
         )
-        total_amount = max(amount + freight + tax - discount, 0)
+        total_amount = max(amount + raw_freight + raw_tax - raw_discount, 0)
         unit_cost = total_amount / quantity if quantity > 0 else 0
 
         entries.append(
@@ -1601,9 +1608,9 @@ def build_commercial_entries_from_form(
                 "color_name": selected_option["color_name"] if selected_option else "",
                 "quantity": quantity,
                 "amount": amount,
-                "freight": freight,
-                "tax": tax,
-                "discount": discount,
+                "freight": raw_freight,
+                "tax": raw_tax,
+                "discount": raw_discount,
                 "total_amount": total_amount,
                 "unit_cost": unit_cost,
                 "site": site,
@@ -1611,6 +1618,33 @@ def build_commercial_entries_from_form(
                 "notes": notes,
             }
         )
+    if entries:
+        amount_total = sum(float(entry["amount"] or 0) for entry in entries)
+        if amount_total > 0:
+            line_freight_total = sum(float(entry["freight"] or 0) for entry in entries)
+            line_tax_total = sum(float(entry["tax"] or 0) for entry in entries)
+            line_discount_total = sum(float(entry["discount"] or 0) for entry in entries)
+            if invoice_freight_total or line_freight_total:
+                line_freight_total = invoice_freight_total
+            if invoice_tax_total or line_tax_total:
+                line_tax_total = invoice_tax_total
+            if invoice_discount_total or line_discount_total:
+                line_discount_total = invoice_discount_total
+
+            for entry in entries:
+                share = float(entry["amount"] or 0) / amount_total
+                entry["freight"] = round(line_freight_total * share, 2)
+                entry["tax"] = round(line_tax_total * share, 2)
+                entry["discount"] = round(line_discount_total * share, 2)
+                entry["total_amount"] = max(
+                    entry["amount"] + entry["freight"] + entry["tax"] - entry["discount"],
+                    0,
+                )
+                entry["unit_cost"] = (
+                    entry["total_amount"] / entry["quantity"]
+                    if entry["quantity"] > 0
+                    else 0
+                )
     return entries
 
 

@@ -2540,9 +2540,17 @@ function setupCommercialEntries() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(Math.max(Number(value) || 0, 0));
+  const setCurrencyValue = (field, value) => {
+    if (field) {
+      field.value = formatCurrency(value);
+    }
+  };
 
   forms.forEach((form) => {
     const siteField = form.querySelector("[name='site']");
+    const invoiceFreightField = form.querySelector("[name='invoice_freight_total']");
+    const invoiceTaxField = form.querySelector("[name='invoice_tax_total']");
+    const invoiceDiscountField = form.querySelector("[name='invoice_discount_total']");
 
     const getRows = () =>
       Array.from(form.querySelectorAll("[data-collection='commercial-items'] .collection-row"));
@@ -2584,7 +2592,10 @@ function setupCommercialEntries() {
       }
     };
 
-    const updateSummary = () => {
+    let syncingSummaryFields = false;
+
+    const updateSummary = (options = {}) => {
+      const shouldSyncEditableFields = Boolean(options.syncEditableFields);
       const totals = getRows().reduce(
         (accumulator, row) => {
           const quantity = parseNumber(row.querySelector("[name='quantity']")?.value);
@@ -2605,24 +2616,35 @@ function setupCommercialEntries() {
         },
         { items: 0, quantity: 0, amount: 0, freight: 0, tax: 0, discount: 0, total: 0 }
       );
+      if (shouldSyncEditableFields) {
+        syncingSummaryFields = true;
+        setCurrencyValue(invoiceFreightField, totals.freight);
+        setCurrencyValue(invoiceTaxField, totals.tax);
+        setCurrencyValue(invoiceDiscountField, totals.discount);
+        syncingSummaryFields = false;
+      }
+      const summaryFreight = parseCurrency(invoiceFreightField?.value);
+      const summaryTax = parseCurrency(invoiceTaxField?.value);
+      const summaryDiscount = parseCurrency(invoiceDiscountField?.value);
+      const summaryTotal = Math.max(
+        totals.amount + summaryFreight + summaryTax - summaryDiscount,
+        0
+      );
       const setText = (key, value, isCurrency = true) => {
         const target = form.querySelector(`[data-commercial-summary="${key}"]`);
         if (!target) {
           return;
         }
         if (key === "items") {
-          target.textContent = String(Math.trunc(value));
+          target.value = String(Math.trunc(value));
           return;
         }
-        target.textContent = isCurrency ? `R$ ${formatCurrency(value)}` : formatCurrency(value);
+        target.value = isCurrency ? formatCurrency(value) : formatCurrency(value);
       };
       setText("items", totals.items, false);
       setText("quantity", totals.quantity, false);
       setText("amount", totals.amount);
-      setText("freight", totals.freight);
-      setText("tax", totals.tax);
-      setText("discount", totals.discount);
-      setText("total", totals.total);
+      setText("total", summaryTotal);
     };
 
     const updateTotals = (row) => {
@@ -2645,6 +2667,30 @@ function setupCommercialEntries() {
       const unitCost = quantity > 0 ? total / quantity : 0;
       totalField.value = formatCurrency(total);
       unitCostField.value = formatCurrency(unitCost);
+      updateSummary({ syncEditableFields: true });
+    };
+
+    const distributeSummaryTotals = () => {
+      if (syncingSummaryFields) {
+        return;
+      }
+      const rows = getRows();
+      const amountTotal = rows.reduce(
+        (total, row) => total + parseCurrency(row.querySelector("[name='amount']")?.value),
+        0
+      );
+      const summaryFreight = parseCurrency(invoiceFreightField?.value);
+      const summaryTax = parseCurrency(invoiceTaxField?.value);
+      const summaryDiscount = parseCurrency(invoiceDiscountField?.value);
+
+      rows.forEach((row) => {
+        const amount = parseCurrency(row.querySelector("[name='amount']")?.value);
+        const share = amountTotal > 0 ? amount / amountTotal : 0;
+        setCurrencyValue(row.querySelector("[name='freight']"), summaryFreight * share);
+        setCurrencyValue(row.querySelector("[name='tax']"), summaryTax * share);
+        setCurrencyValue(row.querySelector("[name='discount']"), summaryDiscount * share);
+        updateTotals(row);
+      });
       updateSummary();
     };
 
@@ -2652,7 +2698,7 @@ function setupCommercialEntries() {
       const row = event.target.closest("[data-collection='commercial-items'] .collection-row");
       if (!row) {
         if (event.target.matches("[data-collection='commercial-items']")) {
-          updateSummary();
+          updateSummary({ syncEditableFields: true });
         }
         return;
       }
@@ -2681,17 +2727,23 @@ function setupCommercialEntries() {
       const row = event.target.closest("[data-collection='commercial-items'] .collection-row");
       if (!row) {
         if (event.target.matches("[data-collection='commercial-items']")) {
-          updateSummary();
+          updateSummary({ syncEditableFields: true });
         }
         return;
       }
       updateTotals(row);
     });
 
+    [invoiceFreightField, invoiceTaxField, invoiceDiscountField].forEach((field) => {
+      field?.addEventListener("input", distributeSummaryTotals);
+      field?.addEventListener("change", distributeSummaryTotals);
+    });
+
     getRows().forEach((row) => {
       updateItemDetails(row);
       updateTotals(row);
     });
+    updateSummary();
   });
 }
 

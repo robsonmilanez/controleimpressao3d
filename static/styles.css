@@ -1680,23 +1680,33 @@ input[readonly].computed-field,
 }
 
 .commercial-invoice-summary {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(110px, 1fr));
   gap: 0.5rem;
-  justify-content: flex-end;
   padding: 0.72rem;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(59, 130, 246, 0.08);
 }
 
-.commercial-invoice-summary span {
+.commercial-summary-field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.commercial-summary-field span {
   color: var(--muted);
   font-size: 0.82rem;
 }
 
-.commercial-invoice-summary strong {
-  color: var(--text);
+.commercial-summary-field input {
+  min-height: 38px;
+  padding: 0.5rem 0.58rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-align: right;
 }
 
 .commercial-link-grid,
@@ -3315,7 +3325,8 @@ th {
   .commercial-values-grid,
   .commercial-link-grid,
   .commercial-notes-grid,
-  .commercial-product-row {
+  .commercial-product-row,
+  .commercial-invoice-summary {
     grid-template-columns: minmax(0, 1fr);
   }
 

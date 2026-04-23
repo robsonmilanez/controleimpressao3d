@@ -158,13 +158,34 @@
         </div>
 
         <div class="commercial-invoice-summary full">
-          <span>Itens: <strong data-commercial-summary="items">{{ editing_summary['items']|int if editing_entry else 0 }}</strong></span>
-          <span>Quantidade: <strong data-commercial-summary="quantity">{{ editing_summary['quantity']|br_decimal if editing_entry else '0,00' }}</strong></span>
-          <span>R$: <strong data-commercial-summary="amount">R$ {{ editing_summary['amount']|br_money if editing_entry else '0,00' }}</strong></span>
-          <span>Frete: <strong data-commercial-summary="freight">R$ {{ editing_summary['freight']|br_money if editing_entry else '0,00' }}</strong></span>
-          <span>Imposto: <strong data-commercial-summary="tax">R$ {{ editing_summary['tax']|br_money if editing_entry else '0,00' }}</strong></span>
-          <span>Desconto: <strong data-commercial-summary="discount">R$ {{ editing_summary['discount']|br_money if editing_entry else '0,00' }}</strong></span>
-          <span>Total da nota: <strong data-commercial-summary="total">R$ {{ editing_summary['total']|br_money if editing_entry else '0,00' }}</strong></span>
+          <label class="commercial-summary-field computed-field">
+            <span>Itens</span>
+            <input type="text" data-commercial-summary="items" value="{{ editing_summary['items']|int if editing_entry else 0 }}" readonly tabindex="-1">
+          </label>
+          <label class="commercial-summary-field computed-field">
+            <span>Quantidade</span>
+            <input type="text" data-commercial-summary="quantity" value="{{ editing_summary['quantity']|br_decimal if editing_entry else '0,00' }}" readonly tabindex="-1">
+          </label>
+          <label class="commercial-summary-field computed-field">
+            <span>Subtotal dos produtos</span>
+            <input type="text" data-commercial-summary="amount" value="{{ editing_summary['amount']|br_money if editing_entry else '0,00' }}" readonly tabindex="-1">
+          </label>
+          <label class="commercial-summary-field">
+            <span>Frete geral</span>
+            <input type="text" name="invoice_freight_total" class="currency-field" inputmode="decimal" value="{{ editing_summary['freight']|br_money if editing_entry else '0,00' }}">
+          </label>
+          <label class="commercial-summary-field">
+            <span>Imposto geral</span>
+            <input type="text" name="invoice_tax_total" class="currency-field" inputmode="decimal" value="{{ editing_summary['tax']|br_money if editing_entry else '0,00' }}">
+          </label>
+          <label class="commercial-summary-field">
+            <span>Desconto geral</span>
+            <input type="text" name="invoice_discount_total" class="currency-field" inputmode="decimal" value="{{ editing_summary['discount']|br_money if editing_entry else '0,00' }}">
+          </label>
+          <label class="commercial-summary-field computed-field">
+            <span>Total da nota</span>
+            <input type="text" data-commercial-summary="total" value="{{ editing_summary['total']|br_money if editing_entry else '0,00' }}" readonly tabindex="-1">
+          </label>
         </div>
 
         <div class="commercial-actions full">
