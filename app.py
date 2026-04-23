@@ -6345,16 +6345,52 @@ def fetch_job_detail_by_token(
     return fetch_job_detail(db, int(row["id"]))
 
 
+def build_document_share_context(detail: dict[str, Any]) -> dict[str, str]:
+    job = detail["job"]
+    customer_url = url_for(
+        "public_job_customer_document",
+        token=job["customer_document_token"],
+        _external=True,
+    )
+    production_url = url_for(
+        "public_job_production_document",
+        token=job["production_document_token"],
+        _external=True,
+    )
+    customer_message = f"Olá, segue o pedido #{int(job['id']):04d}: {customer_url}"
+    production_message = (
+        f"Olá, segue a ordem de produção do pedido #{int(job['id']):04d}: {production_url}"
+    )
+    return {
+        "whatsapp_customer_url": build_whatsapp_link(
+            job["customer_phone"], customer_message
+        ),
+        "whatsapp_production_url": build_whatsapp_link(
+            job["customer_phone"], production_message
+        ),
+    }
+
+
 @app.route("/jobs/<int:job_id>/cliente")
 def job_customer_document(job_id: int) -> str:
     detail = fetch_job_detail(get_db(), job_id)
-    return render_template("job_customer_document.html", **detail, public_view=False)
+    return render_template(
+        "job_customer_document.html",
+        **detail,
+        **build_document_share_context(detail),
+        public_view=False,
+    )
 
 
 @app.route("/jobs/<int:job_id>/producao")
 def job_production_document(job_id: int) -> str:
     detail = fetch_job_detail(get_db(), job_id)
-    return render_template("job_production_document.html", **detail, public_view=False)
+    return render_template(
+        "job_production_document.html",
+        **detail,
+        **build_document_share_context(detail),
+        public_view=False,
+    )
 
 
 @app.route("/publico/pedido/<token>")

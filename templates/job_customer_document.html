@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <title>Pedido do cliente #{{ job["id"] }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260423-0245') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260423-0310') }}">
   </head>
   <body class="print-body">
     <main class="print-page customer-document-page">
       <div class="print-actions">
         {% if not public_view %}
           <a class="action-link" href="{{ url_for('jobs') }}">Voltar</a>
+          <a class="action-link" href="{{ whatsapp_customer_url }}" target="_blank" rel="noopener noreferrer">Enviar WhatsApp</a>
         {% endif %}
         <button type="button" onclick="window.print()">Gerar PDF</button>
       </div>
