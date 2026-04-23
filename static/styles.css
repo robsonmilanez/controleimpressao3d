@@ -919,16 +919,16 @@ textarea {
 
 .table-action-group {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 0.3rem;
+  flex-wrap: wrap;
+  gap: 0.24rem;
   align-items: center;
 }
 
 .table-action-group .action-link {
-  min-height: 29px;
-  min-width: 88px;
-  padding: 0.28rem 0.44rem;
-  font-size: 0.72rem;
+  min-height: 28px;
+  min-width: 78px;
+  padding: 0.25rem 0.38rem;
+  font-size: 0.66rem;
   text-align: center;
   border-radius: 9px;
   line-height: 1.1;
@@ -946,12 +946,12 @@ textarea {
 
 .jobs-list-table th:nth-child(1),
 .jobs-list-table td:nth-child(1) {
-  width: 21rem;
+  width: 28rem;
 }
 
 .jobs-list-table th:nth-child(2),
 .jobs-list-table td:nth-child(2) {
-  width: 19rem;
+  width: 20rem;
 }
 
 .jobs-list-table th:nth-child(3),
@@ -3238,6 +3238,143 @@ th {
 }
 
 @media (max-width: 640px) {
+  .print-body {
+    background: #fff;
+  }
+
+  .print-page {
+    width: 100%;
+    min-height: 100vh;
+    padding: 0.72rem;
+    font-size: 0.74rem;
+  }
+
+  .print-actions {
+    justify-content: flex-start;
+    margin-bottom: 0.55rem;
+  }
+
+  .document-header {
+    gap: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
+
+  .document-header h1 {
+    font-size: 1.12rem;
+  }
+
+  .document-header dl {
+    min-width: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .document-header dl div {
+    display: block;
+  }
+
+  .document-header dd {
+    text-align: left;
+  }
+
+  .document-grid,
+  .document-commercial-grid {
+    gap: 0.45rem;
+    margin-top: 0.5rem;
+  }
+
+  .document-grid article,
+  .document-commercial-grid article,
+  .document-section,
+  .document-total {
+    padding: 0.5rem;
+    border-radius: 7px;
+  }
+
+  .document-section,
+  .document-total {
+    margin-top: 0.5rem;
+  }
+
+  .customer-document-page .document-table,
+  .customer-document-page .document-table thead,
+  .customer-document-page .document-table tbody,
+  .customer-document-page .document-table tr,
+  .customer-document-page .document-table th,
+  .customer-document-page .document-table td {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .customer-document-page .document-table thead {
+    display: none;
+  }
+
+  .customer-document-page .document-table tr {
+    padding: 0.45rem 0;
+    border-bottom: 1px solid #d4d9df;
+  }
+
+  .customer-document-page .document-table td {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: 0.45rem;
+    padding: 0.18rem 0;
+    border-bottom: 0;
+    font-weight: 700;
+  }
+
+  .customer-document-page .document-table td::before {
+    content: attr(data-label);
+    color: #68717d;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .document-total {
+    width: 100%;
+  }
+
+  .document-photos img {
+    width: 92px;
+    height: 74px;
+  }
+
+  .topbar {
+    position: static;
+    gap: 0.55rem;
+    padding: 0.62rem 0.85rem 0.58rem;
+  }
+
+  .brand-block .eyebrow {
+    margin-bottom: 0.15rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+  }
+
+  .topbar h1 {
+    max-width: 19rem;
+    font-size: 1.03rem;
+    line-height: 1.05;
+    white-space: normal;
+  }
+
+  .topbar .subtitle {
+    display: none;
+  }
+
+  .nav {
+    gap: 0.38rem;
+    padding-bottom: 0.05rem;
+  }
+
+  .nav a {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.78rem;
+  }
+
   .product-material-row,
   .product-component-row,
   .product-pricing-grid {
@@ -3246,7 +3383,16 @@ th {
   }
 
   .page {
-    padding-top: 0.95rem;
+    padding: 0.78rem 0.85rem 2.3rem;
+  }
+
+  .page-hero {
+    margin-bottom: 0.72rem;
+  }
+
+  .page-hero .eyebrow {
+    margin-bottom: 0.12rem;
+    font-size: 0.58rem;
   }
 
   .jobs-page-hero h2 {

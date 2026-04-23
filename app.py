@@ -640,6 +640,8 @@ def init_db() -> None:
     ensure_column(db, "jobs", "valid_until", "TEXT")
     ensure_column(db, "jobs", "payment_terms", "TEXT")
     ensure_column(db, "jobs", "model_link", "TEXT")
+    ensure_column(db, "jobs", "customer_document_token", "TEXT")
+    ensure_column(db, "jobs", "production_document_token", "TEXT")
     ensure_column(db, "jobs", "printer_id", "INTEGER")
     ensure_column(db, "jobs", "filament_dryer_id", "INTEGER")
     ensure_column(db, "jobs", "dryer_hours", "REAL NOT NULL DEFAULT 0")
@@ -699,6 +701,22 @@ def init_db() -> None:
         "UPDATE jobs SET created_at = ? WHERE created_at IS NULL OR created_at = ''",
         (date.today().isoformat(),),
     )
+    rows_without_customer_token = db.execute(
+        "SELECT id FROM jobs WHERE customer_document_token IS NULL OR customer_document_token = ''"
+    ).fetchall()
+    for row in rows_without_customer_token:
+        db.execute(
+            "UPDATE jobs SET customer_document_token = ? WHERE id = ?",
+            (make_public_document_token(), row["id"]),
+        )
+    rows_without_production_token = db.execute(
+        "SELECT id FROM jobs WHERE production_document_token IS NULL OR production_document_token = ''"
+    ).fetchall()
+    for row in rows_without_production_token:
+        db.execute(
+            "UPDATE jobs SET production_document_token = ? WHERE id = ?",
+            (make_public_document_token(), row["id"]),
+        )
     db.execute(
         """
         INSERT OR IGNORE INTO operational_cost_settings (
@@ -1868,6 +1886,10 @@ def build_whatsapp_link(phone: str | None, message: str) -> str:
     if phone_digits:
         return f"https://wa.me/{phone_digits}?text={encoded_message}"
     return f"https://wa.me/?text={encoded_message}"
+
+
+def make_public_document_token() -> str:
+    return uuid.uuid4().hex
 
 
 def get_printer_cost_rates(
@@ -5167,9 +5189,11 @@ def jobs() -> str:
                     printer_id,
                     filament_dryer_id,
                     dryer_hours,
-                    dryer_cost_per_hour
+                    dryer_cost_per_hour,
+                    customer_document_token,
+                    production_document_token
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     customer["name"],
@@ -5217,6 +5241,8 @@ def jobs() -> str:
                     ),
                     dryer_hours,
                     dryer_cost_per_hour,
+                    make_public_document_token(),
+                    make_public_document_token(),
                 ),
             )
             job_id = int(cursor.lastrowid)
@@ -5445,9 +5471,15 @@ def prepare_jobs_for_list(jobs: list[sqlite3.Row]) -> list[dict[str, Any]]:
     prepared_jobs: list[dict[str, Any]] = []
     for job in jobs:
         item = dict(job)
-        customer_url = url_for("job_customer_document", job_id=item["id"], _external=True)
+        customer_url = url_for(
+            "public_job_customer_document",
+            token=item["customer_document_token"],
+            _external=True,
+        )
         production_url = url_for(
-            "job_production_document", job_id=item["id"], _external=True
+            "public_job_production_document",
+            token=item["production_document_token"],
+            _external=True,
         )
         customer_message = (
             f"Olá, segue o pedido #{int(item['id']):04d}: {customer_url}"
@@ -6294,16 +6326,47 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
     }
 
 
+def fetch_job_detail_by_token(
+    db: sqlite3.Connection,
+    token: str,
+    token_column: str,
+) -> dict[str, Any]:
+    if token_column not in {"customer_document_token", "production_document_token"}:
+        abort(404)
+    token = str(token or "").strip()
+    if len(token) < 24:
+        abort(404)
+    row = db.execute(
+        f"SELECT id FROM jobs WHERE {token_column} = ?",
+        (token,),
+    ).fetchone()
+    if row is None:
+        abort(404)
+    return fetch_job_detail(db, int(row["id"]))
+
+
 @app.route("/jobs/<int:job_id>/cliente")
 def job_customer_document(job_id: int) -> str:
     detail = fetch_job_detail(get_db(), job_id)
-    return render_template("job_customer_document.html", **detail)
+    return render_template("job_customer_document.html", **detail, public_view=False)
 
 
 @app.route("/jobs/<int:job_id>/producao")
 def job_production_document(job_id: int) -> str:
     detail = fetch_job_detail(get_db(), job_id)
-    return render_template("job_production_document.html", **detail)
+    return render_template("job_production_document.html", **detail, public_view=False)
+
+
+@app.route("/publico/pedido/<token>")
+def public_job_customer_document(token: str) -> str:
+    detail = fetch_job_detail_by_token(get_db(), token, "customer_document_token")
+    return render_template("job_customer_document.html", **detail, public_view=True)
+
+
+@app.route("/publico/ordem/<token>")
+def public_job_production_document(token: str) -> str:
+    detail = fetch_job_detail_by_token(get_db(), token, "production_document_token")
+    return render_template("job_production_document.html", **detail, public_view=True)
 
 
 @app.route("/pricing", methods=["GET", "POST"])

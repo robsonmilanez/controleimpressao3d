@@ -3,13 +3,16 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
     <title>Ordem de produção #{{ job["id"] }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260414-1435') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260423-0245') }}">
   </head>
   <body class="print-body">
     <main class="print-page">
       <div class="print-actions">
-        <a class="action-link" href="{{ url_for('jobs') }}">Voltar</a>
+        {% if not public_view %}
+          <a class="action-link" href="{{ url_for('jobs') }}">Voltar</a>
+        {% endif %}
         <button type="button" onclick="window.print()">Gerar PDF</button>
       </div>
 
