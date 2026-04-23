@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import uuid
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -448,7 +449,11 @@ def init_db() -> None:
 
         CREATE TABLE IF NOT EXISTS commercial_entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invoice_group_id TEXT,
+            entry_date TEXT,
             invoice_date TEXT,
+            order_number TEXT,
+            invoice_number TEXT,
             document_number TEXT,
             supplier_id INTEGER,
             item_kind TEXT NOT NULL,
@@ -467,6 +472,7 @@ def init_db() -> None:
             total_amount REAL NOT NULL DEFAULT 0,
             unit_cost REAL NOT NULL DEFAULT 0,
             site TEXT,
+            product_name TEXT,
             notes TEXT,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(supplier_id) REFERENCES suppliers(id),
@@ -610,6 +616,11 @@ def init_db() -> None:
     ensure_column(db, "components", "stock_quantity", "REAL NOT NULL DEFAULT 0")
     ensure_column(db, "components", "minimum_quantity", "REAL NOT NULL DEFAULT 0")
     ensure_column(db, "commercial_entries", "document_number", "TEXT")
+    ensure_column(db, "commercial_entries", "invoice_group_id", "TEXT")
+    ensure_column(db, "commercial_entries", "entry_date", "TEXT")
+    ensure_column(db, "commercial_entries", "order_number", "TEXT")
+    ensure_column(db, "commercial_entries", "invoice_number", "TEXT")
+    ensure_column(db, "commercial_entries", "product_name", "TEXT")
     ensure_column(db, "suppliers", "supplier_link", "TEXT")
     ensure_column(db, "components", "purchase_link", "TEXT")
     ensure_column(db, "components", "notes", "TEXT")
@@ -1340,6 +1351,7 @@ def fetch_recent_commercial_entries(
         """
         SELECT
             commercial_entries.*,
+            COALESCE(commercial_entries.invoice_group_id, 'entry-' || commercial_entries.id) AS effective_group_id,
             suppliers.name AS supplier_name,
             suppliers.supplier_link AS supplier_link,
             CASE
@@ -1350,7 +1362,7 @@ def fetch_recent_commercial_entries(
         FROM commercial_entries
         LEFT JOIN suppliers ON suppliers.id = commercial_entries.supplier_id
         LEFT JOIN components ON components.id = commercial_entries.component_id
-        ORDER BY COALESCE(commercial_entries.invoice_date, commercial_entries.created_at) DESC,
+        ORDER BY COALESCE(commercial_entries.invoice_date, commercial_entries.entry_date, commercial_entries.created_at) DESC,
                  commercial_entries.id DESC
         LIMIT ?
         """,
@@ -1365,6 +1377,7 @@ def fetch_commercial_entry(
         """
         SELECT
             commercial_entries.*,
+            COALESCE(commercial_entries.invoice_group_id, 'entry-' || commercial_entries.id) AS effective_group_id,
             suppliers.name AS supplier_name,
             suppliers.supplier_link AS supplier_link,
             CASE
@@ -1379,6 +1392,44 @@ def fetch_commercial_entry(
         """,
         (entry_id,),
     ).fetchone()
+
+
+def fetch_commercial_entry_group(
+    db: sqlite3.Connection, entry: sqlite3.Row | None
+) -> list[sqlite3.Row]:
+    if entry is None:
+        return []
+    group_id = entry["invoice_group_id"] or f"entry-{entry['id']}"
+    if entry["invoice_group_id"]:
+        return db.execute(
+            """
+            SELECT
+                commercial_entries.*,
+                CASE
+                    WHEN commercial_entries.item_kind = 'material' THEN 'g'
+                    WHEN commercial_entries.item_kind = 'component' THEN COALESCE(NULLIF(components.unit_measure, ''), 'un')
+                    ELSE '-'
+                END AS unit_name
+            FROM commercial_entries
+            LEFT JOIN components ON components.id = commercial_entries.component_id
+            WHERE commercial_entries.invoice_group_id = ?
+            ORDER BY commercial_entries.id ASC
+            """,
+            (group_id,),
+        ).fetchall()
+    return [entry]
+
+
+def commercial_group_summary(entries: list[sqlite3.Row] | list[dict[str, Any]]) -> dict[str, float]:
+    return {
+        "items": float(len(entries)),
+        "quantity": round(sum(float(entry["quantity"] or 0) for entry in entries), 2),
+        "amount": round(sum(float(entry["amount"] or 0) for entry in entries), 2),
+        "freight": round(sum(float(entry["freight"] or 0) for entry in entries), 2),
+        "tax": round(sum(float(entry["tax"] or 0) for entry in entries), 2),
+        "discount": round(sum(float(entry["discount"] or 0) for entry in entries), 2),
+        "total": round(sum(float(entry["total_amount"] or 0) for entry in entries), 2),
+    }
 
 
 def apply_commercial_entry_stock(
@@ -1477,6 +1528,131 @@ def apply_commercial_entry_stock(
                 entry["component_id"],
             ),
         )
+
+
+def build_commercial_entries_from_form(
+    item_options: list[dict[str, Any]], group_id: str | None = None
+) -> list[dict[str, Any]]:
+    item_refs = get_form_list("item_ref")
+    quantities = get_form_list("quantity")
+    amounts = get_form_list("amount")
+    freights = get_form_list("freight")
+    taxes = get_form_list("tax")
+    discounts = get_form_list("discount")
+
+    entry_date = request.form.get("entry_date") or None
+    invoice_date = request.form.get("invoice_date") or None
+    order_number = request.form.get("order_number", "").strip()
+    invoice_number = request.form.get("invoice_number", "").strip()
+    document_number = invoice_number or request.form.get("document_number", "").strip()
+    supplier_id = parse_integerish(request.form.get("supplier_id")) or None
+    product_name = request.form.get("product_name", "").strip()
+    site = request.form.get("site", "").strip()
+    notes = request.form.get("notes", "").strip()
+    invoice_group_id = group_id or uuid.uuid4().hex
+
+    entries: list[dict[str, Any]] = []
+    for index, item_ref in enumerate(item_refs):
+        item_ref = (item_ref or "").strip()
+        quantity = (
+            parse_loose_float(quantities[index], 0.0)
+            if index < len(quantities)
+            else 0.0
+        )
+        if ":" not in item_ref or quantity <= 0:
+            continue
+
+        item_kind, raw_item_id = item_ref.split(":", 1)
+        item_id = parse_integerish(raw_item_id)
+        selected_option = next(
+            (option for option in item_options if option["ref"] == item_ref), None
+        )
+        amount = (
+            parse_brazilian_decimal(amounts[index]) if index < len(amounts) else 0.0
+        )
+        freight = (
+            parse_brazilian_decimal(freights[index]) if index < len(freights) else 0.0
+        )
+        tax = parse_brazilian_decimal(taxes[index]) if index < len(taxes) else 0.0
+        discount = (
+            parse_brazilian_decimal(discounts[index]) if index < len(discounts) else 0.0
+        )
+        total_amount = max(amount + freight + tax - discount, 0)
+        unit_cost = total_amount / quantity if quantity > 0 else 0
+
+        entries.append(
+            {
+                "invoice_group_id": invoice_group_id,
+                "entry_date": entry_date,
+                "invoice_date": invoice_date,
+                "order_number": order_number,
+                "invoice_number": invoice_number,
+                "document_number": document_number,
+                "supplier_id": supplier_id,
+                "item_kind": item_kind,
+                "item_type": selected_option["item_type"] if selected_option else "",
+                "material_id": item_id if item_kind == "material" else None,
+                "component_id": item_id if item_kind == "component" else None,
+                "item_code": selected_option["code"] if selected_option else "",
+                "brand_name": selected_option["brand_name"] if selected_option else "",
+                "line_description": (
+                    selected_option["line_description"] if selected_option else ""
+                ),
+                "color_name": selected_option["color_name"] if selected_option else "",
+                "quantity": quantity,
+                "amount": amount,
+                "freight": freight,
+                "tax": tax,
+                "discount": discount,
+                "total_amount": total_amount,
+                "unit_cost": unit_cost,
+                "site": site,
+                "product_name": product_name,
+                "notes": notes,
+            }
+        )
+    return entries
+
+
+def insert_commercial_entries(
+    db: sqlite3.Connection, entries: list[dict[str, Any]]
+) -> None:
+    for entry_data in entries:
+        cursor = db.execute(
+            """
+            INSERT INTO commercial_entries (
+                invoice_group_id,
+                entry_date,
+                invoice_date,
+                order_number,
+                invoice_number,
+                document_number,
+                supplier_id,
+                item_kind,
+                item_type,
+                material_id,
+                component_id,
+                item_code,
+                brand_name,
+                line_description,
+                color_name,
+                quantity,
+                amount,
+                freight,
+                tax,
+                discount,
+                total_amount,
+                unit_cost,
+                site,
+                product_name,
+                notes
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            tuple(entry_data.values()),
+        )
+        entry_data["id"] = cursor.lastrowid
+        apply_commercial_entry_stock(db, entry_data, 1)
 
 
 def calculate_material_costs(
@@ -3353,21 +3529,12 @@ def commercial() -> str:
     editing_entry = (
         fetch_commercial_entry(db, selected_entry_id) if selected_entry_id else None
     )
+    editing_entries = fetch_commercial_entry_group(db, editing_entry)
+    editing_summary = commercial_group_summary(editing_entries)
 
     if request.method == "POST":
-        item_ref = request.form.get("item_ref", "").strip()
-        supplier_id = parse_integerish(request.form.get("supplier_id"))
-        invoice_date = request.form.get("invoice_date") or None
-        document_number = request.form.get("document_number", "").strip()
-        quantity = float(request.form.get("quantity") or 0)
-        amount = parse_brazilian_decimal(request.form.get("amount"))
-        freight = parse_brazilian_decimal(request.form.get("freight"))
-        tax = parse_brazilian_decimal(request.form.get("tax"))
-        discount = parse_brazilian_decimal(request.form.get("discount"))
-        site = request.form.get("site", "").strip()
-        notes = request.form.get("notes", "").strip()
-
-        if ":" not in item_ref or quantity <= 0:
+        entries_data = build_commercial_entries_from_form(item_options)
+        if not entries_data:
             return render_template(
                 "commercial.html",
                 suppliers=suppliers,
@@ -3375,80 +3542,18 @@ def commercial() -> str:
                 today_date=date.today().isoformat(),
                 entries=fetch_recent_commercial_entries(db),
                 editing_entry=editing_entry,
+                editing_entries=editing_entries,
+                editing_summary=editing_summary,
                 form_action=(
                     url_for("update_commercial_entry", entry_id=editing_entry["id"])
                     if editing_entry
                     else url_for("commercial")
                 ),
                 submit_label="Salvar alterações" if editing_entry else "Salvar lançamento",
-                error="Preencha o código e a quantidade para registrar a nota fiscal.",
+                error="Preencha pelo menos um produto com código e quantidade para registrar a nota fiscal.",
             )
 
-        item_kind, raw_item_id = item_ref.split(":", 1)
-        item_id = parse_integerish(raw_item_id)
-        selected_option = next((option for option in item_options if option["ref"] == item_ref), None)
-        total_amount = max(amount + freight + tax - discount, 0)
-        unit_cost = total_amount / quantity if quantity > 0 else 0
-
-        material_id = item_id if item_kind == "material" else None
-        component_id = item_id if item_kind == "component" else None
-
-        entry_data = {
-            "invoice_date": invoice_date,
-            "document_number": document_number,
-            "supplier_id": supplier_id or None,
-            "item_kind": item_kind,
-            "item_type": request.form.get("item_type", "").strip()
-            or (selected_option["item_type"] if selected_option else ""),
-            "material_id": material_id,
-            "component_id": component_id,
-            "item_code": selected_option["code"] if selected_option else "",
-            "brand_name": selected_option["brand_name"] if selected_option else "",
-            "line_description": selected_option["line_description"] if selected_option else "",
-            "color_name": request.form.get("color_name", "").strip()
-            or (selected_option["color_name"] if selected_option else ""),
-            "quantity": quantity,
-            "amount": amount,
-            "freight": freight,
-            "tax": tax,
-            "discount": discount,
-            "total_amount": total_amount,
-            "unit_cost": unit_cost,
-            "site": site,
-            "notes": notes,
-        }
-
-        cursor = db.execute(
-            """
-            INSERT INTO commercial_entries (
-                invoice_date,
-                document_number,
-                supplier_id,
-                item_kind,
-                item_type,
-                material_id,
-                component_id,
-                item_code,
-                brand_name,
-                line_description,
-                color_name,
-                quantity,
-                amount,
-                freight,
-                tax,
-                discount,
-                total_amount,
-                unit_cost,
-                site,
-                notes
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            tuple(entry_data.values()),
-        )
-        entry_data["id"] = cursor.lastrowid
-        apply_commercial_entry_stock(db, entry_data, 1)
-
+        insert_commercial_entries(db, entries_data)
         db.commit()
         return redirect(url_for("commercial"))
 
@@ -3459,6 +3564,8 @@ def commercial() -> str:
         today_date=date.today().isoformat(),
         entries=fetch_recent_commercial_entries(db),
         editing_entry=editing_entry,
+        editing_entries=editing_entries,
+        editing_summary=editing_summary,
         form_action=(
             url_for("update_commercial_entry", entry_id=editing_entry["id"])
             if editing_entry
@@ -3482,84 +3589,22 @@ def update_commercial_entry(entry_id: int) -> str:
         abort(404)
 
     item_options = fetch_commercial_item_options(db)
-    item_ref = request.form.get("item_ref", "").strip()
-    supplier_id = parse_integerish(request.form.get("supplier_id"))
-    invoice_date = request.form.get("invoice_date") or None
-    document_number = request.form.get("document_number", "").strip()
-    quantity = float(request.form.get("quantity") or 0)
-    amount = parse_brazilian_decimal(request.form.get("amount"))
-    freight = parse_brazilian_decimal(request.form.get("freight"))
-    tax = parse_brazilian_decimal(request.form.get("tax"))
-    discount = parse_brazilian_decimal(request.form.get("discount"))
-    site = request.form.get("site", "").strip()
-    notes = request.form.get("notes", "").strip()
-    if ":" not in item_ref or quantity <= 0:
+    existing_entries = fetch_commercial_entry_group(db, existing_entry)
+    group_id = existing_entry["invoice_group_id"] or uuid.uuid4().hex
+    entries_data = build_commercial_entries_from_form(item_options, group_id)
+    if not entries_data:
         return redirect(url_for("commercial", selected_entry_id=entry_id))
 
-    item_kind, raw_item_id = item_ref.split(":", 1)
-    item_id = parse_integerish(raw_item_id)
-    selected_option = next((option for option in item_options if option["ref"] == item_ref), None)
-    total_amount = max(amount + freight + tax - discount, 0)
-    unit_cost = total_amount / quantity if quantity > 0 else 0
-    material_id = item_id if item_kind == "material" else None
-    component_id = item_id if item_kind == "component" else None
-
-    apply_commercial_entry_stock(db, existing_entry, -1)
-    db.execute(
-        """
-        UPDATE commercial_entries
-        SET
-            invoice_date = ?,
-            document_number = ?,
-            supplier_id = ?,
-            item_kind = ?,
-            item_type = ?,
-            material_id = ?,
-            component_id = ?,
-            item_code = ?,
-            brand_name = ?,
-            line_description = ?,
-            color_name = ?,
-            quantity = ?,
-            amount = ?,
-            freight = ?,
-            tax = ?,
-            discount = ?,
-            total_amount = ?,
-            unit_cost = ?,
-            site = ?,
-            notes = ?
-        WHERE id = ?
-        """,
-        (
-            invoice_date,
-            document_number,
-            supplier_id or None,
-            item_kind,
-            request.form.get("item_type", "").strip()
-            or (selected_option["item_type"] if selected_option else ""),
-            material_id,
-            component_id,
-            selected_option["code"] if selected_option else "",
-            selected_option["brand_name"] if selected_option else "",
-            selected_option["line_description"] if selected_option else "",
-            request.form.get("color_name", "").strip()
-            or (selected_option["color_name"] if selected_option else ""),
-            quantity,
-            amount,
-            freight,
-            tax,
-            discount,
-            total_amount,
-            unit_cost,
-            site,
-            notes,
-            entry_id,
-        ),
-    )
-    updated_entry = fetch_commercial_entry(db, entry_id)
-    if updated_entry is not None:
-        apply_commercial_entry_stock(db, updated_entry, 1)
+    for entry in existing_entries:
+        apply_commercial_entry_stock(db, entry, -1)
+    if existing_entry["invoice_group_id"]:
+        db.execute(
+            "DELETE FROM commercial_entries WHERE invoice_group_id = ?",
+            (existing_entry["invoice_group_id"],),
+        )
+    else:
+        db.execute("DELETE FROM commercial_entries WHERE id = ?", (entry_id,))
+    insert_commercial_entries(db, entries_data)
     db.commit()
     return redirect(url_for("commercial"))
 

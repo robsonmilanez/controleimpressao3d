@@ -2542,28 +2542,23 @@ function setupCommercialEntries() {
     }).format(Math.max(Number(value) || 0, 0));
 
   forms.forEach((form) => {
-    const typeField = form.querySelector("[name='item_type']");
-    const codeField = form.querySelector("[name='item_ref']");
-    const brandField = form.querySelector("[name='brand_name_display']");
-    const descriptionField = form.querySelector("[name='line_description_display']");
-    const colorField =
-      form.querySelector("[name='color_name_display']") ||
-      form.querySelector("[name='color_name']");
-    const unitField = form.querySelector("[name='unit_name_display']");
-    const quantityField = form.querySelector("[name='quantity']");
-    const amountField = form.querySelector("[name='amount']");
-    const freightField = form.querySelector("[name='freight']");
-    const taxField = form.querySelector("[name='tax']");
-    const discountField = form.querySelector("[name='discount']");
-    const totalField = form.querySelector("[name='total_amount_display']");
-    const unitCostField = form.querySelector("[name='unit_cost_display']");
     const siteField = form.querySelector("[name='site']");
 
-    if (!codeField || !brandField || !descriptionField || !colorField || !totalField || !unitCostField) {
-      return;
-    }
+    const getRows = () =>
+      Array.from(form.querySelectorAll("[data-collection='commercial-items'] .collection-row"));
 
-    const updateItemDetails = () => {
+    const updateItemDetails = (row) => {
+      const typeField = row.querySelector("[name='item_type']");
+      const codeField = row.querySelector("[name='item_ref']");
+      const brandField = row.querySelector("[name='brand_name_display']");
+      const descriptionField = row.querySelector("[name='line_description_display']");
+      const colorField =
+        row.querySelector("[name='color_name_display']") ||
+        row.querySelector("[name='color_name']");
+      const unitField = row.querySelector("[name='unit_name_display']");
+      if (!codeField || !brandField || !descriptionField || !colorField) {
+        return;
+      }
       const selectedOption = codeField.selectedOptions[0];
       if (!selectedOption || !selectedOption.value) {
         brandField.value = "";
@@ -2589,7 +2584,58 @@ function setupCommercialEntries() {
       }
     };
 
-    const updateTotals = () => {
+    const updateSummary = () => {
+      const totals = getRows().reduce(
+        (accumulator, row) => {
+          const quantity = parseNumber(row.querySelector("[name='quantity']")?.value);
+          const amount = parseCurrency(row.querySelector("[name='amount']")?.value);
+          const freight = parseCurrency(row.querySelector("[name='freight']")?.value);
+          const tax = parseCurrency(row.querySelector("[name='tax']")?.value);
+          const discount = parseCurrency(row.querySelector("[name='discount']")?.value);
+          const total = Math.max(amount + freight + tax - discount, 0);
+          const hasItem = Boolean(row.querySelector("[name='item_ref']")?.value);
+          accumulator.items += hasItem ? 1 : 0;
+          accumulator.quantity += quantity;
+          accumulator.amount += amount;
+          accumulator.freight += freight;
+          accumulator.tax += tax;
+          accumulator.discount += discount;
+          accumulator.total += total;
+          return accumulator;
+        },
+        { items: 0, quantity: 0, amount: 0, freight: 0, tax: 0, discount: 0, total: 0 }
+      );
+      const setText = (key, value, isCurrency = true) => {
+        const target = form.querySelector(`[data-commercial-summary="${key}"]`);
+        if (!target) {
+          return;
+        }
+        if (key === "items") {
+          target.textContent = String(Math.trunc(value));
+          return;
+        }
+        target.textContent = isCurrency ? `R$ ${formatCurrency(value)}` : formatCurrency(value);
+      };
+      setText("items", totals.items, false);
+      setText("quantity", totals.quantity, false);
+      setText("amount", totals.amount);
+      setText("freight", totals.freight);
+      setText("tax", totals.tax);
+      setText("discount", totals.discount);
+      setText("total", totals.total);
+    };
+
+    const updateTotals = (row) => {
+      const quantityField = row.querySelector("[name='quantity']");
+      const amountField = row.querySelector("[name='amount']");
+      const freightField = row.querySelector("[name='freight']");
+      const taxField = row.querySelector("[name='tax']");
+      const discountField = row.querySelector("[name='discount']");
+      const totalField = row.querySelector("[name='total_amount_display']");
+      const unitCostField = row.querySelector("[name='unit_cost_display']");
+      if (!totalField || !unitCostField) {
+        return;
+      }
       const quantity = parseNumber(quantityField?.value);
       const amount = parseCurrency(amountField?.value);
       const freight = parseCurrency(freightField?.value);
@@ -2599,9 +2645,22 @@ function setupCommercialEntries() {
       const unitCost = quantity > 0 ? total / quantity : 0;
       totalField.value = formatCurrency(total);
       unitCostField.value = formatCurrency(unitCost);
+      updateSummary();
     };
 
-    codeField.addEventListener("change", () => {
+    form.addEventListener("change", (event) => {
+      const row = event.target.closest("[data-collection='commercial-items'] .collection-row");
+      if (!row) {
+        if (event.target.matches("[data-collection='commercial-items']")) {
+          updateSummary();
+        }
+        return;
+      }
+      const codeField = row.querySelector("[name='item_ref']");
+      if (!codeField || event.target !== codeField) {
+        updateTotals(row);
+        return;
+      }
       if (codeField.value === "__new_component__") {
         saveFormDraft(form);
         codeField.value = "";
@@ -2614,16 +2673,25 @@ function setupCommercialEntries() {
         window.location.href = codeField.dataset.materialUrl;
         return;
       }
-      updateItemDetails();
-      updateTotals();
-    });
-    [quantityField, amountField, freightField, taxField, discountField].forEach((field) => {
-      field?.addEventListener("input", updateTotals);
-      field?.addEventListener("change", updateTotals);
+      updateItemDetails(row);
+      updateTotals(row);
     });
 
-    updateItemDetails();
-    updateTotals();
+    form.addEventListener("input", (event) => {
+      const row = event.target.closest("[data-collection='commercial-items'] .collection-row");
+      if (!row) {
+        if (event.target.matches("[data-collection='commercial-items']")) {
+          updateSummary();
+        }
+        return;
+      }
+      updateTotals(row);
+    });
+
+    getRows().forEach((row) => {
+      updateItemDetails(row);
+      updateTotals(row);
+    });
   });
 }
 

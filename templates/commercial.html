@@ -14,126 +14,157 @@
       <div class="panel-header">
         <div>
           <p class="panel-kicker">Lançamento</p>
-          <h2>{{ "Editar lançamento" if editing_entry else "Nota fiscal de compra" }}</h2>
+          <h2>{{ "Editar nota fiscal" if editing_entry else "Nota fiscal de compra" }}</h2>
         </div>
       </div>
       {% if error %}
         <p class="error">{{ error }}</p>
       {% endif %}
+      {% set commercial_rows = editing_entries if editing_entries else [none] %}
+      {% set first_entry = commercial_rows[0] if editing_entries else none %}
       <form method="post" action="{{ form_action }}" class="form-grid commercial-entry-form commercial-distribution-form">
         <div class="commercial-distribution-row commercial-top-grid full">
           <label class="commercial-distribution-field">
-            <span class="commercial-field-label">Data</span>
-            <input type="hidden" name="invoice_date" value="{{ editing_entry['invoice_date'] or today_date if editing_entry else today_date }}">
-            <input type="text" class="date-mask-field" data-date-field="invoice_date" inputmode="numeric" maxlength="10" placeholder="dd/mm/aa" value="{{ editing_entry['invoice_date'] or today_date if editing_entry else today_date }}">
+            <span class="commercial-field-label">Data de entrada do produto</span>
+            <input type="hidden" name="invoice_date" value="{{ first_entry['invoice_date'] or today_date if first_entry else today_date }}">
+            <input type="text" class="date-mask-field" data-date-field="invoice_date" inputmode="numeric" maxlength="10" placeholder="dd/mm/aa" value="{{ first_entry['invoice_date'] or today_date if first_entry else today_date }}">
           </label>
           <label class="commercial-distribution-field">
-            <span class="commercial-field-label">Número documento</span>
-            <input type="text" name="document_number" value="{{ editing_entry['document_number'] if editing_entry else '' }}">
+            <span class="commercial-field-label">Número do pedido</span>
+            <input type="text" name="order_number" value="{{ first_entry['order_number'] if first_entry else '' }}">
           </label>
           <label class="commercial-distribution-field">
-            <span class="commercial-field-label">Fornecedor</span>
+            <span class="commercial-field-label">Número da nota fiscal</span>
+            <input type="text" name="invoice_number" value="{{ first_entry['invoice_number'] or first_entry['document_number'] if first_entry else '' }}">
+          </label>
+          <label class="commercial-distribution-field">
+            <span class="commercial-field-label">Código do fornecedor</span>
             <select name="supplier_id" data-new-url="{{ url_for('registry_page', section='suppliers', return_to=url_for('commercial')) }}">
               <option value="">Nenhum</option>
               {% for supplier in suppliers %}
-                <option value="{{ supplier['id'] }}" {% if editing_entry and supplier['id'] == editing_entry['supplier_id'] %}selected{% endif %}>{{ supplier["name"] }}</option>
+                <option value="{{ supplier['id'] }}" {% if first_entry and supplier['id'] == first_entry['supplier_id'] %}selected{% endif %}>{{ supplier["name"] }}</option>
               {% endfor %}
               <option value="__new__">+ Cadastrar novo fornecedor</option>
             </select>
           </label>
         </div>
 
-        <div class="commercial-distribution-row commercial-item-grid full">
-          <label class="commercial-distribution-field">
-            <span class="commercial-field-label">Código material</span>
-            <select
-              name="item_ref"
-              data-component-url="{{ url_for('registry_page', section='components', return_to=url_for('commercial')) }}"
-              data-material-url="{{ url_for('materials', return_to=url_for('commercial')) }}"
-            >
-              <option value="">Nenhum</option>
-              <option value="__new_component__">+ Cadastrar componente</option>
-              <option value="__new_material__">+ Cadastrar filamento</option>
-              {% for option in item_options %}
-                <option
-                  value="{{ option['ref'] }}"
-                  {% if editing_entry and option['ref'] == editing_entry['item_kind'] ~ ':' ~ (editing_entry['material_id'] if editing_entry['item_kind'] == 'material' else editing_entry['component_id']) %}selected{% endif %}
-                  data-kind="{{ option['kind'] }}"
-                  data-item-type="{{ option['item_type'] }}"
-                  data-brand-name="{{ option['brand_name'] }}"
-                  data-line-description="{{ option['line_description'] }}"
-                  data-color-name="{{ option['color_name'] }}"
-                  data-unit-name="{{ option['unit_name'] }}"
-                  data-site="{{ option['site'] }}"
-                >{{ option["label"] }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label class="commercial-distribution-field computed-field">
-            <span class="commercial-field-label">Linha / Descrição</span>
-            <input type="text" name="line_description_display" readonly tabindex="-1" value="{{ editing_entry['line_description'] if editing_entry else '' }}">
-          </label>
-          <label class="commercial-distribution-field computed-field">
-            <span class="commercial-field-label">Tipo</span>
-            <input type="text" name="item_type" readonly tabindex="-1" value="{{ editing_entry['item_type'] if editing_entry else '' }}">
-          </label>
-          <label class="commercial-distribution-field computed-field">
-            <span class="commercial-field-label">Cor</span>
-            <input type="text" name="color_name" readonly tabindex="-1" value="{{ editing_entry['color_name'] if editing_entry else '' }}">
-          </label>
-          <label class="commercial-distribution-field computed-field">
-            <span class="commercial-field-label">Marca</span>
-            <input type="text" name="brand_name_display" readonly tabindex="-1" value="{{ editing_entry['brand_name'] if editing_entry else '' }}">
-          </label>
+        <div class="commercial-lines full" data-collection="commercial-items">
+          {% for row in commercial_rows %}
+            {% set selected_ref = row['item_kind'] ~ ':' ~ (row['material_id'] if row and row['item_kind'] == 'material' else row['component_id']) if row else '' %}
+            <div class="collection-row commercial-line-card">
+              <div class="commercial-distribution-row commercial-item-grid full">
+                <label class="commercial-distribution-field">
+                  <span class="commercial-field-label">Código material</span>
+                  <select
+                    name="item_ref"
+                    data-component-url="{{ url_for('registry_page', section='components', return_to=url_for('commercial')) }}"
+                    data-material-url="{{ url_for('materials', return_to=url_for('commercial')) }}"
+                  >
+                    <option value="">Nenhum</option>
+                    <option value="__new_component__">+ Cadastrar componente</option>
+                    <option value="__new_material__">+ Cadastrar filamento</option>
+                    {% for option in item_options %}
+                      <option
+                        value="{{ option['ref'] }}"
+                        {% if selected_ref and option['ref'] == selected_ref %}selected{% endif %}
+                        data-kind="{{ option['kind'] }}"
+                        data-item-type="{{ option['item_type'] }}"
+                        data-brand-name="{{ option['brand_name'] }}"
+                        data-line-description="{{ option['line_description'] }}"
+                        data-color-name="{{ option['color_name'] }}"
+                        data-unit-name="{{ option['unit_name'] }}"
+                        data-site="{{ option['site'] }}"
+                      >{{ option["label"] }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="commercial-distribution-field computed-field">
+                  <span class="commercial-field-label">Linha / Descrição</span>
+                  <input type="text" name="line_description_display" readonly tabindex="-1" value="{{ row['line_description'] if row else '' }}">
+                </label>
+                <label class="commercial-distribution-field computed-field">
+                  <span class="commercial-field-label">Tipo</span>
+                  <input type="text" name="item_type" readonly tabindex="-1" value="{{ row['item_type'] if row else '' }}">
+                </label>
+                <label class="commercial-distribution-field computed-field">
+                  <span class="commercial-field-label">Cor</span>
+                  <input type="text" name="color_name" readonly tabindex="-1" value="{{ row['color_name'] if row else '' }}">
+                </label>
+                <label class="commercial-distribution-field computed-field">
+                  <span class="commercial-field-label">Marca</span>
+                  <input type="text" name="brand_name_display" readonly tabindex="-1" value="{{ row['brand_name'] if row else '' }}">
+                </label>
+              </div>
+
+              <div class="commercial-distribution-row commercial-values-grid full">
+                <label class="commercial-distribution-field">
+                  <span class="commercial-field-label">Quantidade</span>
+                  <input type="number" name="quantity" min="0.01" step="0.01" value="{{ row['quantity'] if row else '' }}">
+                </label>
+                <label class="commercial-distribution-field computed-field">
+                  <span class="commercial-field-label">Unidade</span>
+                  <input type="text" name="unit_name_display" readonly tabindex="-1" value="{{ row['unit_name'] if row else '' }}">
+                </label>
+                <label class="commercial-distribution-field">
+                  <span class="commercial-field-label">R$</span>
+                  <input type="text" name="amount" class="currency-field" inputmode="decimal" value="{{ row['amount']|br_money if row else '0,00' }}">
+                </label>
+                <label class="commercial-distribution-field">
+                  <span class="commercial-field-label">Frete</span>
+                  <input type="text" name="freight" class="currency-field" inputmode="decimal" value="{{ row['freight']|br_money if row else '0,00' }}">
+                </label>
+                <label class="commercial-distribution-field">
+                  <span class="commercial-field-label">Imposto</span>
+                  <input type="text" name="tax" class="currency-field" inputmode="decimal" value="{{ row['tax']|br_money if row else '0,00' }}">
+                </label>
+                <label class="commercial-distribution-field">
+                  <span class="commercial-field-label">Desconto</span>
+                  <input type="text" name="discount" class="currency-field" inputmode="decimal" value="{{ row['discount']|br_money if row else '0,00' }}">
+                </label>
+                <label class="commercial-distribution-field computed-field">
+                  <span class="commercial-field-label">Total</span>
+                  <input type="text" name="total_amount_display" readonly tabindex="-1" value="{{ row['total_amount']|br_money if row else '0,00' }}">
+                </label>
+                <label class="commercial-distribution-field computed-field">
+                  <span class="commercial-field-label">Custo p/ gr</span>
+                  <input type="text" name="unit_cost_display" readonly tabindex="-1" value="{{ row['unit_cost']|br_money if row else '0,00' }}">
+                </label>
+              </div>
+            </div>
+          {% endfor %}
         </div>
 
-        <div class="commercial-distribution-row commercial-values-grid full">
+        <div class="commercial-product-row full">
+          <button type="button" class="secondary-button" data-add-row="commercial-items">Adicionar produto</button>
           <label class="commercial-distribution-field">
-            <span class="commercial-field-label">Quantidade</span>
-            <input type="number" name="quantity" min="0.01" step="0.01" value="{{ editing_entry['quantity'] if editing_entry else '' }}">
-          </label>
-          <label class="commercial-distribution-field computed-field">
-            <span class="commercial-field-label">Unidade</span>
-            <input type="text" name="unit_name_display" readonly tabindex="-1">
-          </label>
-          <label class="commercial-distribution-field">
-            <span class="commercial-field-label">R$</span>
-            <input type="text" name="amount" class="currency-field" inputmode="decimal" value="{{ editing_entry['amount']|br_money if editing_entry else '0,00' }}">
-          </label>
-          <label class="commercial-distribution-field">
-            <span class="commercial-field-label">Frete</span>
-            <input type="text" name="freight" class="currency-field" inputmode="decimal" value="{{ editing_entry['freight']|br_money if editing_entry else '0,00' }}">
-          </label>
-          <label class="commercial-distribution-field">
-            <span class="commercial-field-label">Imposto</span>
-            <input type="text" name="tax" class="currency-field" inputmode="decimal" value="{{ editing_entry['tax']|br_money if editing_entry else '0,00' }}">
-          </label>
-          <label class="commercial-distribution-field">
-            <span class="commercial-field-label">Desconto</span>
-            <input type="text" name="discount" class="currency-field" inputmode="decimal" value="{{ editing_entry['discount']|br_money if editing_entry else '0,00' }}">
-          </label>
-          <label class="commercial-distribution-field computed-field">
-            <span class="commercial-field-label">Total</span>
-            <input type="text" name="total_amount_display" readonly tabindex="-1" value="{{ editing_entry['total_amount']|br_money if editing_entry else '0,00' }}">
-          </label>
-          <label class="commercial-distribution-field computed-field">
-            <span class="commercial-field-label">Custo p/ gr</span>
-            <input type="text" name="unit_cost_display" readonly tabindex="-1" value="{{ editing_entry['unit_cost']|br_money if editing_entry else '0,00' }}">
+            <span class="commercial-field-label">Produto</span>
+            <input type="text" name="product_name" value="{{ first_entry['product_name'] if first_entry else '' }}" placeholder="Produto relacionado à nota, se houver...">
           </label>
         </div>
 
         <div class="commercial-distribution-row commercial-link-grid full">
           <label class="commercial-distribution-field">
             <span class="commercial-field-label">Link</span>
-            <input type="text" name="site" value="{{ editing_entry['site'] if editing_entry else '' }}">
+            <input type="text" name="site" value="{{ first_entry['site'] if first_entry else '' }}">
           </label>
         </div>
 
         <div class="commercial-distribution-row commercial-notes-grid full">
           <label class="commercial-distribution-field">
             <span class="commercial-field-label">Observações</span>
-            <textarea name="notes" rows="5" placeholder="Número da nota, observações da compra, lote, condição negociada...">{{ editing_entry['notes'] if editing_entry else '' }}</textarea>
+            <textarea name="notes" rows="5" placeholder="Número da nota, observações da compra, lote, condição negociada...">{{ first_entry['notes'] if first_entry else '' }}</textarea>
           </label>
+        </div>
+
+        <div class="commercial-invoice-summary full">
+          <span>Itens: <strong data-commercial-summary="items">{{ editing_summary['items']|int if editing_entry else 0 }}</strong></span>
+          <span>Quantidade: <strong data-commercial-summary="quantity">{{ editing_summary['quantity']|br_decimal if editing_entry else '0,00' }}</strong></span>
+          <span>R$: <strong data-commercial-summary="amount">R$ {{ editing_summary['amount']|br_money if editing_entry else '0,00' }}</strong></span>
+          <span>Frete: <strong data-commercial-summary="freight">R$ {{ editing_summary['freight']|br_money if editing_entry else '0,00' }}</strong></span>
+          <span>Imposto: <strong data-commercial-summary="tax">R$ {{ editing_summary['tax']|br_money if editing_entry else '0,00' }}</strong></span>
+          <span>Desconto: <strong data-commercial-summary="discount">R$ {{ editing_summary['discount']|br_money if editing_entry else '0,00' }}</strong></span>
+          <span>Total da nota: <strong data-commercial-summary="total">R$ {{ editing_summary['total']|br_money if editing_entry else '0,00' }}</strong></span>
         </div>
 
         <div class="commercial-actions full">
