@@ -690,23 +690,6 @@ textarea {
   margin-bottom: 0.85rem;
 }
 
-.jobs-page-hero-aligned .eyebrow {
-  margin-bottom: 0.28rem;
-  font-size: 0.76rem;
-  letter-spacing: 0.18em;
-}
-
-.jobs-page-hero-aligned h2 {
-  font-size: clamp(1.72rem, 3vw, 2.32rem);
-  line-height: 1.04;
-}
-
-.jobs-page-hero-aligned .subtitle {
-  max-width: 46rem;
-  font-size: 0.98rem;
-  line-height: 1.36;
-}
-
 .jobs-page-hero .eyebrow {
   margin-bottom: 0.16rem;
   font-size: 0.66rem;
@@ -726,35 +709,6 @@ textarea {
 
 .jobs-form-panel .panel-header {
   margin-bottom: 0.6rem;
-}
-
-.jobs-form-aligned {
-  gap: 0.95rem;
-}
-
-.jobs-form-aligned .job-topic-block {
-  padding: 0.96rem;
-  border-radius: 18px;
-}
-
-.jobs-form-aligned .form-section h3 {
-  font-size: 1.04rem;
-}
-
-.jobs-form-aligned .form-section p {
-  font-size: 0.84rem;
-}
-
-.jobs-form-aligned label {
-  font-size: 0.84rem;
-}
-
-.jobs-form-aligned input,
-.jobs-form-aligned select,
-.jobs-form-aligned textarea,
-.jobs-form-aligned .select-search-input {
-  min-height: 44px;
-  border-radius: 15px;
 }
 
 .customers-page-hero {
@@ -2517,23 +2471,6 @@ th {
     margin-bottom: 0.55rem;
   }
 
-  .jobs-page-hero-aligned .eyebrow {
-    margin-bottom: 0.18rem;
-    font-size: 0.66rem;
-  }
-
-  .jobs-page-hero-aligned h2 {
-    font-size: 1.14rem;
-    line-height: 1.06;
-    max-width: 17rem;
-  }
-
-  .jobs-page-hero-aligned .subtitle {
-    font-size: 0.74rem;
-    max-width: 18rem;
-    line-height: 1.28;
-  }
-
   .jobs-page-hero .eyebrow {
     margin-bottom: 0.12rem;
     font-size: 0.6rem;
@@ -2551,6 +2488,23 @@ th {
     max-width: 22rem;
     font-size: 0.76rem;
     line-height: 1.2;
+  }
+
+  .jobs-page-hero-aligned .eyebrow {
+    margin-bottom: 0.18rem;
+    font-size: 0.66rem;
+  }
+
+  .jobs-page-hero-aligned h2 {
+    font-size: 1.14rem;
+    line-height: 1.06;
+    max-width: 17rem;
+  }
+
+  .jobs-page-hero-aligned .subtitle {
+    font-size: 0.74rem;
+    max-width: 18rem;
+    line-height: 1.28;
   }
 
   .topbar,
@@ -2666,6 +2620,10 @@ th {
 
   .job-form-compact {
     gap: 0.68rem;
+  }
+
+  .jobs-form-aligned {
+    gap: 0.72rem;
   }
 
   .job-form-compact .job-topic-block {
@@ -2796,18 +2754,6 @@ th {
     width: 100%;
   }
 
-  .jobs-list-table .table-action-group {
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .jobs-list-table .table-action-group .action-link {
-    min-width: 0;
-    flex: 1 1 calc(50% - 0.25rem);
-    justify-content: center;
-    text-align: center;
-  }
-
   .product-material-row {
     display: grid;
     grid-template-columns: minmax(220px, 2.6fr) minmax(84px, 0.75fr) minmax(90px, 0.78fr) minmax(112px, 0.82fr);
@@ -2885,6 +2831,76 @@ th {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
+  }
+
+  .jobs-list-table,
+  .jobs-list-table tbody {
+    display: block;
+  }
+
+  .jobs-list-table tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.52rem 0.75rem;
+    padding: 0.82rem;
+    margin-bottom: 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .jobs-list-table td {
+    padding: 0;
+  }
+
+  .jobs-list-table td::before {
+    margin-bottom: 0.18rem;
+  }
+
+  .jobs-list-table td[data-label="Ações"],
+  .jobs-list-table td[data-label="Cliente"],
+  .jobs-list-table td[data-label="Item"],
+  .jobs-list-table td[data-label="Excluir"] {
+    grid-column: 1 / -1;
+  }
+
+  .jobs-list-table td[data-label="Cliente"] {
+    font-size: 0.96rem;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .jobs-list-table td[data-label="Item"] strong {
+    display: block;
+    font-size: 0.98rem;
+    line-height: 1.16;
+  }
+
+  .jobs-list-table td[data-label="Qtde"],
+  .jobs-list-table td[data-label="Status"],
+  .jobs-list-table td[data-label="Prazo"],
+  .jobs-list-table td[data-label="Valor"] {
+    text-align: left;
+    white-space: normal;
+  }
+
+  .jobs-list-table .table-action-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.42rem;
+  }
+
+  .jobs-list-table .table-action-group .action-link {
+    min-width: 0;
+    flex: 1 1 calc(50% - 0.21rem);
+    justify-content: center;
+    text-align: center;
+    font-size: 0.77rem;
+    padding: 0.52rem 0.6rem;
+  }
+
+  .jobs-list-table td[data-label="Excluir"] .danger-button {
+    min-width: 112px;
   }
 
   #materials-catalog-table tr[data-material-row] {
@@ -3067,6 +3083,65 @@ th {
   }
 }
 
+@media (min-width: 641px) and (max-width: 900px) {
+  .job-form {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .job-topic-block {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .commercial-topic-block {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .job-topic-block > label {
+    grid-column: span 3;
+  }
+
+  .commercial-topic-block > label {
+    grid-column: span 1;
+  }
+
+  .job-topic-block > .full,
+  .job-topic-block .form-section,
+  .job-topic-block .collection,
+  .job-topic-block .button-row,
+  .commercial-topic-block > .customer-line-field {
+    grid-column: 1 / -1;
+  }
+
+  .quote-number-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .job-form-compact .service-row {
+    grid-template-columns:
+      minmax(78px, 0.52fr)
+      minmax(420px, 3fr)
+      minmax(96px, 0.58fr)
+      repeat(4, minmax(112px, 0.76fr));
+    align-items: end;
+  }
+
+  .job-form-compact .service-row > label,
+  .job-form-compact .service-row > span,
+  .job-form-compact .service-row > input[type="hidden"] {
+    grid-column: auto;
+    width: auto;
+  }
+
+  .job-form-compact .item-description-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .job-actions-row button,
+  .job-actions-row .secondary-button {
+    width: auto;
+  }
+}
+
 @media (max-width: 640px) {
   .product-material-row,
   .product-component-row {
@@ -3157,8 +3232,17 @@ th {
     border-radius: 14px;
   }
 
+  .jobs-list-table tr {
+    grid-template-columns: 1fr;
+    gap: 0.44rem;
+    padding: 0.76rem;
+  }
+
   .jobs-list-table .table-action-group .action-link {
-    flex-basis: 100%;
+    flex-basis: calc(50% - 0.21rem);
+    min-height: 36px;
+    font-size: 0.76rem;
+    padding: 0.46rem 0.56rem;
   }
 
   .job-form-compact .service-value-field label,
