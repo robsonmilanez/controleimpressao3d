@@ -7,7 +7,7 @@ import uuid
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 from flask import Flask, abort, g, redirect, render_template, request, send_from_directory, url_for
 from werkzeug.utils import secure_filename
@@ -1849,6 +1849,25 @@ def get_default_product_cost_rates(db: sqlite3.Connection) -> tuple[float, float
         float(settings["monthly_fixed_cost"] or 0),
         float(settings["productive_hours_per_month"] or 0),
     )
+
+
+def normalize_phone_for_whatsapp(phone: str | None) -> str:
+    digits = "".join(character for character in str(phone or "") if character.isdigit())
+    if not digits:
+        return ""
+    if digits.startswith("55"):
+        return digits
+    if len(digits) in {10, 11}:
+        return f"55{digits}"
+    return digits
+
+
+def build_whatsapp_link(phone: str | None, message: str) -> str:
+    phone_digits = normalize_phone_for_whatsapp(phone)
+    encoded_message = quote(message)
+    if phone_digits:
+        return f"https://wa.me/{phone_digits}?text={encoded_message}"
+    return f"https://wa.me/?text={encoded_message}"
 
 
 def get_printer_cost_rates(
@@ -4967,7 +4986,7 @@ def jobs() -> str:
             jobs_list = fetch_jobs(db)
             return render_template(
                 "jobs.html",
-                jobs=jobs_list,
+                jobs=prepare_jobs_for_list(jobs_list),
                 materials=materials_list,
                 components=references["components"],
                 products=references["products"],
@@ -4993,7 +5012,7 @@ def jobs() -> str:
             jobs_list = fetch_jobs(db)
             return render_template(
                 "jobs.html",
-                jobs=jobs_list,
+                jobs=prepare_jobs_for_list(jobs_list),
                 materials=materials_list,
                 components=references["components"],
                 products=references["products"],
@@ -5048,7 +5067,7 @@ def jobs() -> str:
                 jobs_list = fetch_jobs(db)
                 return render_template(
                     "jobs.html",
-                    jobs=jobs_list,
+                    jobs=prepare_jobs_for_list(jobs_list),
                     materials=materials_list,
                     components=references["components"],
                     products=references["products"],
@@ -5336,7 +5355,7 @@ def jobs() -> str:
             jobs_list = fetch_jobs(db)
             return render_template(
                 "jobs.html",
-                jobs=jobs_list,
+                jobs=prepare_jobs_for_list(jobs_list),
                 materials=materials_list,
                 components=references["components"],
                 products=references["products"],
@@ -5358,7 +5377,7 @@ def jobs() -> str:
     jobs_list = fetch_jobs(db)
     return render_template(
         "jobs.html",
-        jobs=jobs_list,
+        jobs=prepare_jobs_for_list(jobs_list),
         materials=materials_list,
         components=references["components"],
         products=references["products"],
@@ -5408,7 +5427,8 @@ def fetch_jobs(db: sqlite3.Connection) -> list[sqlite3.Row]:
             (SELECT COUNT(*) FROM job_materials WHERE job_materials.job_id = jobs.id) AS material_lines_count,
             (SELECT COUNT(*) FROM job_components WHERE job_components.job_id = jobs.id) AS component_lines_count,
             (SELECT COUNT(*) FROM job_services WHERE job_services.job_id = jobs.id) AS service_lines_count,
-            COALESCE(customers.name, jobs.customer_name) AS customer_display
+            COALESCE(customers.name, jobs.customer_name) AS customer_display,
+            customers.phone AS customer_phone
         FROM jobs
         JOIN materials ON materials.id = jobs.material_id
         LEFT JOIN printers ON printers.id = jobs.printer_id
@@ -5419,6 +5439,30 @@ def fetch_jobs(db: sqlite3.Connection) -> list[sqlite3.Row]:
         ORDER BY jobs.created_at DESC, jobs.id DESC
         """
     ).fetchall()
+
+
+def prepare_jobs_for_list(jobs: list[sqlite3.Row]) -> list[dict[str, Any]]:
+    prepared_jobs: list[dict[str, Any]] = []
+    for job in jobs:
+        item = dict(job)
+        customer_url = url_for("job_customer_document", job_id=item["id"], _external=True)
+        production_url = url_for(
+            "job_production_document", job_id=item["id"], _external=True
+        )
+        customer_message = (
+            f"Olá, segue o pedido #{int(item['id']):04d}: {customer_url}"
+        )
+        production_message = (
+            f"Olá, segue a ordem de produção do pedido #{int(item['id']):04d}: {production_url}"
+        )
+        item["whatsapp_customer_url"] = build_whatsapp_link(
+            item.get("customer_phone"), customer_message
+        )
+        item["whatsapp_production_url"] = build_whatsapp_link(
+            item.get("customer_phone"), production_message
+        )
+        prepared_jobs.append(item)
+    return prepared_jobs
 
 
 def save_job_production_data(
