@@ -1422,6 +1422,21 @@ textarea {
   border: 1px solid var(--line);
 }
 
+.product-photo-preview {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.product-photo-preview img {
+  width: 140px;
+  height: 105px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
 .material-form .span-2 {
   grid-column: span 2;
 }

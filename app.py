@@ -20,10 +20,14 @@ STORAGE_DIR = Path(
 )
 DATABASE = Path(os.getenv("APP_DATABASE_PATH") or (STORAGE_DIR / "app.db"))
 UPLOAD_DIR = Path(os.getenv("APP_UPLOAD_DIR") or (STORAGE_DIR / "uploads" / "jobs"))
+PRODUCT_UPLOAD_DIR = Path(
+    os.getenv("APP_PRODUCT_UPLOAD_DIR") or (STORAGE_DIR / "uploads" / "products")
+)
 
 app = Flask(__name__)
 DATABASE.parent.mkdir(parents=True, exist_ok=True)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+PRODUCT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 JOB_STATUSES = [
     "Orcamento",
@@ -494,6 +498,8 @@ def init_db() -> None:
             sale_channel TEXT,
             status TEXT NOT NULL DEFAULT 'Ativo',
             model_link TEXT,
+            photo_path TEXT,
+            photo_original_name TEXT,
             notes TEXT,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(material_id) REFERENCES materials(id)
@@ -664,6 +670,8 @@ def init_db() -> None:
     ensure_column(db, "products", "sale_channel", "TEXT")
     ensure_column(db, "products", "status", "TEXT NOT NULL DEFAULT 'Ativo'")
     ensure_column(db, "products", "model_link", "TEXT")
+    ensure_column(db, "products", "photo_path", "TEXT")
+    ensure_column(db, "products", "photo_original_name", "TEXT")
     ensure_column(db, "products", "notes", "TEXT")
     ensure_column(db, "products", "created_at", "TEXT")
     ensure_column(
@@ -1112,6 +1120,24 @@ def save_job_photos(job_id: int) -> None:
                 uploaded_file.filename,
             ),
         )
+
+
+def save_product_photo(product_id: int) -> dict[str, str] | None:
+    uploaded_file = request.files.get("product_photo")
+    if not uploaded_file or not uploaded_file.filename:
+        return None
+
+    filename = secure_filename(uploaded_file.filename)
+    if not filename:
+        return None
+
+    PRODUCT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    target_name = f"product-{product_id}-{filename}"
+    uploaded_file.save(PRODUCT_UPLOAD_DIR / target_name)
+    return {
+        "photo_path": target_name,
+        "photo_original_name": uploaded_file.filename,
+    }
 
 
 def generate_sequential_code(
@@ -3562,6 +3588,11 @@ def uploaded_job_file(filename: str) -> Any:
     return send_from_directory(UPLOAD_DIR, filename)
 
 
+@app.route("/uploads/products/<path:filename>")
+def uploaded_product_file(filename: str) -> Any:
+    return send_from_directory(PRODUCT_UPLOAD_DIR, filename)
+
+
 @app.route("/registry/<section>", methods=["GET", "POST"])
 def registry_page(section: str) -> str:
     if section == "accessories":
@@ -4186,9 +4217,11 @@ def products() -> str:
                     sale_channel,
                     status,
                     model_link,
+                    photo_path,
+                    photo_original_name,
                     notes
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     product_code,
@@ -4215,10 +4248,26 @@ def products() -> str:
                     product_data["sale_channel"],
                     product_data["status"],
                     product_data["model_link"],
+                    None,
+                    None,
                     product_data["notes"],
                 ),
             )
             created_id = cursor.lastrowid
+            photo_data = save_product_photo(created_id)
+            if photo_data:
+                db.execute(
+                    """
+                    UPDATE products
+                    SET photo_path = ?, photo_original_name = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        photo_data["photo_path"],
+                        photo_data["photo_original_name"],
+                        created_id,
+                    ),
+                )
             db.commit()
             if return_to:
                 return redirect(append_query_value(return_to, "selected_product_id", created_id))
@@ -4318,6 +4367,20 @@ def edit_product(product_id: int) -> str:
                 product_id,
             ),
         )
+        photo_data = save_product_photo(product_id)
+        if photo_data:
+            db.execute(
+                """
+                UPDATE products
+                SET photo_path = ?, photo_original_name = ?
+                WHERE id = ?
+                """,
+                (
+                    photo_data["photo_path"],
+                    photo_data["photo_original_name"],
+                    product_id,
+                ),
+            )
         db.commit()
         return redirect(url_for("products"))
 

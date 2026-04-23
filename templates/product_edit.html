@@ -21,7 +21,7 @@
         </div>
         <span class="panel-badge">{{ product["sku"] or "Sem codigo" }}</span>
       </div>
-      <form method="post" class="form-grid material-form">
+      <form method="post" class="form-grid material-form" enctype="multipart/form-data">
         {% set next_product_code = product["sku"] %}
         {% include "product_form_fields.html" %}
         <button type="submit">Salvar alterações</button>

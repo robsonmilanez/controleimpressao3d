@@ -188,6 +188,16 @@
   <input type="url" name="model_link" value="{{ product['model_link'] if product else '' }}" placeholder="https://...">
 </label>
 <label class="full">
+  Foto do produto
+  <input type="file" name="product_photo" accept="image/*">
+</label>
+{% if product and product['photo_path'] %}
+  <div class="full product-photo-preview">
+    <span>Foto atual</span>
+    <img src="{{ url_for('uploaded_product_file', filename=product['photo_path']) }}" alt="{{ product['photo_original_name'] or product['name'] }}">
+  </div>
+{% endif %}
+<label class="full">
   Observações internas
   <textarea name="notes" rows="3" placeholder="Acabamento, variações, embalagem, cuidados, restrições de produção...">{{ product['notes'] if product else '' }}</textarea>
 </label>
