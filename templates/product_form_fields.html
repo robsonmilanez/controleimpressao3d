@@ -150,34 +150,40 @@
 </label>
 <input type="hidden" name="labor_hourly_rate" value="0,00">
 
-<label class="span-2">
-  Valor design/h
-  <input type="text" name="design_hourly_rate" class="currency-field" inputmode="decimal" value="{{ product['design_hourly_rate']|br_money if product else '0,00' }}">
-</label>
-<label class="span-2">
-  Custos extras
-  <input type="text" name="extra_cost" class="currency-field" inputmode="decimal" value="{{ product['extra_cost']|br_money if product else '0,00' }}">
-</label>
-<label class="span-2">
-  Margem (%)
-  <input type="number" name="margin_percent" min="0" max="99" step="0.01" value="{{ product['margin_percent'] if product else 0 }}">
-</label>
-<label class="span-2">
-  Valor da margem
-  <input type="text" class="product-margin-value" value="0,00" readonly tabindex="-1">
-</label>
-<label class="span-2">
-  Preço de venda
-  <input type="text" name="sale_price" class="currency-field" inputmode="decimal" value="{{ product['sale_price']|br_money if product else '0,00' }}">
-</label>
-<label class="span-1 computed-field">
-  Estoque pronto
-  <input type="number" name="stock_quantity" min="0" step="0.01" value="{{ product['stock_quantity'] if product else 0 }}" readonly tabindex="-1">
-</label>
-<label class="span-1">
-  Minimo
-  <input type="number" name="minimum_quantity" min="0" step="0.01" value="{{ product['minimum_quantity'] if product else 0 }}">
-</label>
+<div class="full product-pricing-grid">
+  <label>
+    Valor design/h
+    <input type="text" name="design_hourly_rate" class="currency-field" inputmode="decimal" value="{{ product['design_hourly_rate']|br_money if product else '0,00' }}">
+  </label>
+  <label>
+    Custos extras
+    <input type="text" name="extra_cost" class="currency-field" inputmode="decimal" value="{{ product['extra_cost']|br_money if product else '0,00' }}">
+  </label>
+  <label class="computed-field">
+    Custo do produto
+    <input type="text" class="product-total-cost" value="{{ product['unit_cost']|br_money if product else '0,00' }}" readonly tabindex="-1">
+  </label>
+  <label>
+    Margem (%)
+    <input type="number" name="margin_percent" min="0" max="99" step="0.01" value="{{ product['margin_percent'] if product else 0 }}">
+  </label>
+  <label>
+    Valor da margem
+    <input type="text" class="product-margin-value" value="0,00" readonly tabindex="-1">
+  </label>
+  <label>
+    Preço de venda
+    <input type="text" name="sale_price" class="currency-field" inputmode="decimal" value="{{ product['sale_price']|br_money if product else '0,00' }}">
+  </label>
+  <label class="computed-field">
+    Estoque pronto
+    <input type="number" name="stock_quantity" min="0" step="0.01" value="{{ product['stock_quantity'] if product else 0 }}" readonly tabindex="-1">
+  </label>
+  <label>
+    Minimo
+    <input type="number" name="minimum_quantity" min="0" step="0.01" value="{{ product['minimum_quantity'] if product else 0 }}">
+  </label>
+</div>
 
 <label class="full">
   Descrição comercial

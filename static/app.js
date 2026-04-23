@@ -2303,6 +2303,7 @@ function setupProductBuilder() {
     const operatingRateField = form.querySelector("[name='operating_cost_per_hour']");
     const designRateField = form.querySelector("[name='design_hourly_rate']");
     const extraCostField = form.querySelector("[name='extra_cost']");
+    const totalCostField = form.querySelector(".product-total-cost");
     const marginField = form.querySelector("[name='margin_percent']");
     const marginValueField = form.querySelector(".product-margin-value");
     const salePriceField = form.querySelector("[name='sale_price']");
@@ -2315,6 +2316,7 @@ function setupProductBuilder() {
       !operationalHoursField ||
       !energyRateField ||
       !operatingRateField ||
+      !totalCostField ||
       !marginField ||
       !marginValueField ||
       !salePriceField
@@ -2407,6 +2409,7 @@ function setupProductBuilder() {
 
     const updatePricing = () => {
       const { totalCost } = calculateTotalCost();
+      totalCostField.value = formatCurrency(totalCost);
       const marginPercent = Math.max(parseNumber(marginField.value), 0);
       const salePrice = parseCurrency(salePriceField.value);
 
