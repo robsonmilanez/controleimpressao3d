@@ -2735,8 +2735,9 @@ function setupCommercialEntries() {
     });
 
     [invoiceFreightField, invoiceTaxField, invoiceDiscountField].forEach((field) => {
-      field?.addEventListener("input", distributeSummaryTotals);
+      field?.addEventListener("input", () => updateSummary());
       field?.addEventListener("change", distributeSummaryTotals);
+      field?.addEventListener("blur", distributeSummaryTotals);
     });
 
     getRows().forEach((row) => {
