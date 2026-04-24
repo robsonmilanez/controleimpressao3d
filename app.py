@@ -2510,6 +2510,45 @@ def get_default_product_cost_rates(db: sqlite3.Connection) -> tuple[float, float
     )
 
 
+def get_printer_wear_rate(
+    printer: sqlite3.Row | None, operational_settings: sqlite3.Row | None = None
+) -> float:
+    if printer is None:
+        return 0.0
+    settings = operational_settings
+    if settings is None:
+        settings = get_operational_cost_settings(get_db())
+
+    productive_hours_per_month = float(settings["productive_hours_per_month"] or 0)
+    useful_life_hours = float(printer["useful_life_hours"] or 0)
+    if useful_life_hours <= 0:
+        useful_life_years = float(printer["useful_life_years"] or 0)
+        if useful_life_years > 0 and productive_hours_per_month > 0:
+            useful_life_hours = useful_life_years * 12 * productive_hours_per_month
+
+    breakdown = calculate_printer_cost_breakdown(
+        purchase_value=float(printer["purchase_value"] or 0),
+        useful_life_hours=useful_life_hours,
+        energy_watts=float(printer["energy_watts"] or 0),
+        kwh_cost=float(printer["kwh_cost"] or 0),
+        monthly_maintenance_cost=float(printer["monthly_maintenance_cost"] or 0),
+        monthly_fixed_cost=float(settings["monthly_fixed_cost"] or 0),
+        productive_hours_per_month=productive_hours_per_month,
+    )
+    wear_rate = float(breakdown["depreciation_hourly_cost"] or 0)
+    if wear_rate > 0:
+        return round(wear_rate, 4)
+
+    hourly_cost = float(printer["hourly_cost"] or 0)
+    inferred_wear_rate = (
+        hourly_cost
+        - float(breakdown["energy_hourly_cost"] or 0)
+        - float(breakdown["shared_overhead_hourly_cost"] or 0)
+        - float(breakdown["maintenance_hourly_cost"] or 0)
+    )
+    return round(max(inferred_wear_rate, 0), 4)
+
+
 def get_default_product_wear_cost_per_hour(db: sqlite3.Connection) -> float:
     settings = get_operational_cost_settings(db)
     printers = db.execute(
@@ -2517,16 +2556,7 @@ def get_default_product_wear_cost_per_hour(db: sqlite3.Connection) -> float:
     ).fetchall()
     wear_rates = []
     for printer in printers:
-        breakdown = calculate_printer_cost_breakdown(
-            purchase_value=float(printer["purchase_value"] or 0),
-            useful_life_hours=float(printer["useful_life_hours"] or 0),
-            energy_watts=float(printer["energy_watts"] or 0),
-            kwh_cost=float(printer["kwh_cost"] or 0),
-            monthly_maintenance_cost=float(printer["monthly_maintenance_cost"] or 0),
-            monthly_fixed_cost=float(settings["monthly_fixed_cost"] or 0),
-            productive_hours_per_month=float(settings["productive_hours_per_month"] or 0),
-        )
-        wear_rate = float(breakdown["depreciation_hourly_cost"] or 0)
+        wear_rate = get_printer_wear_rate(printer, settings)
         if wear_rate > 0:
             wear_rates.append(wear_rate)
     if wear_rates:
