@@ -932,15 +932,16 @@ input[type="range"]:focus {
 }
 
 .table-action-group {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.24rem;
-  align-items: center;
+  align-items: stretch;
 }
 
 .table-action-group .action-link {
+  width: 100%;
   min-height: 28px;
-  min-width: 78px;
+  min-width: 0;
   padding: 0.25rem 0.38rem;
   font-size: 0.66rem;
   text-align: center;
@@ -960,12 +961,12 @@ input[type="range"]:focus {
 
 .jobs-list-table th:nth-child(1),
 .jobs-list-table td:nth-child(1) {
-  width: 28rem;
+  width: 22rem;
 }
 
 .jobs-list-table th:nth-child(2),
 .jobs-list-table td:nth-child(2) {
-  width: 20rem;
+  width: 6.5rem;
 }
 
 .jobs-list-table th:nth-child(3),
@@ -975,26 +976,31 @@ input[type="range"]:focus {
 
 .jobs-list-table th:nth-child(4),
 .jobs-list-table td:nth-child(4) {
-  width: 6rem;
+  width: 20rem;
 }
 
 .jobs-list-table th:nth-child(5),
 .jobs-list-table td:nth-child(5) {
-  width: 8rem;
+  width: 6rem;
 }
 
 .jobs-list-table th:nth-child(6),
 .jobs-list-table td:nth-child(6) {
-  width: 6rem;
+  width: 8rem;
 }
 
 .jobs-list-table th:nth-child(7),
 .jobs-list-table td:nth-child(7) {
-  width: 7rem;
+  width: 6rem;
 }
 
 .jobs-list-table th:nth-child(8),
 .jobs-list-table td:nth-child(8) {
+  width: 7rem;
+}
+
+.jobs-list-table th:nth-child(9),
+.jobs-list-table td:nth-child(9) {
   width: 8rem;
 }
 
@@ -1004,13 +1010,14 @@ input[type="range"]:focus {
 }
 
 .jobs-list-table td[data-label="Ações"] {
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .jobs-list-table td[data-label="Cliente"] {
   white-space: normal;
 }
 
+.jobs-list-table td[data-label="Nº pedido"],
 .jobs-list-table td[data-label="Qtde"],
 .jobs-list-table td[data-label="Status"],
 .jobs-list-table td[data-label="Prazo"],
@@ -3325,14 +3332,10 @@ th {
   }
 
   .jobs-list-table .table-action-group {
-    display: flex;
-    flex-wrap: wrap;
     gap: 0.42rem;
   }
 
   .jobs-list-table .table-action-group .action-link {
-    min-width: 0;
-    flex: 1 1 calc(50% - 0.21rem);
     justify-content: center;
     text-align: center;
     font-size: 0.77rem;
@@ -3850,7 +3853,6 @@ th {
   }
 
   .jobs-list-table .table-action-group .action-link {
-    flex-basis: calc(50% - 0.21rem);
     min-height: 36px;
     font-size: 0.76rem;
     padding: 0.46rem 0.56rem;

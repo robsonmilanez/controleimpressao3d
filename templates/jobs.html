@@ -200,6 +200,7 @@
             <thead>
               <tr>
                 <th>Ações</th>
+                <th>Nº pedido</th>
                 <th>
                   <span class="sortable-header">
                     Cliente
@@ -244,14 +245,15 @@
                 <tr>
                   <td data-label="Ações">
                     <div class="table-action-group">
-                      <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Abrir pedido</a>
-                      <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF do pedido</a>
-                      <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF da ordem</a>
-                      <a class="action-link" href="{{ job['whatsapp_customer_url'] }}" target="_blank" rel="noopener noreferrer">WhatsApp pedido</a>
-                      <a class="action-link" href="{{ job['whatsapp_production_url'] }}" target="_blank" rel="noopener noreferrer">WhatsApp ordem</a>
-                      <a class="action-link" href="{{ url_for('edit_production_order', job_id=job['id']) }}">Abrir ordem</a>
+                      <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Editar</a>
+                      <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF</a>
+                      <a class="action-link" href="{{ job['whatsapp_customer_url'] }}" target="_blank" rel="noopener noreferrer">Whats Pedido</a>
+                      <a class="action-link" href="{{ url_for('edit_production_order', job_id=job['id']) }}">Abrir OP</a>
+                      <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF OP</a>
+                      <a class="action-link" href="{{ job['whatsapp_production_url'] }}" target="_blank" rel="noopener noreferrer">Whats OP</a>
                     </div>
                   </td>
+                  <td data-label="Nº pedido">#{{ '%04d'|format(job["id"]) }}</td>
                   <td data-label="Cliente">{{ job["customer_display"] }}</td>
                   <td data-label="Item">
                     <div class="job-item-inline">
