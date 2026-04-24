@@ -73,6 +73,8 @@
 </div>
 
 {% set component_rows = product_component_lines if product_component_lines is defined and product_component_lines else [{'component_id': None, 'quantity': 0}] %}
+{% set effective_product_wear_rate = product['printer_wear_cost_per_hour'] if product and product['printer_wear_cost_per_hour'] > 0 else (default_product_wear_cost_per_hour if default_product_wear_cost_per_hour > 0 else (default_product_operating_cost_per_hour if default_product_operating_cost_per_hour > 0 else 0)) %}
+{% set effective_print_hours = product['print_hours'] if product else 0 %}
 <div class="collection-subsection full">
   <div class="collection-subsection-header">
     <div>
@@ -128,11 +130,11 @@
   </label>
   <label class="computed-field">
     Desgaste da impressora
-    <input type="text" class="product-printer-wear-total" value="0,00" readonly tabindex="-1">
+    <input type="text" class="product-printer-wear-total" value="{{ (effective_product_wear_rate * effective_print_hours)|br_money }}" readonly tabindex="-1">
     <input
       type="hidden"
       name="printer_wear_cost_per_hour"
-      value="{{ (product['printer_wear_cost_per_hour'] if product and product['printer_wear_cost_per_hour'] > 0 else default_product_wear_cost_per_hour)|br_money }}"
+      value="{{ '%.4f'|format(effective_product_wear_rate) }}"
     >
   </label>
   <label class="computed-field">
@@ -141,7 +143,7 @@
     <input
       type="hidden"
       name="energy_cost_per_hour"
-      value="{{ (product['energy_cost_per_hour'] if product and product['energy_cost_per_hour'] > 0 else default_product_energy_cost_per_hour)|br_money }}"
+      value="{{ '%.4f'|format(product['energy_cost_per_hour'] if product and product['energy_cost_per_hour'] > 0 else default_product_energy_cost_per_hour) }}"
     >
   </label>
   <label>
