@@ -31,7 +31,7 @@
               value="{{ field.get('value', '') }}"
             >
           {% else %}
-          <label class="{% if field.get('full') %}full{% endif %} {{ field.get('label_class', '') }}">
+          <label class="{% if field.get('full') %}full{% endif %} {% if field.get('readonly') or field.get('auto') %}computed-field{% endif %} {{ field.get('label_class', '') }}">
             {{ field["label"] }}
             {% if field["type"] == "textarea" %}
               <textarea

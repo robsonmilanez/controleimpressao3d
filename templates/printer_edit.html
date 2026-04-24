@@ -90,15 +90,15 @@
           Vida util (horas)
           <input type="number" name="useful_life_hours" min="0" step="1" value="{{ printer['useful_life_hours'] }}">
         </label>
-        <label class="span-3">
-          Depreciacao/hora
+        <label class="span-3 computed-field">
+          Depreciacao da impressora
           <input type="text" name="depreciation_hourly_cost" inputmode="decimal" value="0,00" readonly>
         </label>
         <label class="span-3">
           Manutencao mensal (R$)
           <input type="text" name="monthly_maintenance_cost" class="currency-field" inputmode="decimal" value="{{ printer['monthly_maintenance_cost']|br_money }}">
         </label>
-        <label class="span-3">
+        <label class="span-3 computed-field">
           Manutencao/hora
           <input type="text" name="maintenance_hourly_cost" inputmode="decimal" value="0,00" readonly>
         </label>
@@ -106,19 +106,23 @@
           Valor kWh
           <input type="text" name="kwh_cost" class="currency-field" inputmode="decimal" value="{{ printer['kwh_cost']|br_money }}">
         </label>
-        <label class="span-3">
+        <label class="span-3 computed-field">
           Energia/hora
           <input type="text" name="energy_hourly_cost" inputmode="decimal" value="0,00" readonly>
         </label>
-        <label class="span-3">
-          Rateio operacional/h
+        <label class="span-3 computed-field">
+          Rateio de custos fixos para hora manual (R$/h)
           <input type="text" name="shared_overhead_hourly_cost" inputmode="decimal" value="0,00" readonly>
         </label>
-        <label class="span-3">
-          Operacional/h
+        <label class="span-3 computed-field">
+          Base operacional para hora manual (R$/h)
           <input type="text" name="operating_hourly_cost" inputmode="decimal" value="0,00" readonly>
         </label>
-        <label class="span-3">
+        <div class="full parametric-section-highlight">
+          <strong>Como ler esses custos</strong>
+          <span>`Rateio de custos fixos para hora manual (R$/h)` vem da base de custos operacionais e serve como referência para alocação de tempo braçal/humano. `Base operacional para hora manual (R$/h)` é um valor automático de apoio para mão de obra, não um dado digitado manualmente na impressora.</span>
+        </div>
+        <label class="span-3 computed-field">
           Custo total da impressora por hora
           <input type="text" name="hourly_cost" inputmode="decimal" value="{{ printer['hourly_cost']|br_money }}" readonly>
         </label>

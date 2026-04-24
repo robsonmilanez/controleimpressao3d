@@ -149,7 +149,7 @@
                 </span>
               </label>
               <input type="hidden" name="item_name" value="{{ service['service_name'] if service else job['item_name'] }}">
-              <label class="service-category-field">
+              <label class="service-category-field computed-field">
                 Categoria
                 <input type="text" class="service-category-display" value="{{ service['category'] if service else '' }}" readonly>
               </label>
@@ -168,7 +168,7 @@
                 <input type="number" name="service_discounts" class="service-discounts" min="0" step="0.01" value="0">
               </label>
               <input type="hidden" name="service_notes" class="service-notes-sync" value="{{ service['notes'] if service else '' }}">
-              <label class="service-value-field service-total-field">
+              <label class="service-value-field service-total-field computed-field">
                 Total
                 <input type="text" class="service-line-total" value="R$ {{ (service['total_price'] if service else 0)|br_money }}" readonly>
               </label>

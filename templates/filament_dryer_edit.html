@@ -47,11 +47,11 @@
           Valor kWh
           <input type="text" name="kwh_cost" class="currency-field" inputmode="decimal" value="{{ dryer['kwh_cost']|br_money }}">
         </label>
-        <label class="span-2">
+        <label class="span-2 computed-field">
           Depreciação/hora
           <input type="text" name="depreciation_hourly_cost" inputmode="decimal" value="0,00" readonly>
         </label>
-        <label class="span-2">
+        <label class="span-2 computed-field">
           Custo R$/hora
           <input type="text" name="hourly_cost" inputmode="decimal" value="{{ dryer['hourly_cost']|br_money }}" readonly>
         </label>

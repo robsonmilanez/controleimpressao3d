@@ -37,8 +37,8 @@
             Energia por hora
             <input type="number" name="energy_cost_per_hour" min="0" step="0.01" value="{{ '%.2f'|format(default_product_energy_cost_per_hour) }}" required>
           </label>
-          <label>
-            Custo operacional por hora
+          <label class="computed-field">
+            Mão de obra operacional / hora manual
             <input type="number" name="operating_cost_per_hour" min="0" step="0.01" value="{{ '%.2f'|format(default_product_operating_cost_per_hour) }}" required>
           </label>
           <label>

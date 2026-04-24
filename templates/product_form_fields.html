@@ -1,4 +1,4 @@
-<label class="compact-field">
+<label class="compact-field computed-field">
   Código interno
   <input type="text" value="{{ product['sku'] if product else next_product_code }}" readonly>
 </label>
@@ -150,7 +150,7 @@
     Horas operacional
     <input type="number" name="labor_hours" min="0" step="0.01" value="{{ product['labor_hours'] if product else 0 }}">
   </label>
-  <label>
+  <label class="computed-field">
     Mão de obra operacional/h
     <input
       type="text"
@@ -180,7 +180,7 @@
     Margem (%)
     <input type="number" name="margin_percent" min="0" max="99" step="0.01" value="{{ product['margin_percent'] if product else 0 }}">
   </label>
-  <label>
+  <label class="computed-field">
     Valor da margem
     <input type="text" class="product-margin-value" value="0,00" readonly tabindex="-1">
   </label>

@@ -130,7 +130,7 @@
                 </span>
               </label>
               <input type="hidden" name="item_name" value="">
-              <label class="service-category-field">
+              <label class="service-category-field computed-field">
                 Categoria
                 <input type="text" class="service-category-display" value="" readonly>
               </label>
@@ -149,7 +149,7 @@
                 <input type="number" name="service_discounts" class="service-discounts" min="0" step="0.01" value="0">
               </label>
               <input type="hidden" name="service_notes" class="service-notes-sync" value="">
-              <label class="service-value-field service-total-field">
+              <label class="service-value-field service-total-field computed-field">
                 Total
                 <input type="text" class="service-line-total" value="R$ 0,00" readonly>
               </label>
@@ -200,12 +200,42 @@
             <thead>
               <tr>
                 <th>Ações</th>
-                <th>Cliente</th>
-                <th>Item</th>
-                <th>Qtde</th>
-                <th>Status</th>
-                <th>Prazo</th>
-                <th>Valor</th>
+                <th>
+                  <span class="sortable-header">
+                    Cliente
+                    <a class="sort-link {% if sort_key == 'customer_display' %}is-active{% endif %} preserve-scroll-link" href="{{ url_for('jobs', sort='customer_display', direction='asc' if sort_key != 'customer_display' or sort_direction == 'desc' else 'desc') }}">{{ '↑' if sort_key == 'customer_display' and sort_direction == 'asc' else '↓' if sort_key == 'customer_display' and sort_direction == 'desc' else '↕' }}</a>
+                  </span>
+                </th>
+                <th>
+                  <span class="sortable-header">
+                    Item
+                    <a class="sort-link {% if sort_key == 'item_name' %}is-active{% endif %} preserve-scroll-link" href="{{ url_for('jobs', sort='item_name', direction='asc' if sort_key != 'item_name' or sort_direction == 'desc' else 'desc') }}">{{ '↑' if sort_key == 'item_name' and sort_direction == 'asc' else '↓' if sort_key == 'item_name' and sort_direction == 'desc' else '↕' }}</a>
+                  </span>
+                </th>
+                <th>
+                  <span class="sortable-header">
+                    Qtde
+                    <a class="sort-link {% if sort_key == 'quantity' %}is-active{% endif %} preserve-scroll-link" href="{{ url_for('jobs', sort='quantity', direction='asc' if sort_key != 'quantity' or sort_direction == 'desc' else 'desc') }}">{{ '↑' if sort_key == 'quantity' and sort_direction == 'asc' else '↓' if sort_key == 'quantity' and sort_direction == 'desc' else '↕' }}</a>
+                  </span>
+                </th>
+                <th>
+                  <span class="sortable-header">
+                    Status
+                    <a class="sort-link {% if sort_key == 'status' %}is-active{% endif %} preserve-scroll-link" href="{{ url_for('jobs', sort='status', direction='asc' if sort_key != 'status' or sort_direction == 'desc' else 'desc') }}">{{ '↑' if sort_key == 'status' and sort_direction == 'asc' else '↓' if sort_key == 'status' and sort_direction == 'desc' else '↕' }}</a>
+                  </span>
+                </th>
+                <th>
+                  <span class="sortable-header">
+                    Prazo
+                    <a class="sort-link {% if sort_key == 'due_date' %}is-active{% endif %} preserve-scroll-link" href="{{ url_for('jobs', sort='due_date', direction='asc' if sort_key != 'due_date' or sort_direction == 'desc' else 'desc') }}">{{ '↑' if sort_key == 'due_date' and sort_direction == 'asc' else '↓' if sort_key == 'due_date' and sort_direction == 'desc' else '↕' }}</a>
+                  </span>
+                </th>
+                <th>
+                  <span class="sortable-header">
+                    Valor
+                    <a class="sort-link {% if sort_key == 'suggested_price' %}is-active{% endif %} preserve-scroll-link" href="{{ url_for('jobs', sort='suggested_price', direction='asc' if sort_key != 'suggested_price' or sort_direction == 'desc' else 'desc') }}">{{ '↑' if sort_key == 'suggested_price' and sort_direction == 'asc' else '↓' if sort_key == 'suggested_price' and sort_direction == 'desc' else '↕' }}</a>
+                  </span>
+                </th>
                 <th>Excluir</th>
               </tr>
             </thead>

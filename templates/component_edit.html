@@ -20,7 +20,7 @@
         <span class="panel-badge">{{ component["sku"] or "-" }}</span>
       </div>
       <form method="post" class="form-grid material-form component-form">
-        <label class="span-2">
+        <label class="span-2 computed-field">
           Codigo interno
           <input type="text" value="{{ component['sku'] or '-' }}" readonly>
         </label>
@@ -48,7 +48,7 @@
           Valor medio do material
           <input type="text" name="product_cost" class="currency-field" inputmode="decimal" value="{{ component['product_cost']|br_money }}">
         </label>
-        <label class="span-3">
+        <label class="span-3 computed-field">
           Estoque
           <input type="number" name="stock_quantity" min="0" step="0.01" value="{{ component['stock_quantity'] }}" readonly>
         </label>

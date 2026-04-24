@@ -2488,6 +2488,10 @@ def get_operational_cost_settings(db: sqlite3.Connection) -> sqlite3.Row:
 def get_default_product_cost_rates(db: sqlite3.Connection) -> tuple[float, float]:
     settings = get_operational_cost_settings(db)
     printers = db.execute("SELECT * FROM printers ORDER BY name ASC").fetchall()
+    manual_hourly_rate = calculate_shared_operating_hourly_cost(
+        float(settings["monthly_fixed_cost"] or 0),
+        float(settings["productive_hours_per_month"] or 0),
+    )
     rates = [
         get_printer_cost_rates(printer, settings)
         for printer in printers
@@ -2500,14 +2504,8 @@ def get_default_product_cost_rates(db: sqlite3.Connection) -> tuple[float, float
     ]
     if populated_rates:
         energy_average = sum(rate[0] for rate in populated_rates) / len(populated_rates)
-        operating_average = sum(rate[1] for rate in populated_rates) / len(
-            populated_rates
-        )
-        return round(energy_average, 4), round(operating_average, 4)
-    return 0.0, calculate_shared_operating_hourly_cost(
-        float(settings["monthly_fixed_cost"] or 0),
-        float(settings["productive_hours_per_month"] or 0),
-    )
+        return round(energy_average, 4), round(manual_hourly_rate, 4)
+    return 0.0, round(manual_hourly_rate, 4)
 
 
 def get_printer_wear_rate(

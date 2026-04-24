@@ -1142,7 +1142,19 @@ input[type="range"]:focus {
 }
 
 .internal-readonly-rate {
+  position: relative;
   align-content: center;
+}
+
+.internal-readonly-rate::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  right: 0.1rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(10, 132, 255, 0.55);
 }
 
 .internal-rate-display {
