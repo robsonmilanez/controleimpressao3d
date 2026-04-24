@@ -2268,11 +2268,7 @@ function setupProductBuilder() {
       return Number(normalized.replace(/\./g, "").replace(",", ".")) || 0;
     }
     if (normalized.includes(".")) {
-      const pieces = normalized.split(".");
-      if (pieces.length === 2 && pieces[1].length <= 2) {
-        return Number(normalized) || 0;
-      }
-      return Number(normalized.replace(/\./g, "")) || 0;
+      return Number(normalized) || 0;
     }
     return Number(normalized) || 0;
   };

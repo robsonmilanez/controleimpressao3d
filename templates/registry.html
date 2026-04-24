@@ -108,7 +108,21 @@
               <tr>
                 <th>Editar</th>
                 {% for column in columns %}
-                  <th>{{ column["label"] }}</th>
+                  <th>
+                    {% if sort_urls and sort_urls.get(column["key"]) %}
+                      <span class="sortable-header">
+                        {{ column["label"] }}
+                        <a
+                          class="sort-link {% if sort_key == column['key'] %}is-active{% endif %} preserve-scroll-link"
+                          href="{{ sort_urls[column['key']]['asc' if sort_key != column['key'] or sort_direction == 'desc' else 'desc'] }}"
+                        >
+                          {{ '↑' if sort_key == column['key'] and sort_direction == 'asc' else '↓' if sort_key == column['key'] and sort_direction == 'desc' else '↕' }}
+                        </a>
+                      </span>
+                    {% else %}
+                      {{ column["label"] }}
+                    {% endif %}
+                  </th>
                 {% endfor %}
                 <th>Excluir</th>
               </tr>

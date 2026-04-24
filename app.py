@@ -4467,6 +4467,44 @@ def registry_page(section: str) -> str:
             return redirect(return_to)
         return redirect(url_for("registry_page", section=section))
 
+    registry_sort_key = request.args.get("sort", "").strip()
+    registry_sort_direction = (
+        "desc" if request.args.get("direction", "").strip().lower() == "desc" else "asc"
+    )
+    records = page.get("records", [])
+    columns = page.get("columns", [])
+    if records and columns:
+        effective_sort_key = (
+            registry_sort_key if registry_sort_key in {column["key"] for column in columns}
+            else columns[0]["key"]
+        )
+        page["records"] = sort_registry_records(
+            records,
+            columns,
+            effective_sort_key,
+            registry_sort_direction,
+        )
+        page["sort_key"] = effective_sort_key
+        page["sort_direction"] = registry_sort_direction
+        return_to_value = request.args.get("return_to", "").strip()
+        delete_error_value = request.args.get("delete_error", "").strip()
+
+        def build_registry_sort_url(column_key: str, direction: str) -> str:
+            params = {"sort": column_key, "direction": direction}
+            if return_to_value:
+                params["return_to"] = return_to_value
+            if delete_error_value:
+                params["delete_error"] = delete_error_value
+            return url_for("registry_page", section=section, **params)
+
+        page["sort_urls"] = {
+            column["key"]: {
+                "asc": build_registry_sort_url(column["key"], "asc"),
+                "desc": build_registry_sort_url(column["key"], "desc"),
+            }
+            for column in columns
+        }
+
     return render_template(
         "registry.html",
         section=section,
@@ -4990,6 +5028,32 @@ def fetch_products(db: sqlite3.Connection) -> list[dict[str, Any]]:
         )
         items.append(item)
     return items
+
+
+def sort_registry_records(
+    records: list[dict[str, Any]],
+    columns: list[dict[str, Any]],
+    sort_key: str,
+    sort_direction: str,
+) -> list[dict[str, Any]]:
+    valid_keys = {column["key"] for column in columns}
+    effective_sort_key = sort_key if sort_key in valid_keys else (
+        columns[0]["key"] if columns else ""
+    )
+    if not effective_sort_key:
+        return records
+
+    reverse = str(sort_direction).lower() == "desc"
+
+    def normalize_sort_value(value: Any) -> tuple[int, str]:
+        text = str(value or "").strip()
+        return (0 if text else 1, text.casefold())
+
+    return sorted(
+        records,
+        key=lambda record: normalize_sort_value(record.get(effective_sort_key)),
+        reverse=reverse,
+    )
 
 
 @app.route("/products", methods=["GET", "POST"])
