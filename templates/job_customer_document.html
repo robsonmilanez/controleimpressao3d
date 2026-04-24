@@ -98,12 +98,9 @@
         </table>
       </section>
 
-      {% if photo_lines or job["model_link"] %}
+      {% if photo_lines %}
         <section class="document-section">
-          <h2>Referencia do produto</h2>
-          {% if job["model_link"] %}
-            <p><strong>Modelo:</strong> {{ job["model_link"] }}</p>
-          {% endif %}
+          <h2>Fotos do produto</h2>
           {% if photo_lines %}
             <div class="document-photos">
               {% for photo in photo_lines %}
@@ -116,7 +113,7 @@
 
       {% if job["customer_notes"] %}
         <section class="document-section">
-          <h2>Observações para cliente</h2>
+          <h2>Obs. do cliente</h2>
           <p>{{ job["customer_notes"] }}</p>
         </section>
       {% endif %}

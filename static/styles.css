@@ -2855,6 +2855,100 @@ th {
   border: 1px solid #d4d9df;
 }
 
+.production-document-page .print-page {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  font-size: 0.8rem;
+}
+
+.production-document-page .document-header {
+  gap: 0.85rem;
+  padding-bottom: 0.55rem;
+}
+
+.production-document-page .document-header h1 {
+  font-size: 1.28rem;
+  line-height: 1.05;
+}
+
+.production-document-page .document-header p,
+.production-document-page .document-grid p,
+.production-document-page .document-section p,
+.production-document-page .document-total p {
+  margin: 0.18rem 0;
+  line-height: 1.2;
+}
+
+.production-document-page .document-commercial-grid,
+.production-document-page .document-grid {
+  gap: 0.42rem;
+  margin-top: 0.52rem;
+}
+
+.production-document-page .document-grid article,
+.production-document-page .document-commercial-grid article,
+.production-document-page .document-section,
+.production-document-page .document-total {
+  padding: 0.46rem 0.52rem;
+  border-radius: 7px;
+}
+
+.production-document-page .document-commercial-grid article {
+  min-height: 0;
+  gap: 0.08rem;
+}
+
+.production-document-page .document-commercial-grid span,
+.production-document-page .document-grid h2,
+.production-document-page .document-section h2 {
+  font-size: 0.7rem;
+}
+
+.production-document-page .document-section,
+.production-document-page .document-total,
+.production-document-page .production-context-grid,
+.production-document-page .production-context-section,
+.production-document-page .production-context-meta {
+  margin-top: 0.52rem;
+  margin-bottom: 0.52rem;
+}
+
+.production-document-page .document-item-meta {
+  column-gap: 0.7rem;
+  row-gap: 0.1rem;
+  margin-bottom: 0.4rem;
+}
+
+.production-document-page .document-table th,
+.production-document-page .document-table td {
+  padding: 0.27rem 0.22rem;
+  line-height: 1.14;
+  font-size: 0.76rem;
+}
+
+.production-document-page .document-subrow td {
+  padding-top: 0.34rem;
+  padding-bottom: 0.34rem;
+  font-size: 0.73rem;
+}
+
+.production-document-page .document-subrow td:first-child {
+  padding-left: 0.7rem;
+}
+
+.production-document-page .document-total strong {
+  font-size: 1rem;
+}
+
+.production-document-page .document-photos {
+  margin-top: 0.42rem;
+}
+
+.production-document-page .document-photos img {
+  width: 108px;
+  height: 78px;
+}
+
 @media print {
   body {
     background: #fff;
@@ -2881,6 +2975,55 @@ th {
   .document-photos img {
     width: 150px;
     height: 112px;
+  }
+
+  .production-document-page.print-body,
+  .production-document-page .print-page {
+    font-size: 0.75rem;
+  }
+
+  .production-document-page .document-header {
+    gap: 0.7rem;
+    padding-bottom: 0.45rem;
+  }
+
+  .production-document-page .document-header h1 {
+    font-size: 1.18rem;
+  }
+
+  .production-document-page .document-grid article,
+  .production-document-page .document-commercial-grid article,
+  .production-document-page .document-section,
+  .production-document-page .document-total {
+    padding: 0.4rem 0.45rem;
+  }
+
+  .production-document-page .document-commercial-grid,
+  .production-document-page .document-grid,
+  .production-document-page .document-section,
+  .production-document-page .document-total,
+  .production-document-page .production-context-grid,
+  .production-document-page .production-context-section,
+  .production-document-page .production-context-meta {
+    margin-top: 0.4rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .production-document-page .document-table th,
+  .production-document-page .document-table td {
+    padding: 0.2rem 0.18rem;
+    font-size: 0.72rem;
+  }
+
+  .production-document-page .document-subrow td {
+    padding-top: 0.26rem;
+    padding-bottom: 0.26rem;
+    font-size: 0.69rem;
+  }
+
+  .production-document-page .document-photos img {
+    width: 94px;
+    height: 68px;
   }
 }
 

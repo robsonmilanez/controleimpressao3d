@@ -7,8 +7,8 @@
     <title>Ordem de produção #{{ job["id"] }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260423-0310') }}">
   </head>
-  <body class="print-body">
-    <main class="print-page">
+  <body class="print-body production-document-page">
+    <main class="print-page production-document-page">
       <div class="print-actions">
         {% if not public_view %}
           <a class="action-link" href="{{ url_for('jobs') }}">Voltar</a>
