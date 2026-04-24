@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import math
 import os
+import shutil
 import sqlite3
 import uuid
 from datetime import date, timedelta
@@ -24,11 +26,16 @@ UPLOAD_DIR = Path(os.getenv("APP_UPLOAD_DIR") or (STORAGE_DIR / "uploads" / "job
 PRODUCT_UPLOAD_DIR = Path(
     os.getenv("APP_PRODUCT_UPLOAD_DIR") or (STORAGE_DIR / "uploads" / "products")
 )
+BOOTSTRAP_DATABASE = Path(
+    os.getenv("APP_BOOTSTRAP_DATABASE_PATH") or (BASE_DIR / "bootstrap" / "railway_bootstrap.db")
+)
 
 app = Flask(__name__)
 DATABASE.parent.mkdir(parents=True, exist_ok=True)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 PRODUCT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+BOOTSTRAP_CORE_TABLES = ("customers", "jobs", "materials", "products", "printers")
 
 JOB_STATUSES = [
     "Orcamento",
@@ -153,6 +160,51 @@ def get_db() -> sqlite3.Connection:
         g.db = sqlite3.connect(DATABASE)
         g.db.row_factory = sqlite3.Row
     return g.db
+
+
+def database_has_bootstrap_content(database_path: Path) -> bool:
+    if not database_path.exists() or database_path.stat().st_size == 0:
+        return False
+
+    try:
+        with sqlite3.connect(database_path) as db:
+            tables = {
+                row[0]
+                for row in db.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                ).fetchall()
+            }
+            if not all(table in tables for table in BOOTSTRAP_CORE_TABLES):
+                return False
+
+            for table in BOOTSTRAP_CORE_TABLES:
+                row_count = db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                if row_count > 0:
+                    return True
+    except sqlite3.Error:
+        return False
+
+    return False
+
+
+def restore_database_from_bootstrap() -> None:
+    if not BOOTSTRAP_DATABASE.exists() or DATABASE.resolve() == BOOTSTRAP_DATABASE.resolve():
+        return
+
+    database_ready = database_has_bootstrap_content(DATABASE)
+    if database_ready:
+        return
+
+    DATABASE.parent.mkdir(parents=True, exist_ok=True)
+
+    if DATABASE.exists() and DATABASE.stat().st_size > 0:
+        empty_snapshot = DATABASE.with_name(
+            f"{DATABASE.name}.empty-before-bootstrap"
+        )
+        if not empty_snapshot.exists():
+            shutil.copy2(DATABASE, empty_snapshot)
+
+    shutil.copy2(BOOTSTRAP_DATABASE, DATABASE)
 
 
 @app.teardown_appcontext
@@ -489,6 +541,7 @@ def init_db() -> None:
             material_id INTEGER,
             weight_grams REAL NOT NULL DEFAULT 0,
             print_hours REAL NOT NULL DEFAULT 0,
+            printer_wear_cost_per_hour REAL NOT NULL DEFAULT 0,
             energy_cost_per_hour REAL NOT NULL DEFAULT 0,
             operating_cost_per_hour REAL NOT NULL DEFAULT 0,
             labor_hours REAL NOT NULL DEFAULT 0,
@@ -668,6 +721,7 @@ def init_db() -> None:
     ensure_column(db, "products", "material_id", "INTEGER")
     ensure_column(db, "products", "weight_grams", "REAL NOT NULL DEFAULT 0")
     ensure_column(db, "products", "print_hours", "REAL NOT NULL DEFAULT 0")
+    ensure_column(db, "products", "printer_wear_cost_per_hour", "REAL NOT NULL DEFAULT 0")
     ensure_column(db, "products", "energy_cost_per_hour", "REAL NOT NULL DEFAULT 0")
     ensure_column(db, "products", "operating_cost_per_hour", "REAL NOT NULL DEFAULT 0")
     ensure_column(db, "products", "labor_hours", "REAL NOT NULL DEFAULT 0")
@@ -882,6 +936,593 @@ def calculate_price_with_margin(total_cost: float, margin_percent: float) -> flo
     else:
         suggested_price = total_cost / (1 - margin_ratio)
     return round(suggested_price, 2)
+
+
+def frustum_volume_mm3(height_mm: float, radius_bottom_mm: float, radius_top_mm: float) -> float:
+    return (math.pi * height_mm / 3.0) * (
+        radius_bottom_mm**2 + (radius_bottom_mm * radius_top_mm) + radius_top_mm**2
+    )
+
+
+def frustum_lateral_area_mm2(
+    height_mm: float, radius_bottom_mm: float, radius_top_mm: float
+) -> float:
+    slant_height = math.sqrt(height_mm**2 + (radius_top_mm - radius_bottom_mm) ** 2)
+    return math.pi * (radius_bottom_mm + radius_top_mm) * slant_height
+
+
+def estimate_print_hours(
+    material_volume_mm3: float,
+    output_mm3_per_hour: float,
+    complexity_factor: float = 1.0,
+) -> float:
+    safe_output = max(output_mm3_per_hour, 1.0)
+    safe_complexity = max(complexity_factor, 0.7)
+    return round((material_volume_mm3 / safe_output) * safe_complexity, 2)
+
+
+VASE_PROFILE_OPTIONS = [
+    "Classico",
+    "Bojudo",
+    "Facetado",
+    "Ondulado",
+]
+
+TEXTURE_OPTIONS = [
+    "Lisa",
+    "Canelada",
+    "Martelada",
+    "Organica",
+]
+
+LAMP_PATTERN_OPTIONS = [
+    "Reto",
+    "Diagonal",
+    "Colmeia",
+    "Petalas",
+]
+
+SYMBOL_OPTIONS = [
+    "Nenhum",
+    "Mandala",
+    "Folha",
+    "Monograma",
+]
+
+
+def get_parametric_model_presets() -> dict[str, dict[str, Any]]:
+    return {
+        "vaso-classico": {
+            "kind": "vaso",
+            "label": "Vaso classico",
+            "description": "Taper suave para cachepot de mesa com boa estabilidade.",
+            "values": {
+                "profile_style": "Classico",
+                "texture_style": "Lisa",
+                "height_mm": 180,
+                "top_diameter_mm": 160,
+                "base_diameter_mm": 110,
+                "wall_thickness_mm": 2.4,
+                "bottom_thickness_mm": 3.2,
+                "twist_degrees": 0,
+                "rib_width_mm": 0,
+                "rib_spacing_mm": 6,
+                "rib_depth_mm": 0,
+                "wave_amplitude_mm": 0,
+                "density_g_cm3": 1.24,
+                "output_mm3_per_hour": 1800,
+            },
+        },
+        "vaso-escultural": {
+            "kind": "vaso",
+            "label": "Vaso escultural",
+            "description": "Leve torcao para pecas decorativas com leitura mais organica.",
+            "values": {
+                "profile_style": "Ondulado",
+                "texture_style": "Canelada",
+                "height_mm": 220,
+                "top_diameter_mm": 175,
+                "base_diameter_mm": 95,
+                "wall_thickness_mm": 2.0,
+                "bottom_thickness_mm": 3.0,
+                "twist_degrees": 22,
+                "rib_width_mm": 8,
+                "rib_spacing_mm": 10,
+                "rib_depth_mm": 2.2,
+                "wave_amplitude_mm": 6,
+                "density_g_cm3": 1.24,
+                "output_mm3_per_hour": 1650,
+            },
+        },
+        "luminaria-coluna": {
+            "kind": "luminaria",
+            "label": "Luminaria coluna",
+            "description": "Cupula cilindrica com rasgos verticais para luz difusa.",
+            "values": {
+                "pattern_style": "Reto",
+                "texture_style": "Lisa",
+                "symbol_style": "Nenhum",
+                "height_mm": 240,
+                "outer_diameter_mm": 150,
+                "wall_thickness_mm": 2.0,
+                "slot_count": 18,
+                "slot_width_mm": 8,
+                "slot_height_mm": 150,
+                "top_margin_mm": 24,
+                "bottom_margin_mm": 28,
+                "rib_width_mm": 0,
+                "rib_spacing_mm": 8,
+                "rib_depth_mm": 0,
+                "symbol_scale_percent": 35,
+                "base_height_mm": 22,
+                "base_outer_diameter_mm": 120,
+                "fit_clearance_mm": 0.3,
+                "fit_overlap_mm": 14,
+                "lock_lip_mm": 1.2,
+                "socket_hole_diameter_mm": 38,
+                "density_g_cm3": 1.24,
+                "output_mm3_per_hour": 1700,
+            },
+        },
+        "luminaria-trama": {
+            "kind": "luminaria",
+            "label": "Luminaria trama",
+            "description": "Padrao mais aberto para efeito cenico e menor peso.",
+            "values": {
+                "pattern_style": "Colmeia",
+                "texture_style": "Canelada",
+                "symbol_style": "Mandala",
+                "height_mm": 260,
+                "outer_diameter_mm": 170,
+                "wall_thickness_mm": 1.8,
+                "slot_count": 24,
+                "slot_width_mm": 7,
+                "slot_height_mm": 175,
+                "top_margin_mm": 22,
+                "bottom_margin_mm": 26,
+                "rib_width_mm": 7,
+                "rib_spacing_mm": 9,
+                "rib_depth_mm": 1.5,
+                "symbol_scale_percent": 44,
+                "base_height_mm": 24,
+                "base_outer_diameter_mm": 132,
+                "fit_clearance_mm": 0.28,
+                "fit_overlap_mm": 16,
+                "lock_lip_mm": 1.4,
+                "socket_hole_diameter_mm": 40,
+                "density_g_cm3": 1.24,
+                "output_mm3_per_hour": 1550,
+            },
+        },
+    }
+
+
+def get_parametric_default_form(kind: str, preset_key: str | None = None) -> dict[str, Any]:
+    defaults = {
+        "kind": kind,
+        "preset_key": preset_key or "",
+        "height_mm": 180 if kind == "vaso" else 240,
+        "profile_style": "Classico",
+        "pattern_style": "Reto",
+        "texture_style": "Lisa",
+        "symbol_style": "Nenhum",
+        "top_diameter_mm": 160,
+        "base_diameter_mm": 110,
+        "wall_thickness_mm": 2.4 if kind == "vaso" else 2.0,
+        "bottom_thickness_mm": 3.2,
+        "twist_degrees": 0,
+        "rib_width_mm": 0,
+        "rib_spacing_mm": 8,
+        "rib_depth_mm": 0,
+        "wave_amplitude_mm": 0,
+        "symbol_scale_percent": 35,
+        "outer_diameter_mm": 150,
+        "slot_count": 18,
+        "slot_width_mm": 8,
+        "slot_height_mm": 150,
+        "top_margin_mm": 24,
+        "bottom_margin_mm": 28,
+        "base_height_mm": 22,
+        "base_outer_diameter_mm": 120,
+        "fit_clearance_mm": 0.3,
+        "fit_overlap_mm": 14,
+        "lock_lip_mm": 1.2,
+        "socket_hole_diameter_mm": 38,
+        "density_g_cm3": 1.24,
+        "output_mm3_per_hour": 1800,
+    }
+    preset = get_parametric_model_presets().get(preset_key or "")
+    if preset and preset["kind"] == kind:
+        defaults.update(preset["values"])
+    return defaults
+
+
+def build_parametric_form_data(
+    source: dict[str, Any] | None = None, kind: str = "vaso", preset_key: str | None = None
+) -> dict[str, Any]:
+    form_data = get_parametric_default_form(kind, preset_key)
+    if not source:
+        return form_data
+    for key, value in source.items():
+        form_data[key] = value
+    form_data["kind"] = kind
+    if preset_key is not None:
+        form_data["preset_key"] = preset_key
+    return form_data
+
+
+def texture_complexity_factor(texture_style: str, rib_count: float, rib_depth_mm: float) -> float:
+    factor = 1.0
+    if texture_style == "Canelada":
+        factor += min(max(rib_count, 0.0) * 0.01, 0.22)
+        factor += min(max(rib_depth_mm, 0.0) * 0.03, 0.14)
+    elif texture_style == "Martelada":
+        factor += 0.12
+    elif texture_style == "Organica":
+        factor += 0.16
+    return factor
+
+
+def estimate_rib_count(diameter_mm: float, rib_width_mm: float, rib_spacing_mm: float) -> int:
+    effective_width = max(rib_width_mm, 0.0) + max(rib_spacing_mm, 0.0)
+    if diameter_mm <= 0 or effective_width <= 0:
+        return 0
+    circumference = math.pi * diameter_mm
+    return max(int(circumference / effective_width), 0)
+
+
+def recommend_vase_notes(data: dict[str, float]) -> list[str]:
+    notes: list[str] = []
+    rib_count = estimate_rib_count(
+        max(data["base_diameter_mm"], data["top_diameter_mm"]),
+        data["rib_width_mm"],
+        data["rib_spacing_mm"],
+    )
+    stability_ratio = data["base_diameter_mm"] / max(data["top_diameter_mm"], 1.0)
+    if stability_ratio < 0.72:
+        notes.append("A base ficou estreita para a boca. Considere ampliar a base para melhorar a estabilidade.")
+    if data["wall_thickness_mm"] < 1.8:
+        notes.append("Espessura fina para vaso funcional. Para uso com cachepot ou planta pesada, suba para pelo menos 2.0 mm.")
+    if abs(data["twist_degrees"]) > 30:
+        notes.append("A torcao esta alta. Isso valoriza o visual, mas aumenta tempo de impressao e chance de vibracao.")
+    if data["texture_style"] == "Canelada" and rib_count < 10 and data["rib_width_mm"] > 0:
+        notes.append("Os canelados estao em baixa contagem. Um numero maior deixa o ritmo visual mais elegante.")
+    if data["profile_style"] == "Facetado":
+        notes.append("Perfil facetado gera leitura mais arquitetonica e pede transicoes mais secas na borda.")
+    if data["profile_style"] == "Ondulado" and data["wave_amplitude_mm"] < 3:
+        notes.append("O perfil ondulado esta suave. Se quiser mais presença escultorica, aumente a amplitude.")
+    if data["height_mm"] / max(data["base_diameter_mm"], 1.0) > 2.2:
+        notes.append("A peca esta alta em relacao a base. Um fundo mais espesso ajuda a baixar o centro de gravidade.")
+    if not notes:
+        notes.append("Proporcao equilibrada para um vaso decorativo com boa leitura de forma e fabricacao direta em FDM.")
+    return notes
+
+
+def recommend_lamp_notes(data: dict[str, float], open_area_ratio: float) -> list[str]:
+    notes: list[str] = []
+    rib_count = estimate_rib_count(
+        data["outer_diameter_mm"],
+        data["rib_width_mm"],
+        data["rib_spacing_mm"],
+    )
+    if open_area_ratio < 0.18:
+        notes.append("A area aberta esta contida. A luz tende a ficar mais suave e com sombra menos marcada.")
+    elif open_area_ratio > 0.42:
+        notes.append("A area aberta esta alta. O efeito luminico fica marcante, mas a estrutura pede mais cuidado.")
+    if data["wall_thickness_mm"] < 1.6:
+        notes.append("Espessura baixa para luminaria com rasgos. Vale subir a parede para ganhar rigidez.")
+    if data["slot_height_mm"] > data["height_mm"] * 0.72:
+        notes.append("Os rasgos ocupam boa parte da altura. Mantenha margens superior e inferior para evitar empeno.")
+    if data["fit_clearance_mm"] < 0.18:
+        notes.append("A folga de encaixe esta apertada. Bom para acabamento fino, mas pode exigir calibracao bem ajustada.")
+    elif data["fit_clearance_mm"] > 0.45:
+        notes.append("A folga de encaixe esta folgada. Facilita montagem, mas pode gerar vibração ou soltura.")
+    if data["fit_overlap_mm"] < 8:
+        notes.append("A profundidade de engate esta curta. Aumente a sobreposicao para evitar que a cupula solte.")
+    if data["lock_lip_mm"] <= 0.8:
+        notes.append("A trava anti-soltura esta discreta. Para transporte e uso recorrente, uma trava mais alta ajuda.")
+    if data["pattern_style"] == "Colmeia":
+        notes.append("Padrao colmeia cria um desenho de luz mais fragmentado e cenico do que rasgos retos.")
+    if data["symbol_style"] != "Nenhum":
+        notes.append("O simbolo aplicado vira ponto focal. Vale alinhar escala e posição com a face principal da peça.")
+    if data["texture_style"] == "Canelada" and data["rib_depth_mm"] > 2.5:
+        notes.append("Canelado profundo na luminaria valoriza a peça, mas pede atenção para sombra e acabamento.")
+    if data["texture_style"] == "Canelada" and rib_count < 12 and data["rib_width_mm"] > 0:
+        notes.append("O ritmo do canelado esta mais espaçado. Se quiser uma pele mais marcada, reduza o espaçamento.")
+    if not notes:
+        notes.append("Geometria consistente para cupula decorativa impressa em FDM com LED de baixa temperatura.")
+    return notes
+
+
+def generate_vase_scad(data: dict[str, float]) -> str:
+    base_scale = max(data["top_diameter_mm"] / max(data["base_diameter_mm"], 1.0), 0.01)
+    profile_style = str(data["profile_style"])
+    texture_style = str(data["texture_style"])
+    rib_count = estimate_rib_count(
+        max(data["base_diameter_mm"], data["top_diameter_mm"]),
+        data["rib_width_mm"],
+        data["rib_spacing_mm"],
+    )
+    rib_width = data["rib_width_mm"]
+    rib_depth = data["rib_depth_mm"]
+    wave_amplitude = data["wave_amplitude_mm"]
+    return f"""$fn = 180;
+eps = 0.02;
+
+height = {data["height_mm"]:.2f};
+top_diameter = {data["top_diameter_mm"]:.2f};
+base_diameter = {data["base_diameter_mm"]:.2f};
+wall = {data["wall_thickness_mm"]:.2f};
+bottom = {data["bottom_thickness_mm"]:.2f};
+twist = {data["twist_degrees"]:.2f};
+rib_count = {rib_count};
+rib_width = {rib_width:.2f};
+rib_depth = {rib_depth:.2f};
+wave_amplitude = {wave_amplitude:.2f};
+
+module vase_profile() {{
+  {"offset(r = wave_amplitude) offset(delta = -wave_amplitude)" if profile_style == "Bojudo" else ""}
+  {"circle(d = base_diameter, $fn = 8);" if profile_style == "Facetado" else "circle(d = base_diameter);"}
+}}
+
+module vase_shell_raw() {{
+  difference() {{
+    linear_extrude(height = height, twist = twist, scale = {base_scale:.6f})
+      vase_profile();
+
+    translate([0, 0, bottom - eps])
+      linear_extrude(height = height - bottom + eps * 2, twist = twist, scale = max((top_diameter - 2 * wall) / max(base_diameter - 2 * wall, 1), 0.01))
+        circle(d = base_diameter - 2 * wall);
+  }}
+}}
+
+module ribs() {{
+  for (i = [0 : max(rib_count - 1, 0)]) {{
+    rotate([0, 0, i * (360 / max(rib_count, 1))])
+      translate([base_diameter / 2 - rib_depth / 2, -rib_width / 2, -eps])
+        cube([rib_depth + eps, max(rib_width, 0.8), height + eps * 2]);
+  }}
+}}
+
+{"union() { vase_shell_raw(); ribs(); }" if texture_style == "Canelada" else "vase_shell_raw();"}
+"""
+
+
+def generate_lamp_scad(data: dict[str, float]) -> str:
+    pattern_style = str(data["pattern_style"])
+    texture_style = str(data["texture_style"])
+    symbol_style = str(data["symbol_style"])
+    rib_count = estimate_rib_count(
+        data["outer_diameter_mm"],
+        data["rib_width_mm"],
+        data["rib_spacing_mm"],
+    )
+    return f"""$fn = 180;
+eps = 0.02;
+
+height = {data["height_mm"]:.2f};
+outer_diameter = {data["outer_diameter_mm"]:.2f};
+wall = {data["wall_thickness_mm"]:.2f};
+slot_count = {int(round(data["slot_count"]))};
+slot_width = {data["slot_width_mm"]:.2f};
+slot_height = {data["slot_height_mm"]:.2f};
+top_margin = {data["top_margin_mm"]:.2f};
+bottom_margin = {data["bottom_margin_mm"]:.2f};
+rib_count = {rib_count};
+rib_width = {data["rib_width_mm"]:.2f};
+rib_depth = {data["rib_depth_mm"]:.2f};
+base_height = {data["base_height_mm"]:.2f};
+base_outer_diameter = {data["base_outer_diameter_mm"]:.2f};
+fit_clearance = {data["fit_clearance_mm"]:.2f};
+fit_overlap = {data["fit_overlap_mm"]:.2f};
+lock_lip = {data["lock_lip_mm"]:.2f};
+socket_hole = {data["socket_hole_diameter_mm"]:.2f};
+symbol_scale = {data["symbol_scale_percent"] / 100:.2f};
+
+module lamp_shade() {{
+  difference() {{
+    cylinder(h = height, d = outer_diameter);
+
+    translate([0, 0, -eps])
+      cylinder(h = height + eps * 2, d = outer_diameter - 2 * wall);
+
+    for (i = [0 : slot_count - 1]) {{
+      rotate([0, 0, i * (360 / slot_count){" + 12" if pattern_style == "Diagonal" else ""}])
+        translate([outer_diameter / 2 - wall / 2, -slot_width / 2, bottom_margin - eps])
+          {"cylinder(h = slot_height + eps * 2, d = slot_width, $fn = 6);" if pattern_style == "Colmeia" else "cube([wall * 2.5, slot_width, slot_height + eps * 2]);"}
+    }}
+  }}
+}}
+
+module decorative_ribs() {{
+  for (i = [0 : max(rib_count - 1, 0)]) {{
+    rotate([0, 0, i * (360 / max(rib_count, 1))])
+      translate([outer_diameter / 2 - rib_depth / 2, -rib_width / 2, base_height - eps])
+        cube([rib_depth + eps, max(rib_width, 0.8), height + eps * 2]);
+  }}
+}}
+
+module front_symbol() {{
+  translate([0, outer_diameter / 2 - wall / 2, base_height + height * 0.55])
+    rotate([90, 0, 0])
+      linear_extrude(height = wall * 0.55 + eps)
+        scale(symbol_scale)
+          {"text(\"M\", size = 28, halign = \"center\", valign = \"center\");" if symbol_style == "Monograma" else "text(\"*\", size = 28, halign = \"center\", valign = \"center\");"}
+}}
+
+module connector_base() {{
+  difference() {{
+    cylinder(h = base_height, d = base_outer_diameter);
+    translate([0, 0, -eps])
+      cylinder(h = base_height + eps * 2, d = socket_hole);
+  }}
+
+  difference() {{
+    translate([0, 0, base_height - fit_overlap - eps])
+      cylinder(h = fit_overlap + eps, d = outer_diameter - 2 * fit_clearance);
+
+    translate([0, 0, base_height - fit_overlap - eps * 2])
+      cylinder(h = fit_overlap + eps * 4, d = outer_diameter - 2 * wall - 2 * fit_clearance);
+  }}
+
+  translate([0, 0, base_height - lock_lip - eps])
+    difference() {{
+      cylinder(h = lock_lip + eps, d = outer_diameter - 2 * fit_clearance + 1.2);
+      translate([0, 0, -eps])
+        cylinder(h = lock_lip + eps * 3, d = outer_diameter - 2 * wall - 2 * fit_clearance);
+    }}
+}}
+
+translate([0, 0, base_height])
+  {"union() { lamp_shade(); decorative_ribs(); }" if texture_style == "Canelada" else "lamp_shade();"}
+
+connector_base();
+{"front_symbol();" if symbol_style != "Nenhum" else ""}
+"""
+
+
+def calculate_vase_model(data: dict[str, float]) -> dict[str, Any]:
+    rib_count = estimate_rib_count(
+        max(data["base_diameter_mm"], data["top_diameter_mm"]),
+        data["rib_width_mm"],
+        data["rib_spacing_mm"],
+    )
+    outer_radius_bottom = data["base_diameter_mm"] / 2.0
+    outer_radius_top = data["top_diameter_mm"] / 2.0
+    inner_radius_bottom = max(outer_radius_bottom - data["wall_thickness_mm"], 1.0)
+    inner_radius_top = max(outer_radius_top - data["wall_thickness_mm"], 1.0)
+    inner_height = max(data["height_mm"] - data["bottom_thickness_mm"], 1.0)
+
+    outer_volume = frustum_volume_mm3(
+        data["height_mm"], outer_radius_bottom, outer_radius_top
+    )
+    inner_volume = frustum_volume_mm3(inner_height, inner_radius_bottom, inner_radius_top)
+    texture_factor = texture_complexity_factor(
+        str(data["texture_style"]), rib_count, data["rib_depth_mm"]
+    )
+    profile_factor = 1.0
+    if str(data["profile_style"]) == "Facetado":
+        profile_factor += 0.07
+    elif str(data["profile_style"]) == "Ondulado":
+        profile_factor += min(max(data["wave_amplitude_mm"], 0.0) * 0.012, 0.16)
+    material_volume = max(outer_volume - inner_volume, 0.0)
+    material_volume *= 1.0 + min(max(rib_count, 0.0) * max(data["rib_depth_mm"], 0.0) * 0.0016, 0.2)
+    external_area = (
+        frustum_lateral_area_mm2(data["height_mm"], outer_radius_bottom, outer_radius_top)
+        + (math.pi * outer_radius_bottom**2)
+    )
+    internal_capacity_ml = round(inner_volume / 1000.0, 1)
+    material_weight_g = round((material_volume / 1000.0) * data["density_g_cm3"], 1)
+    print_hours = estimate_print_hours(
+        material_volume,
+        data["output_mm3_per_hour"],
+        (1.0 + (abs(data["twist_degrees"]) / 1800.0)) * texture_factor * profile_factor,
+    )
+    notes = recommend_vase_notes(data)
+
+    return {
+        "title": "Vaso parametrico",
+        "subtitle": "Perfil ajustavel com textura, canelado e torcao opcional para OpenSCAD.",
+        "metrics": [
+            {"label": "Perfil", "value": str(data["profile_style"])},
+            {"label": "Textura", "value": str(data["texture_style"])},
+            {"label": "Altura final", "value": f'{data["height_mm"]:.0f} mm'},
+            {"label": "Diametro superior", "value": f'{data["top_diameter_mm"]:.0f} mm'},
+            {"label": "Diametro da base", "value": f'{data["base_diameter_mm"]:.0f} mm'},
+            {"label": "Canelados", "value": f'{rib_count} un · {data["rib_width_mm"]:.1f} mm'},
+            {"label": "Espaçamento", "value": f'{data["rib_spacing_mm"]:.1f} mm'},
+            {"label": "Volume interno", "value": f"{internal_capacity_ml:.1f} ml"},
+            {"label": "Area externa", "value": f"{external_area / 100:.1f} cm²"},
+            {"label": "Material solido", "value": f"{material_volume / 1000:.1f} cm³"},
+            {"label": "Peso estimado", "value": f"{material_weight_g:.1f} g"},
+            {"label": "Tempo estimado", "value": f"{print_hours:.2f} h"},
+        ],
+        "notes": notes,
+        "scad_code": generate_vase_scad(data),
+    }
+
+
+def calculate_lamp_model(data: dict[str, float]) -> dict[str, Any]:
+    rib_count = estimate_rib_count(
+        data["outer_diameter_mm"],
+        data["rib_width_mm"],
+        data["rib_spacing_mm"],
+    )
+    outer_radius = data["outer_diameter_mm"] / 2.0
+    inner_radius = max(outer_radius - data["wall_thickness_mm"], 1.0)
+    shell_volume = math.pi * (outer_radius**2 - inner_radius**2) * data["height_mm"]
+    slot_open_area = (
+        max(round(data["slot_count"]), 1)
+        * data["slot_width_mm"]
+        * min(data["slot_height_mm"], max(data["height_mm"] - data["top_margin_mm"] - data["bottom_margin_mm"], 1.0))
+    )
+    cylindrical_area = math.pi * data["outer_diameter_mm"] * data["height_mm"]
+    open_area_ratio = min(slot_open_area / max(cylindrical_area, 1.0), 0.82)
+    connector_outer_radius = data["base_outer_diameter_mm"] / 2.0
+    socket_hole_radius = max(data["socket_hole_diameter_mm"] / 2.0, 1.0)
+    base_disc_volume = math.pi * max(
+        connector_outer_radius**2 - socket_hole_radius**2, 1.0
+    ) * data["base_height_mm"]
+    fit_outer_radius = max((data["outer_diameter_mm"] - 2 * data["fit_clearance_mm"]) / 2.0, 1.0)
+    fit_inner_radius = max(
+        (data["outer_diameter_mm"] - 2 * data["wall_thickness_mm"] - 2 * data["fit_clearance_mm"]) / 2.0,
+        1.0,
+    )
+    fit_ring_volume = math.pi * max(fit_outer_radius**2 - fit_inner_radius**2, 1.0) * data["fit_overlap_mm"]
+    lock_ring_volume = math.pi * max(
+        ((data["outer_diameter_mm"] - 2 * data["fit_clearance_mm"] + 1.2) / 2.0) ** 2
+        - fit_inner_radius**2,
+        1.0,
+    ) * data["lock_lip_mm"]
+    texture_factor = texture_complexity_factor(
+        str(data["texture_style"]), rib_count, data["rib_depth_mm"]
+    )
+    pattern_factor = 1.0
+    if str(data["pattern_style"]) == "Colmeia":
+        pattern_factor += 0.16
+    elif str(data["pattern_style"]) == "Petalas":
+        pattern_factor += 0.12
+    symbol_factor = 1.08 if str(data["symbol_style"]) != "Nenhum" else 1.0
+    material_volume = max(shell_volume * (1.0 - open_area_ratio), 0.0) + base_disc_volume + fit_ring_volume + lock_ring_volume
+    material_volume *= 1.0 + min(max(rib_count, 0.0) * max(data["rib_depth_mm"], 0.0) * 0.0012, 0.16)
+    internal_volume = math.pi * inner_radius**2 * data["height_mm"]
+    material_weight_g = round((material_volume / 1000.0) * data["density_g_cm3"], 1)
+    print_hours = estimate_print_hours(
+        material_volume,
+        data["output_mm3_per_hour"],
+        (1.08 + (open_area_ratio * 0.45)) * texture_factor * pattern_factor * symbol_factor,
+    )
+    notes = recommend_lamp_notes(data, open_area_ratio)
+    connector_diameter = max(
+        data["outer_diameter_mm"] - (2 * data["fit_clearance_mm"]),
+        0.0,
+    )
+
+    return {
+        "title": "Luminaria parametrica",
+        "subtitle": "Cupula com padrao de luz, textura, simbolo frontal e base de encaixe com trava.",
+        "metrics": [
+            {"label": "Padrão", "value": str(data["pattern_style"])},
+            {"label": "Textura", "value": str(data["texture_style"])},
+            {"label": "Altura final", "value": f'{data["height_mm"]:.0f} mm'},
+            {"label": "Diametro externo", "value": f'{data["outer_diameter_mm"]:.0f} mm'},
+            {"label": "Espessura", "value": f'{data["wall_thickness_mm"]:.1f} mm'},
+            {"label": "Rasgos", "value": f'{int(round(data["slot_count"]))} unidades'},
+            {"label": "Simbolo frontal", "value": str(data["symbol_style"])},
+            {"label": "Canelados", "value": f'{rib_count} un · {data["rib_width_mm"]:.1f} mm'},
+            {"label": "Espaçamento", "value": f'{data["rib_spacing_mm"]:.1f} mm'},
+            {"label": "Area vazada", "value": f"{slot_open_area / 100:.1f} cm²"},
+            {"label": "Abertura lateral", "value": f"{open_area_ratio * 100:.1f}%"},
+            {"label": "Diametro do encaixe", "value": f"{connector_diameter:.2f} mm"},
+            {"label": "Folga de montagem", "value": f'{data["fit_clearance_mm"]:.2f} mm'},
+            {"label": "Profundidade de engate", "value": f'{data["fit_overlap_mm"]:.1f} mm'},
+            {"label": "Volume interno", "value": f"{internal_volume / 1000:.1f} ml"},
+            {"label": "Peso estimado", "value": f"{material_weight_g:.1f} g"},
+            {"label": "Tempo estimado", "value": f"{print_hours:.2f} h"},
+        ],
+        "notes": notes,
+        "scad_code": generate_lamp_scad(data),
+    }
 
 
 def calculate_detailed_job_values(
@@ -1869,6 +2510,30 @@ def get_default_product_cost_rates(db: sqlite3.Connection) -> tuple[float, float
     )
 
 
+def get_default_product_wear_cost_per_hour(db: sqlite3.Connection) -> float:
+    settings = get_operational_cost_settings(db)
+    printers = db.execute(
+        "SELECT * FROM printers WHERE COALESCE(status, '') != 'Parada'"
+    ).fetchall()
+    wear_rates = []
+    for printer in printers:
+        breakdown = calculate_printer_cost_breakdown(
+            purchase_value=float(printer["purchase_value"] or 0),
+            useful_life_hours=float(printer["useful_life_hours"] or 0),
+            energy_watts=float(printer["energy_watts"] or 0),
+            kwh_cost=float(printer["kwh_cost"] or 0),
+            monthly_maintenance_cost=float(printer["monthly_maintenance_cost"] or 0),
+            monthly_fixed_cost=float(settings["monthly_fixed_cost"] or 0),
+            productive_hours_per_month=float(settings["productive_hours_per_month"] or 0),
+        )
+        wear_rate = float(breakdown["depreciation_hourly_cost"] or 0)
+        if wear_rate > 0:
+            wear_rates.append(wear_rate)
+    if wear_rates:
+        return round(sum(wear_rates) / len(wear_rates), 4)
+    return 0.0
+
+
 def normalize_phone_for_whatsapp(phone: str | None) -> str:
     digits = "".join(character for character in str(phone or "") if character.isdigit())
     if not digits:
@@ -2753,6 +3418,9 @@ def build_product_form_data(
     print_hours = round(
         sum(float(line["print_hours"]) for line in product_material_lines), 2
     )
+    printer_wear_cost_per_hour = parse_brazilian_decimal(
+        request.form.get("printer_wear_cost_per_hour")
+    )
     energy_cost_per_hour = parse_brazilian_decimal(
         request.form.get("energy_cost_per_hour")
     )
@@ -2775,7 +3443,7 @@ def build_product_form_data(
         material_lines=detailed_material_lines,
         component_lines=detailed_component_lines,
         print_hours=print_hours,
-        energy_cost_per_hour=energy_cost_per_hour,
+        energy_cost_per_hour=energy_cost_per_hour + printer_wear_cost_per_hour,
         operating_cost_per_hour=0,
         dryer_hours=0,
         dryer_cost_per_hour=0,
@@ -2797,6 +3465,7 @@ def build_product_form_data(
         "material_id": material_id,
         "weight_grams": weight_grams,
         "print_hours": print_hours,
+        "printer_wear_cost_per_hour": printer_wear_cost_per_hour,
         "energy_cost_per_hour": energy_cost_per_hour,
         "operating_cost_per_hour": operating_cost_per_hour,
         "labor_hours": labor_hours,
@@ -3133,13 +3802,13 @@ def get_registry_page_context(
                 {"name": "purchase_value", "label": "Valor da impressora", "type": "text", "class": "currency-field", "inputmode": "decimal", "value": "0,00", "label_class": "span-3"},
                 {"name": "energy_watts", "label": "Potencia (W)", "type": "number", "min": "0", "step": "0.01", "value": "0", "label_class": "span-3"},
                 {"name": "useful_life_hours", "label": "Vida util (horas)", "type": "number", "min": "0", "step": "1", "value": "0", "label_class": "span-3"},
-                {"name": "depreciation_hourly_cost", "label": "Depreciacao/hora", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
+                {"name": "depreciation_hourly_cost", "label": "Depreciacao da impressora", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
                 {"name": "monthly_maintenance_cost", "label": "Manutencao mensal (R$)", "type": "text", "class": "currency-field", "inputmode": "decimal", "value": "0,00", "label_class": "span-3"},
                 {"name": "maintenance_hourly_cost", "label": "Manutencao/hora", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
                 {"name": "kwh_cost", "label": "Valor kWh", "type": "text", "class": "currency-field", "inputmode": "decimal", "value": "0,00", "label_class": "span-3"},
                 {"name": "energy_hourly_cost", "label": "Energia/hora", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
-                {"name": "shared_overhead_hourly_cost", "label": "Rateio operacional/h", "type": "text", "inputmode": "decimal", "value": br_money(shared_operating_hourly_cost), "readonly": True, "label_class": "span-3"},
-                {"name": "operating_hourly_cost", "label": "Operacional/h", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
+                {"name": "shared_overhead_hourly_cost", "label": "Rateio de custos fixos (R$/h)", "type": "text", "inputmode": "decimal", "value": br_money(shared_operating_hourly_cost), "readonly": True, "label_class": "span-3"},
+                {"name": "operating_hourly_cost", "label": "Operacional da impressora (R$/h)", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
                 {"name": "hourly_cost", "label": "Custo total da impressora por hora", "type": "text", "inputmode": "decimal", "value": "0,00", "readonly": True, "label_class": "span-3"},
                 {"name": "notes", "label": "Observações", "type": "textarea", "full": True},
             ],
@@ -4301,6 +4970,7 @@ def products() -> str:
         default_product_energy_cost_per_hour,
         default_product_operating_cost_per_hour,
     ) = get_default_product_cost_rates(db)
+    default_product_wear_cost_per_hour = get_default_product_wear_cost_per_hour(db)
     materials_list = db.execute(
         f"SELECT * FROM materials ORDER BY {material_order_clause()}"
     ).fetchall()
@@ -4322,6 +4992,7 @@ def products() -> str:
                     accessories,
                     weight_grams,
                     print_hours,
+                    printer_wear_cost_per_hour,
                     energy_cost_per_hour,
                     operating_cost_per_hour,
                     labor_hours,
@@ -4341,7 +5012,7 @@ def products() -> str:
                     photo_original_name,
                     notes
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     product_code,
@@ -4353,6 +5024,7 @@ def products() -> str:
                     product_data["accessories"],
                     product_data["weight_grams"],
                     product_data["print_hours"],
+                    product_data["printer_wear_cost_per_hour"],
                     product_data["energy_cost_per_hour"],
                     product_data["operating_cost_per_hour"],
                     product_data["labor_hours"],
@@ -4406,6 +5078,7 @@ def products() -> str:
         return_to=return_to,
         error=product_error,
         delete_error=request.args.get("delete_error", "").strip(),
+        default_product_wear_cost_per_hour=default_product_wear_cost_per_hour,
         default_product_energy_cost_per_hour=default_product_energy_cost_per_hour,
         default_product_operating_cost_per_hour=default_product_operating_cost_per_hour,
     )
@@ -4419,6 +5092,7 @@ def edit_product(product_id: int) -> str:
         default_product_energy_cost_per_hour,
         default_product_operating_cost_per_hour,
     ) = get_default_product_cost_rates(db)
+    default_product_wear_cost_per_hour = get_default_product_wear_cost_per_hour(db)
     product = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
     if product is None:
         abort(404)
@@ -4441,6 +5115,7 @@ def edit_product(product_id: int) -> str:
                 accessories = ?,
                 weight_grams = ?,
                 print_hours = ?,
+                printer_wear_cost_per_hour = ?,
                 energy_cost_per_hour = ?,
                 operating_cost_per_hour = ?,
                 labor_hours = ?,
@@ -4468,6 +5143,7 @@ def edit_product(product_id: int) -> str:
                 product_data["accessories"],
                 product_data["weight_grams"],
                 product_data["print_hours"],
+                product_data["printer_wear_cost_per_hour"],
                 product_data["energy_cost_per_hour"],
                 product_data["operating_cost_per_hour"],
                 product_data["labor_hours"],
@@ -4517,6 +5193,7 @@ def edit_product(product_id: int) -> str:
             product["accessories"],
             {row["id"]: row for row in references["components"]},
         ),
+        default_product_wear_cost_per_hour=default_product_wear_cost_per_hour,
         default_product_energy_cost_per_hour=default_product_energy_cost_per_hour,
         default_product_operating_cost_per_hour=default_product_operating_cost_per_hour,
     )
@@ -5400,7 +6077,11 @@ def jobs() -> str:
                 delete_error="",
             )
 
-    jobs_list = fetch_jobs(db)
+    sort_key = request.args.get("sort", "created_at").strip()
+    sort_direction = request.args.get("direction", "desc").strip().lower()
+    if sort_direction not in {"asc", "desc"}:
+        sort_direction = "desc"
+    jobs_list = fetch_jobs(db, sort_key=sort_key, sort_direction=sort_direction)
     return render_template(
         "jobs.html",
         jobs=prepare_jobs_for_list(jobs_list),
@@ -5420,6 +6101,8 @@ def jobs() -> str:
         today_date=date.today().isoformat(),
         valid_until_date=(date.today() + timedelta(days=5)).isoformat(),
         delete_error=request.args.get("delete_error", "").strip(),
+        sort_key=sort_key,
+        sort_direction=sort_direction,
     )
 
 
@@ -5435,9 +6118,24 @@ def delete_job(job_id: int) -> str:
     return redirect(url_for("jobs"))
 
 
-def fetch_jobs(db: sqlite3.Connection) -> list[sqlite3.Row]:
+def fetch_jobs(
+    db: sqlite3.Connection,
+    sort_key: str = "created_at",
+    sort_direction: str = "desc",
+) -> list[sqlite3.Row]:
+    normalized_direction = "ASC" if str(sort_direction).lower() == "asc" else "DESC"
+    order_map = {
+        "created_at": f"jobs.created_at {normalized_direction}, jobs.id {normalized_direction}",
+        "customer_display": f"COALESCE(customers.name, jobs.customer_name) COLLATE NOCASE {normalized_direction}, jobs.id DESC",
+        "item_name": f"jobs.item_name COLLATE NOCASE {normalized_direction}, jobs.id DESC",
+        "quantity": f"jobs.quantity {normalized_direction}, jobs.id DESC",
+        "status": f"jobs.status COLLATE NOCASE {normalized_direction}, jobs.id DESC",
+        "due_date": f"COALESCE(jobs.due_date, '') {normalized_direction}, jobs.id DESC",
+        "suggested_price": f"jobs.suggested_price {normalized_direction}, jobs.id DESC",
+    }
+    order_clause = order_map.get(sort_key, order_map["created_at"])
     return db.execute(
-        """
+        f"""
         SELECT
             jobs.*,
             materials.name AS material_name,
@@ -5462,7 +6160,7 @@ def fetch_jobs(db: sqlite3.Connection) -> list[sqlite3.Row]:
         LEFT JOIN customers ON customers.id = jobs.customer_id
         LEFT JOIN representatives ON representatives.id = jobs.representative_id
         LEFT JOIN partner_stores ON partner_stores.id = jobs.partner_store_id
-        ORDER BY jobs.created_at DESC, jobs.id DESC
+        ORDER BY {order_clause}
         """
     ).fetchall()
 
@@ -6456,6 +7154,147 @@ def pricing() -> str:
         default_product_operating_cost_per_hour=default_product_operating_cost_per_hour,
     )
 
+
+@app.route("/parametric-models", methods=["GET", "POST"])
+def parametric_models() -> str:
+    preset_key = request.values.get("preset", "").strip() or None
+    requested_kind = request.values.get("kind", "vaso").strip().lower()
+    kind = "luminaria" if requested_kind == "luminaria" else "vaso"
+    preset = get_parametric_model_presets().get(preset_key or "")
+    if preset and preset["kind"] == kind and request.method == "GET":
+        form_data = build_parametric_form_data(kind=kind, preset_key=preset_key)
+    else:
+        form_data = build_parametric_form_data(
+            request.form.to_dict() if request.method == "POST" else None,
+            kind=kind,
+            preset_key=preset_key,
+        )
+
+    result = None
+    error = None
+
+    if request.method == "POST":
+        try:
+            numeric_data = {
+                "height_mm": parse_loose_float(form_data.get("height_mm"), 0.0),
+                "top_diameter_mm": parse_loose_float(
+                    form_data.get("top_diameter_mm"), 0.0
+                ),
+                "base_diameter_mm": parse_loose_float(
+                    form_data.get("base_diameter_mm"), 0.0
+                ),
+                "wall_thickness_mm": parse_loose_float(
+                    form_data.get("wall_thickness_mm"), 0.0
+                ),
+                "bottom_thickness_mm": parse_loose_float(
+                    form_data.get("bottom_thickness_mm"), 0.0
+                ),
+                "twist_degrees": parse_loose_float(form_data.get("twist_degrees"), 0.0),
+                "rib_width_mm": parse_loose_float(form_data.get("rib_width_mm"), 0.0),
+                "rib_spacing_mm": parse_loose_float(form_data.get("rib_spacing_mm"), 8.0),
+                "rib_depth_mm": parse_loose_float(form_data.get("rib_depth_mm"), 0.0),
+                "wave_amplitude_mm": parse_loose_float(
+                    form_data.get("wave_amplitude_mm"), 0.0
+                ),
+                "symbol_scale_percent": parse_loose_float(
+                    form_data.get("symbol_scale_percent"), 35.0
+                ),
+                "outer_diameter_mm": parse_loose_float(
+                    form_data.get("outer_diameter_mm"), 0.0
+                ),
+                "slot_count": parse_loose_float(form_data.get("slot_count"), 0.0),
+                "slot_width_mm": parse_loose_float(form_data.get("slot_width_mm"), 0.0),
+                "slot_height_mm": parse_loose_float(
+                    form_data.get("slot_height_mm"), 0.0
+                ),
+                "top_margin_mm": parse_loose_float(form_data.get("top_margin_mm"), 0.0),
+                "bottom_margin_mm": parse_loose_float(
+                    form_data.get("bottom_margin_mm"), 0.0
+                ),
+                "base_height_mm": parse_loose_float(
+                    form_data.get("base_height_mm"), 0.0
+                ),
+                "base_outer_diameter_mm": parse_loose_float(
+                    form_data.get("base_outer_diameter_mm"), 0.0
+                ),
+                "fit_clearance_mm": parse_loose_float(
+                    form_data.get("fit_clearance_mm"), 0.3
+                ),
+                "fit_overlap_mm": parse_loose_float(
+                    form_data.get("fit_overlap_mm"), 0.0
+                ),
+                "lock_lip_mm": parse_loose_float(form_data.get("lock_lip_mm"), 0.0),
+                "socket_hole_diameter_mm": parse_loose_float(
+                    form_data.get("socket_hole_diameter_mm"), 0.0
+                ),
+                "density_g_cm3": parse_loose_float(
+                    form_data.get("density_g_cm3"), 1.24
+                ),
+                "output_mm3_per_hour": parse_loose_float(
+                    form_data.get("output_mm3_per_hour"), 1800.0
+                ),
+            }
+            numeric_data["profile_style"] = str(form_data.get("profile_style") or "Classico")
+            numeric_data["pattern_style"] = str(form_data.get("pattern_style") or "Reto")
+            numeric_data["texture_style"] = str(form_data.get("texture_style") or "Lisa")
+            numeric_data["symbol_style"] = str(form_data.get("symbol_style") or "Nenhum")
+            if numeric_data["height_mm"] <= 0 or numeric_data["wall_thickness_mm"] <= 0:
+                raise ValueError("Altura e espessura devem ser maiores que zero.")
+            if kind == "vaso":
+                if (
+                    numeric_data["top_diameter_mm"] <= 0
+                    or numeric_data["base_diameter_mm"] <= 0
+                ):
+                    raise ValueError("Informe os diametros do topo e da base do vaso.")
+                if (
+                    (numeric_data["base_diameter_mm"] / 2.0)
+                    <= numeric_data["wall_thickness_mm"]
+                    or (numeric_data["top_diameter_mm"] / 2.0)
+                    <= numeric_data["wall_thickness_mm"]
+                ):
+                    raise ValueError("A espessura da parede esta maior que o raio util do vaso.")
+                if numeric_data["bottom_thickness_mm"] >= numeric_data["height_mm"]:
+                    raise ValueError("O fundo precisa ser menor que a altura total.")
+                result = calculate_vase_model(numeric_data)
+            else:
+                if numeric_data["outer_diameter_mm"] <= 0:
+                    raise ValueError("Informe o diametro externo da luminaria.")
+                if (numeric_data["outer_diameter_mm"] / 2.0) <= numeric_data["wall_thickness_mm"]:
+                    raise ValueError("A espessura da parede esta maior que o raio util da luminaria.")
+                if numeric_data["slot_count"] < 1:
+                    raise ValueError("Use pelo menos um rasgo para compor a luminaria.")
+                if numeric_data["slot_height_mm"] >= numeric_data["height_mm"]:
+                    raise ValueError("A altura dos rasgos precisa ser menor que a altura total.")
+                if numeric_data["base_height_mm"] <= 0 or numeric_data["base_outer_diameter_mm"] <= 0:
+                    raise ValueError("Informe altura e diametro da base de encaixe.")
+                if numeric_data["fit_overlap_mm"] <= 0:
+                    raise ValueError("A profundidade de engate precisa ser maior que zero.")
+                if numeric_data["socket_hole_diameter_mm"] <= 0:
+                    raise ValueError("Informe o furo central para o soquete ou passagem de cabo.")
+                if numeric_data["base_outer_diameter_mm"] >= numeric_data["outer_diameter_mm"]:
+                    raise ValueError("A base deve ficar menor que a cupula para manter leitura e montagem coerentes.")
+                if numeric_data["socket_hole_diameter_mm"] >= numeric_data["base_outer_diameter_mm"]:
+                    raise ValueError("O furo do soquete precisa ser menor que o diametro externo da base.")
+                result = calculate_lamp_model(numeric_data)
+        except ValueError as exc:
+            error = str(exc)
+
+    return render_template(
+        "parametric_models.html",
+        kind=kind,
+        form_data=form_data,
+        result=result,
+        error=error,
+        presets=get_parametric_model_presets(),
+        active_preset_key=preset_key or "",
+        vase_profile_options=VASE_PROFILE_OPTIONS,
+        texture_options=TEXTURE_OPTIONS,
+        lamp_pattern_options=LAMP_PATTERN_OPTIONS,
+        symbol_options=SYMBOL_OPTIONS,
+    )
+
+
+restore_database_from_bootstrap()
 
 with app.app_context():
     init_db()

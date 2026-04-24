@@ -6,5 +6,7 @@ __pycache__/
 app.db
 app.backup-before-clean-real-launch-2026-04-14.db
 data/
+bootstrap/*.db
+!bootstrap/railway_bootstrap.db
 static/uploads/jobs/*
 !static/uploads/jobs/.gitkeep

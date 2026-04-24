@@ -18,6 +18,7 @@ Ele esta sendo estruturado para evoluir bem em celulares, com layout responsivo 
 - cadastro de orcamentos e pedidos
 - controle de movimentacoes de estoque
 - simulador de precificacao para impressao 3D
+- gerador de modelos parametricos para vasos e luminarias com base OpenSCAD
 - base PWA com manifesto e service worker
 - banco local SQLite criado automaticamente
 
@@ -30,6 +31,7 @@ Ele esta sendo estruturado para evoluir bem em celulares, com layout responsivo 
 - `Movimentacoes`: entradas, perdas, ajustes e consumos manuais
 - `Pedidos`: orcamentos, pedidos aprovados, producao e entrega
 - `Precificacao`: simulador rapido de custo e preco sugerido
+- `Modelos`: estudos parametricos para vasos e luminarias com estimativa de volume, peso e tempo
 
 ## Regras de custo usadas
 
@@ -137,6 +139,7 @@ APP_STORAGE_DIR=/app/data
 
 - banco SQLite em `/app/data/app.db`
 - uploads em `/app/data/uploads/jobs`
+- se o volume subir vazio no primeiro deploy, o app restaura automaticamente a base inicial embutida no projeto
 
 ### Manutencao depois da publicacao
 
@@ -151,6 +154,7 @@ Depois que estiver no GitHub:
 - autenticacao de usuarios e niveis de permissao
 - geracao de PDF para orcamentos e pedidos
 - anexos de STL, 3MF e renders
+- exportacao guiada de parametros para familias de produtos decorativos
 - centro financeiro com contas a pagar e receber
 - comissoes automaticas por representante
 - indicadores de margem real por pedido
