@@ -1523,9 +1523,6 @@ function setupPrinterHourlyCost() {
       return;
     }
 
-    const monthlyFixedCost = parseBrazilianDecimal(
-      form.dataset.monthlyFixedCost || 0
-    );
     const productiveHoursPerMonth =
       Number(form.dataset.productiveHoursPerMonth) || 0;
 
@@ -1544,12 +1541,8 @@ function setupPrinterHourlyCost() {
         productiveHoursPerMonth > 0
           ? maintenanceMonthlyCost / productiveHoursPerMonth
           : 0;
-      const sharedOverheadHourlyCost =
-        productiveHoursPerMonth > 0
-          ? monthlyFixedCost / productiveHoursPerMonth
-          : 0;
-      const operatingHourlyCost =
-        depreciationCost + maintenanceHourlyCost + sharedOverheadHourlyCost;
+      const sharedOverheadHourlyCost = 0;
+      const operatingHourlyCost = depreciationCost + maintenanceHourlyCost;
       const hourlyCost = operatingHourlyCost + energyCost;
 
       if (depreciationHourlyCostField) {
@@ -2296,8 +2289,10 @@ function setupProductBuilder() {
     const materialCostField = form.querySelector(".product-material-cost-total");
     const materialGrandTotal = form.querySelector(".product-material-grand-total");
     const componentGrandTotal = form.querySelector(".product-component-grand-total");
+    const printerWearTotalField = form.querySelector(".product-printer-wear-total");
     const energyTotalField = form.querySelector(".product-energy-total");
     const addMaterialButton = form.querySelector("[data-add-row='product-materials']");
+    const printerWearRateField = form.querySelector("[name='printer_wear_cost_per_hour']");
     const energyRateField = form.querySelector("[name='energy_cost_per_hour']");
     const operationalHoursField = form.querySelector("[name='labor_hours']");
     const operatingRateField = form.querySelector("[name='operating_cost_per_hour']");
@@ -2312,7 +2307,9 @@ function setupProductBuilder() {
       !printHoursField ||
       !materialCostField ||
       !materialGrandTotal ||
+      !printerWearTotalField ||
       !energyTotalField ||
+      !printerWearRateField ||
       !operationalHoursField ||
       !energyRateField ||
       !operatingRateField ||
@@ -2385,6 +2382,8 @@ function setupProductBuilder() {
       const componentTotals = getComponentTotals();
       const printHours = materialTotals.hours;
       const operationalHours = parseNumber(operationalHoursField.value);
+      const printerWearTotal =
+        printHours * parseCurrency(printerWearRateField.value);
       const energyTotal = printHours * parseCurrency(energyRateField.value);
       const operatingTotal =
         operationalHours * parseCurrency(operatingRateField.value);
@@ -2393,6 +2392,7 @@ function setupProductBuilder() {
       const totalCost =
         materialTotals.cost +
         componentTotals.cost +
+        printerWearTotal +
         energyTotal +
         operatingTotal +
         designTotal +
@@ -2401,6 +2401,7 @@ function setupProductBuilder() {
       return {
         materialTotals,
         componentTotals,
+        printerWearTotal,
         energyTotal,
         operatingTotal,
         totalCost,
@@ -2435,7 +2436,7 @@ function setupProductBuilder() {
     };
 
     const updateTotals = () => {
-      const { materialTotals, componentTotals, energyTotal } = calculateTotalCost();
+      const { materialTotals, componentTotals, printerWearTotal, energyTotal } = calculateTotalCost();
 
       weightField.value = formatDecimal(materialTotals.weight);
       printHoursField.value = formatDecimal(materialTotals.hours);
@@ -2444,6 +2445,7 @@ function setupProductBuilder() {
       if (componentGrandTotal) {
         componentGrandTotal.textContent = `R$ ${formatCurrency(componentTotals.cost)}`;
       }
+      printerWearTotalField.value = formatCurrency(printerWearTotal);
       energyTotalField.value = formatCurrency(energyTotal);
       updatePricing();
     };
@@ -2835,6 +2837,418 @@ function setupAutoUppercaseFields() {
   });
 }
 
+function setupParametricPreview() {
+  const forms = Array.from(document.querySelectorAll("[data-parametric-form]"));
+  forms.forEach((form) => {
+    const previewCard = document.querySelector("[data-parametric-preview]");
+    const scene = previewCard?.querySelector("[data-preview-scene]");
+    const canvas = previewCard?.querySelector("[data-preview-3d]");
+    const statusNode = previewCard?.querySelector("[data-preview-status]");
+    const ratioNode = previewCard?.querySelector("[data-preview-ratio]");
+    const styleNode = previewCard?.querySelector("[data-preview-style]");
+    const kind = form.dataset.kind || "vaso";
+    if (!previewCard || !scene || !canvas || !statusNode || !ratioNode || !styleNode) {
+      return;
+    }
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+    const viewState = {
+      yaw: -0.7,
+      pitch: 0.35,
+      dragId: null,
+      lastX: 0,
+      lastY: 0,
+    };
+
+    const readNumber = (name, fallback = 0) => {
+      const field = form.querySelector(`[name="${name}"]`);
+      const value = Number.parseFloat(String(field?.value || "").replace(",", "."));
+      return Number.isFinite(value) ? value : fallback;
+    };
+
+    const readText = (name, fallback = "") => {
+      const field = form.querySelector(`[name="${name}"]`);
+      return String(field?.value || fallback);
+    };
+
+    Array.from(form.querySelectorAll("[data-range-for]")).forEach((rangeField) => {
+      if (rangeField.dataset.rangeReady === "1") {
+        return;
+      }
+      rangeField.dataset.rangeReady = "1";
+      const targetName = rangeField.dataset.rangeFor;
+      const numberField = form.querySelector(`[name="${targetName}"]`);
+      if (!numberField) {
+        return;
+      }
+      rangeField.addEventListener("input", () => {
+        numberField.value = rangeField.value;
+        numberField.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      numberField.addEventListener("input", () => {
+        rangeField.value = numberField.value || rangeField.value;
+      });
+    });
+
+    const rotatePoint = (point) => {
+      const cosY = Math.cos(viewState.yaw);
+      const sinY = Math.sin(viewState.yaw);
+      const cosP = Math.cos(viewState.pitch);
+      const sinP = Math.sin(viewState.pitch);
+      const x1 = point.x * cosY - point.z * sinY;
+      const z1 = point.x * sinY + point.z * cosY;
+      const y1 = point.y * cosP - z1 * sinP;
+      const z2 = point.y * sinP + z1 * cosP;
+      return { x: x1, y: y1, z: z2 };
+    };
+
+    const projectPoint = (point) => {
+      const rotated = rotatePoint(point);
+      const depth = 420;
+      const scale = depth / (depth - rotated.z);
+      return {
+        x: canvas.width / 2 + rotated.x * scale,
+        y: canvas.height / 2 - rotated.y * scale,
+        z: rotated.z,
+        scale,
+      };
+    };
+
+    const buildLatheMesh = (profile, segments = 28) => {
+      const faces = [];
+      for (let index = 0; index < segments; index += 1) {
+        const a0 = (index / segments) * Math.PI * 2;
+        const a1 = ((index + 1) / segments) * Math.PI * 2;
+        const cos0 = Math.cos(a0);
+        const sin0 = Math.sin(a0);
+        const cos1 = Math.cos(a1);
+        const sin1 = Math.sin(a1);
+        for (let ring = 0; ring < profile.length - 1; ring += 1) {
+          const p0 = profile[ring];
+          const p1 = profile[ring + 1];
+          faces.push([
+            { x: p0.r * cos0, y: p0.y, z: p0.r * sin0 },
+            { x: p0.r * cos1, y: p0.y, z: p0.r * sin1 },
+            { x: p1.r * cos1, y: p1.y, z: p1.r * sin1 },
+            { x: p1.r * cos0, y: p1.y, z: p1.r * sin0 },
+          ]);
+        }
+      }
+      return faces;
+    };
+
+    const buildVaseMesh = () => {
+      const profileStyle = readText("profile_style", "Classico");
+      const textureStyle = readText("texture_style", "Lisa");
+      const height = Math.max(readNumber("height_mm", 180), 1);
+      const topDiameter = Math.max(readNumber("top_diameter_mm", 160), 1);
+      const baseDiameter = Math.max(readNumber("base_diameter_mm", 110), 1);
+      const topRadius = Math.max(readNumber("top_diameter_mm", 160) / 2, 1);
+      const baseRadius = Math.max(readNumber("base_diameter_mm", 110) / 2, 1);
+      const ribCount = Math.max(
+        Math.round((Math.PI * Math.max(topDiameter, baseDiameter)) / Math.max(readNumber("rib_width_mm", 0) + readNumber("rib_spacing_mm", 8), 1)),
+        0
+      );
+      const ribWidth = Math.max(readNumber("rib_width_mm", 0), 0);
+      const ribDepth = Math.max(readNumber("rib_depth_mm", 0), 0);
+      const waveAmplitude = Math.max(readNumber("wave_amplitude_mm", 0), 0);
+      const profile = [];
+      const rings = 26;
+      for (let step = 0; step <= rings; step += 1) {
+        const t = step / rings;
+        let radius = baseRadius + (topRadius - baseRadius) * t;
+        if (profileStyle === "Bojudo") {
+          radius += Math.sin(t * Math.PI) * Math.max(waveAmplitude, 10);
+        } else if (profileStyle === "Ondulado") {
+          radius += Math.sin(t * Math.PI * 2) * waveAmplitude;
+        } else if (profileStyle === "Facetado") {
+          radius += step % 2 === 0 ? 3 : -3;
+        }
+        if (textureStyle === "Canelada" && ribCount > 0) {
+          radius += ribDepth * 0.35;
+        }
+        profile.push({
+          r: radius * 0.72,
+          y: (height * 0.5 - t * height) * 0.72,
+        });
+      }
+      return buildLatheMesh(profile, profileStyle === "Facetado" ? 8 : 30);
+    };
+
+    const buildLampMesh = () => {
+      const height = Math.max(readNumber("height_mm", 240), 1);
+      const outerDiameter = Math.max(readNumber("outer_diameter_mm", 150), 1);
+      const outerRadius = Math.max(readNumber("outer_diameter_mm", 150) / 2, 1);
+      const baseHeight = Math.max(readNumber("base_height_mm", 22), 1);
+      const baseRadius = Math.max(readNumber("base_outer_diameter_mm", 120) / 2, 1);
+      const ribCount = Math.max(
+        Math.round((Math.PI * outerDiameter) / Math.max(readNumber("rib_width_mm", 0) + readNumber("rib_spacing_mm", 8), 1)),
+        0
+      );
+      const ribDepth = Math.max(readNumber("rib_depth_mm", 0), 0);
+      const textureStyle = readText("texture_style", "Lisa");
+      const topY = (height * 0.5) * 0.72;
+      const bottomY = (-height * 0.5) * 0.72;
+      const connectorTop = bottomY - baseHeight * 0.2;
+      const profile = [
+        { r: baseRadius * 0.72, y: connectorTop },
+        { r: baseRadius * 0.72, y: bottomY },
+        { r: outerRadius * 0.72, y: bottomY + 2 },
+        { r: outerRadius * 0.72, y: topY },
+      ].map((point, index) => {
+        if (textureStyle === "Canelada" && index >= 2 && ribCount > 0) {
+          return { ...point, r: point.r + ribDepth * 0.28 };
+        }
+        return point;
+      });
+      return buildLatheMesh(profile, 30);
+    };
+
+    const render3D = () => {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "rgba(8, 13, 20, 0.94)";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      const faces = kind === "luminaria" ? buildLampMesh() : buildVaseMesh();
+      const projectedFaces = faces
+        .map((face) => face.map(projectPoint))
+        .map((face) => ({
+          points: face,
+          depth: face.reduce((sum, point) => sum + point.z, 0) / face.length,
+        }))
+        .sort((left, right) => left.depth - right.depth);
+
+      projectedFaces.forEach(({ points, depth }) => {
+        const alpha = Math.max(0.18, Math.min(0.78, 0.54 + depth / 900));
+        context.beginPath();
+        context.moveTo(points[0].x, points[0].y);
+        for (let index = 1; index < points.length; index += 1) {
+          context.lineTo(points[index].x, points[index].y);
+        }
+        context.closePath();
+        context.fillStyle =
+          kind === "luminaria"
+            ? `rgba(117, 188, 255, ${alpha})`
+            : `rgba(255, 180, 108, ${alpha})`;
+        context.fill();
+        context.strokeStyle = "rgba(255, 255, 255, 0.08)";
+        context.lineWidth = 1;
+        context.stroke();
+      });
+
+      context.beginPath();
+      context.ellipse(canvas.width / 2, canvas.height - 34, 78, 12, 0, 0, Math.PI * 2);
+      context.fillStyle = "rgba(0, 0, 0, 0.24)";
+      context.fill();
+    };
+
+    const updateDrag = (clientX, clientY) => {
+      const deltaX = clientX - viewState.lastX;
+      const deltaY = clientY - viewState.lastY;
+      viewState.lastX = clientX;
+      viewState.lastY = clientY;
+      viewState.yaw += deltaX * 0.012;
+      viewState.pitch = Math.max(-1.05, Math.min(1.05, viewState.pitch + deltaY * 0.008));
+      render3D();
+    };
+
+    const buildVaseScene = () => {
+      const profileStyle = readText("profile_style", "Classico");
+      const textureStyle = readText("texture_style", "Lisa");
+      const height = Math.max(readNumber("height_mm", 180), 1);
+      const topDiameter = Math.max(readNumber("top_diameter_mm", 160), 1);
+      const baseDiameter = Math.max(readNumber("base_diameter_mm", 110), 1);
+      const wall = Math.max(readNumber("wall_thickness_mm", 2.4), 0.8);
+      const bottom = Math.max(readNumber("bottom_thickness_mm", 3.2), 0.8);
+      const ribCount = Math.max(
+        Math.round((Math.PI * Math.max(topDiameter, baseDiameter)) / Math.max(readNumber("rib_width_mm", 0) + readNumber("rib_spacing_mm", 8), 1)),
+        0
+      );
+      const ribWidth = Math.max(readNumber("rib_width_mm", 0), 0);
+      const ribDepth = Math.max(readNumber("rib_depth_mm", 0), 0);
+      const waveAmplitude = Math.max(readNumber("wave_amplitude_mm", 0), 0);
+      const ratio = baseDiameter / Math.max(topDiameter, 1);
+      const scale = Math.min(180 / Math.max(topDiameter, baseDiameter), 220 / height);
+      const bodyHeight = height * scale;
+      const topWidth = topDiameter * scale;
+      const baseWidth = baseDiameter * scale;
+      const wallPx = Math.max(wall * scale, 2);
+      const bottomPx = Math.max(bottom * scale, 3);
+      const cx = 160;
+      const bottomY = 276;
+      const topY = bottomY - bodyHeight;
+      const midY = topY + bodyHeight * 0.45;
+      const bulge = profileStyle === "Bojudo" ? 16 + waveAmplitude * scale * 0.6 : 0;
+      const wave = profileStyle === "Ondulado" ? 10 + waveAmplitude * scale : 0;
+      const leftProfile =
+        profileStyle === "Facetado"
+          ? `L ${cx - baseWidth / 2} ${bottomY} L ${cx - baseWidth / 2 - 6} ${midY} L ${cx - topWidth / 2} ${topY}`
+          : `M ${cx - baseWidth / 2} ${bottomY} C ${cx - baseWidth / 2 - bulge - wave} ${midY + 26}, ${cx - topWidth / 2 - bulge + wave} ${midY - 28}, ${cx - topWidth / 2} ${topY}`;
+      const rightProfile =
+        profileStyle === "Facetado"
+          ? `L ${cx + topWidth / 2} ${topY} L ${cx + baseWidth / 2 + 6} ${midY} L ${cx + baseWidth / 2} ${bottomY}`
+          : `L ${cx + topWidth / 2} ${topY} C ${cx + topWidth / 2 + bulge - wave} ${midY - 28}, ${cx + baseWidth / 2 + bulge + wave} ${midY + 26}, ${cx + baseWidth / 2} ${bottomY}`;
+      const outerPath = `${leftProfile} ${rightProfile} Z`;
+      const innerPath = [
+        `M ${cx - baseWidth / 2 + wallPx} ${bottomY - bottomPx}`,
+        `L ${cx - topWidth / 2 + wallPx} ${topY + wallPx}`,
+        `L ${cx + topWidth / 2 - wallPx} ${topY + wallPx}`,
+        `L ${cx + baseWidth / 2 - wallPx} ${bottomY - bottomPx}`,
+        "Z",
+      ].join(" ");
+      const ribs = textureStyle === "Canelada"
+        ? Array.from({ length: Math.min(ribCount, 18) }, (_, index) => {
+            const progress = (index + 1) / (Math.min(ribCount, 18) + 1);
+            const width = Math.max(ribWidth * scale * 0.45, 3);
+            const x = cx - baseWidth / 2 + progress * baseWidth - width / 2;
+            return `<rect x="${x}" y="${topY + 5}" width="${width}" height="${bodyHeight - 8}" rx="${Math.max(width / 2, 2)}" class="preview-rib"></rect>`;
+          }).join("")
+        : "";
+
+      scene.innerHTML = `
+        <path d="${outerPath}" class="preview-solid"></path>
+        <path d="${innerPath}" class="preview-cut"></path>
+        ${ribs}
+        <line x1="${cx}" y1="${topY - 18}" x2="${cx}" y2="${bottomY + 10}" class="preview-guide"></line>
+      `;
+
+      statusNode.textContent =
+        ratio < 0.72
+          ? "Base estreita para a boca; vale reforcar estabilidade"
+          : "Perfil equilibrado para leitura decorativa e uso real";
+      ratioNode.textContent = `${ratio.toFixed(2)} x`;
+      styleNode.textContent = `${profileStyle} · ${textureStyle}${textureStyle === "Canelada" ? ` · ${ribCount} canais` : ""}`;
+    };
+
+    const buildLampScene = () => {
+      const patternStyle = readText("pattern_style", "Reto");
+      const textureStyle = readText("texture_style", "Lisa");
+      const symbolStyle = readText("symbol_style", "Nenhum");
+      const height = Math.max(readNumber("height_mm", 240), 1);
+      const outerDiameter = Math.max(readNumber("outer_diameter_mm", 150), 1);
+      const wall = Math.max(readNumber("wall_thickness_mm", 2), 0.8);
+      const slotCount = Math.max(readNumber("slot_count", 18), 1);
+      const slotWidth = Math.max(readNumber("slot_width_mm", 8), 1);
+      const slotHeight = Math.max(readNumber("slot_height_mm", 150), 1);
+      const ribCount = Math.max(
+        Math.round((Math.PI * outerDiameter) / Math.max(readNumber("rib_width_mm", 0) + readNumber("rib_spacing_mm", 8), 1)),
+        0
+      );
+      const ribWidth = Math.max(readNumber("rib_width_mm", 0), 0);
+      const ribDepth = Math.max(readNumber("rib_depth_mm", 0), 0);
+      const symbolScale = Math.max(readNumber("symbol_scale_percent", 35), 10) / 100;
+      const topMargin = Math.max(readNumber("top_margin_mm", 24), 0);
+      const bottomMargin = Math.max(readNumber("bottom_margin_mm", 28), 0);
+      const baseHeight = Math.max(readNumber("base_height_mm", 22), 1);
+      const baseOuterDiameter = Math.max(readNumber("base_outer_diameter_mm", 120), 1);
+      const fitClearance = Math.max(readNumber("fit_clearance_mm", 0.3), 0.05);
+      const fitOverlap = Math.max(readNumber("fit_overlap_mm", 14), 1);
+      const lockLip = Math.max(readNumber("lock_lip_mm", 1.2), 0.2);
+
+      const totalHeight = height + baseHeight;
+      const scale = Math.min(180 / Math.max(outerDiameter, baseOuterDiameter), 240 / totalHeight);
+      const shadeHeight = height * scale;
+      const shadeWidth = outerDiameter * scale;
+      const wallPx = Math.max(wall * scale, 2);
+      const baseHeightPx = baseHeight * scale;
+      const baseWidth = baseOuterDiameter * scale;
+      const fitOverlapPx = fitOverlap * scale;
+      const lockLipPx = Math.max(lockLip * scale, 1.5);
+      const slotZoneHeight = Math.max(Math.min(height - topMargin - bottomMargin, slotHeight), 1) * scale;
+      const slotZoneY = 280 - baseHeightPx - (bottomMargin * scale) - slotZoneHeight;
+      const shadeBottomY = 280 - baseHeightPx;
+      const shadeTopY = shadeBottomY - shadeHeight;
+      const cx = 160;
+      const slotCountClamped = Math.min(Math.round(slotCount), 10);
+      const slotGap = (shadeWidth - wallPx * 2) / (slotCountClamped + 1);
+      const slotWidthPx = Math.max(slotWidth * scale * 0.55, 3);
+      const slots = Array.from({ length: slotCountClamped }, (_, index) => {
+        const x = cx - shadeWidth / 2 + wallPx + slotGap * (index + 1) - slotWidthPx / 2;
+        const yOffset = patternStyle === "Diagonal" ? index * 4 : 0;
+        if (patternStyle === "Colmeia") {
+          return `<polygon points="${x + slotWidthPx / 2},${slotZoneY + yOffset} ${x + slotWidthPx},${slotZoneY + yOffset + slotZoneHeight * 0.25} ${x + slotWidthPx},${slotZoneY + yOffset + slotZoneHeight * 0.75} ${x + slotWidthPx / 2},${slotZoneY + yOffset + slotZoneHeight} ${x},${slotZoneY + yOffset + slotZoneHeight * 0.75} ${x},${slotZoneY + yOffset + slotZoneHeight * 0.25}" class="preview-slot"></polygon>`;
+        }
+        if (patternStyle === "Petalas") {
+          return `<ellipse cx="${x + slotWidthPx / 2}" cy="${slotZoneY + yOffset + slotZoneHeight / 2}" rx="${slotWidthPx / 2}" ry="${slotZoneHeight / 2}" class="preview-slot"></ellipse>`;
+        }
+        return `<rect x="${x}" y="${slotZoneY + yOffset}" width="${slotWidthPx}" height="${slotZoneHeight}" rx="2" class="preview-slot"></rect>`;
+      }).join("");
+      const ribs = textureStyle === "Canelada"
+        ? Array.from({ length: Math.min(ribCount, 16) }, (_, index) => {
+            const progress = (index + 1) / (Math.min(ribCount, 16) + 1);
+            const width = Math.max(ribWidth * scale * 0.42, 3);
+            const x = cx - shadeWidth / 2 + progress * shadeWidth - width / 2;
+            return `<rect x="${x}" y="${shadeTopY + 4}" width="${width}" height="${shadeHeight - 6}" rx="${Math.max(width / 2, 2)}" class="preview-rib"></rect>`;
+          }).join("")
+        : "";
+      const symbolMarkup = symbolStyle !== "Nenhum"
+        ? `<circle cx="${cx}" cy="${shadeTopY + shadeHeight * 0.42}" r="${12 * symbolScale}" class="preview-symbol"></circle>`
+        : "";
+
+      scene.innerHTML = `
+        <rect x="${cx - baseWidth / 2}" y="${280 - baseHeightPx}" width="${baseWidth}" height="${baseHeightPx}" rx="10" class="preview-base"></rect>
+        <rect x="${cx - (shadeWidth - fitClearance * scale * 2) / 2}" y="${280 - baseHeightPx - fitOverlapPx}" width="${shadeWidth - fitClearance * scale * 2}" height="${fitOverlapPx}" rx="8" class="preview-fit"></rect>
+        <rect x="${cx - (shadeWidth - fitClearance * scale * 2 + 4) / 2}" y="${280 - lockLipPx}" width="${shadeWidth - fitClearance * scale * 2 + 4}" height="${lockLipPx}" rx="8" class="preview-lock"></rect>
+        <rect x="${cx - shadeWidth / 2}" y="${shadeTopY}" width="${shadeWidth}" height="${shadeHeight}" rx="18" class="preview-solid"></rect>
+        <rect x="${cx - shadeWidth / 2 + wallPx}" y="${shadeTopY + wallPx}" width="${shadeWidth - wallPx * 2}" height="${shadeHeight - wallPx}" rx="14" class="preview-cut"></rect>
+        ${ribs}
+        ${slots}
+        ${symbolMarkup}
+      `;
+
+      statusNode.textContent =
+        fitClearance <= 0.22
+          ? "Encaixe justo para acabamento fino; confirme calibracao da impressora"
+          : fitClearance >= 0.45
+            ? "Encaixe mais folgado; bom para montagem facil, mas revise soltura"
+            : "Encaixe equilibrado para montagem e retenção mecanica";
+      ratioNode.textContent = `${fitClearance.toFixed(2)} mm`;
+      styleNode.textContent = `${patternStyle} · ${textureStyle}${textureStyle === "Canelada" ? ` · ${ribCount} canais` : ""}${symbolStyle !== "Nenhum" ? ` · ${symbolStyle}` : ""}`;
+    };
+
+    const render = () => {
+      if (kind === "luminaria") {
+        buildLampScene();
+      } else {
+        buildVaseScene();
+      }
+      render3D();
+    };
+
+    canvas.addEventListener("pointerdown", (event) => {
+      viewState.dragId = event.pointerId;
+      viewState.lastX = event.clientX;
+      viewState.lastY = event.clientY;
+      canvas.classList.add("is-dragging");
+      canvas.setPointerCapture(event.pointerId);
+    });
+
+    canvas.addEventListener("pointermove", (event) => {
+      if (viewState.dragId !== event.pointerId) {
+        return;
+      }
+      updateDrag(event.clientX, event.clientY);
+    });
+
+    const endDrag = (event) => {
+      if (viewState.dragId !== event.pointerId) {
+        return;
+      }
+      viewState.dragId = null;
+      canvas.classList.remove("is-dragging");
+    };
+
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+    canvas.addEventListener("pointerleave", endDrag);
+
+    form.addEventListener("input", render);
+    form.addEventListener("change", render);
+    render();
+  });
+}
+
 function setupServiceWorker() {
   if (!("serviceWorker" in navigator)) {
     return;
@@ -2864,6 +3278,7 @@ setupProductBuilder();
 setupCommercialEntries();
 setupCustomerPostalCodeAutofill();
 setupAutoUppercaseFields();
+setupParametricPreview();
 setupFormDraftPersistence();
 setupPendingSelections();
 setupScrollRestore();

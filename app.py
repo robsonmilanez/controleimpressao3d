@@ -2445,12 +2445,8 @@ def calculate_printer_cost_breakdown(
         if productive_hours_per_month > 0
         else 0.0
     )
-    shared_overhead_hourly_cost = calculate_shared_operating_hourly_cost(
-        monthly_fixed_cost, productive_hours_per_month
-    )
-    operating_hourly_cost = (
-        depreciation_cost + maintenance_hourly_cost + shared_overhead_hourly_cost
-    )
+    shared_overhead_hourly_cost = 0.0
+    operating_hourly_cost = depreciation_cost + maintenance_hourly_cost
     total_hourly_cost = operating_hourly_cost + energy_cost
     return {
         "depreciation_hourly_cost": round(depreciation_cost, 4),
