@@ -2546,7 +2546,14 @@ def get_printer_wear_rate(
         - float(breakdown["shared_overhead_hourly_cost"] or 0)
         - float(breakdown["maintenance_hourly_cost"] or 0)
     )
-    return round(max(inferred_wear_rate, 0), 4)
+    if inferred_wear_rate > 0:
+        return round(inferred_wear_rate, 4)
+
+    non_energy_machine_cost = hourly_cost - float(breakdown["energy_hourly_cost"] or 0)
+    if non_energy_machine_cost > 0:
+        return round(non_energy_machine_cost, 4)
+
+    return round(max(float(breakdown["operating_hourly_cost"] or 0), 0), 4)
 
 
 def get_default_product_wear_cost_per_hour(db: sqlite3.Connection) -> float:
