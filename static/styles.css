@@ -697,7 +697,11 @@ input[type="range"]:focus {
 }
 
 .service-row {
-  grid-template-columns: minmax(52px, 0.32fr) minmax(460px, 3.35fr) repeat(4, minmax(68px, 0.38fr));
+  grid-template-columns:
+    minmax(52px, 0.32fr)
+    minmax(320px, 2.2fr)
+    minmax(140px, 0.9fr)
+    repeat(4, minmax(68px, 0.38fr));
 }
 
 .jobs-page-hero {
@@ -878,8 +882,8 @@ input[type="range"]:focus {
 .job-form-compact .service-row {
   grid-template-columns:
     minmax(78px, 0.52fr)
-    minmax(920px, 6.1fr)
-    minmax(96px, 0.5fr)
+    minmax(620px, 4fr)
+    minmax(170px, 1.2fr)
     repeat(4, minmax(132px, 0.8fr));
   gap: 0.65rem;
   padding: 0.85rem;

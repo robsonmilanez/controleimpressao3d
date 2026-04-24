@@ -139,10 +139,12 @@
               <label class="item-description-field">
                 Descricao do item
                 <span class="item-description-group">
+                  {% set current_item_name = service['service_name'] if service else job['item_name'] %}
+                  {% set current_product_id = service['product_id'] if service and service['product_id'] else job['product_id'] %}
                   <select class="product-picker" name="product_id" data-new-url="{{ url_for('products', return_to=url_for('edit_job', job_id=job['id'])) }}">
-                    <option value="">Nenhum produto cadastrado</option>
+                    <option value="" {% if not current_product_id and not resolved_product %}selected{% endif %}>{{ current_item_name or "Nenhum produto cadastrado" }}</option>
                     {% for product in products %}
-                      <option value="{{ product['id'] }}" data-name="{{ product['name'] }}" data-sale-price="{{ product['sale_price'] or 0 }}" data-category="{{ product['category'] or '' }}" data-model-link="{{ product['model_link'] or '' }}">{{ product["sku"] or "Produto" }} - {{ product["name"] }}</option>
+                      <option value="{{ product['id'] }}" data-name="{{ product['name'] }}" data-sale-price="{{ product['sale_price'] or 0 }}" data-category="{{ product['category'] or '' }}" data-model-link="{{ product['model_link'] or '' }}" {% if current_product_id == product['id'] or (not current_product_id and product['name'] == current_item_name) %}selected{% endif %}>{{ product["sku"] or "Produto" }} - {{ product["name"] }}</option>
                     {% endfor %}
                     <option value="__new__">+ Novo produto</option>
                   </select>
@@ -151,10 +153,10 @@
               <input type="hidden" name="item_name" value="{{ service['service_name'] if service else job['item_name'] }}">
               <label class="service-category-field computed-field">
                 Categoria
-                <input type="text" class="service-category-display" value="{{ service['category'] if service else '' }}" readonly>
+                <input type="text" class="service-category-display" value="{{ ((service['category'] if service else '') or (resolved_product['category'] if resolved_product else '')) or '' }}" readonly>
               </label>
               <input type="hidden" name="service_name" class="service-name-sync" value="{{ service['service_name'] if service else job['item_name'] }}">
-              <input type="hidden" name="service_category" class="service-category-sync" value="{{ service['category'] if service else '' }}">
+              <input type="hidden" name="service_category" class="service-category-sync" value="{{ ((service['category'] if service else '') or (resolved_product['category'] if resolved_product else '')) or '' }}">
               <label class="service-value-field">
                 Valor unitario
                 <input type="number" name="service_unit_price" min="0" step="0.01" value="{{ service['unit_price'] if service else 0 }}">

@@ -200,7 +200,12 @@
             <thead>
               <tr>
                 <th>Ações</th>
-                <th>Nº pedido</th>
+                <th>
+                  <span class="sortable-header">
+                    Nº pedido
+                    <a class="sort-link {% if sort_key == 'id' %}is-active{% endif %} preserve-scroll-link" href="{{ url_for('jobs', sort='id', direction='asc' if sort_key != 'id' or sort_direction == 'desc' else 'desc') }}">{{ '↑' if sort_key == 'id' and sort_direction == 'asc' else '↓' if sort_key == 'id' and sort_direction == 'desc' else '↕' }}</a>
+                  </span>
+                </th>
                 <th>
                   <span class="sortable-header">
                     Cliente
