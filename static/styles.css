@@ -1042,30 +1042,52 @@ input[type="range"]:focus {
   vertical-align: middle;
 }
 
-.job-item-inline {
+.job-lines-panel {
   display: grid;
-  gap: 0.2rem;
-  align-items: start;
+  gap: 0.38rem;
   min-width: 0;
 }
 
-.job-item-inline strong {
+.job-line-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(74px, 0.42fr) minmax(104px, 0.55fr) minmax(66px, 0.34fr) minmax(112px, 0.58fr);
+  gap: 0.7rem;
+  align-items: start;
+  padding: 0.28rem 0;
+  border-top: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+.job-line-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.job-line-item strong,
+.job-line-qty,
+.job-line-status,
+.job-line-due,
+.job-line-value {
   display: block;
   line-height: 1.2;
+}
+
+.job-line-item strong {
   white-space: normal;
   overflow-wrap: anywhere;
 }
 
-.job-metric-inline {
-  display: grid;
-  gap: 0.2rem;
-  justify-items: center;
+.job-line-qty,
+.job-line-status,
+.job-line-due,
+.job-line-value {
+  text-align: center;
+  white-space: nowrap;
 }
 
-.job-metric-inline span,
-.job-metric-inline strong {
-  display: block;
-  line-height: 1.2;
+.job-line-total-summary {
+  padding-top: 0.4rem;
+  border-top: 2px solid rgba(255, 255, 255, 0.16);
+  text-align: right;
 }
 
 .material-row {
@@ -2933,13 +2955,18 @@ th {
 }
 
 .customer-document-page .customer-document-table td:first-child {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
 }
 
 .customer-document-page .customer-document-table td:nth-child(6) {
   font-size: 0.83rem;
+}
+
+.document-item-overflow {
+  display: block;
+  margin-top: 0.08rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .customer-document-page .document-total {
@@ -3811,7 +3838,12 @@ th {
     color: var(--text);
   }
 
-  .jobs-list-table td[data-label="Item"] strong {
+  .jobs-list-table .job-line-row {
+    grid-template-columns: 1fr;
+    gap: 0.16rem;
+  }
+
+  .jobs-list-table .job-line-item strong {
     display: block;
     font-size: 0.98rem;
     line-height: 1.16;
@@ -3834,6 +3866,14 @@ th {
     text-align: center;
     font-size: 0.77rem;
     padding: 0.52rem 0.6rem;
+  }
+
+  .jobs-list-table .job-line-qty,
+  .jobs-list-table .job-line-status,
+  .jobs-list-table .job-line-due,
+  .jobs-list-table .job-line-value,
+  .jobs-list-table .job-line-total-summary {
+    text-align: left;
   }
 
   .jobs-list-table td[data-label="Excluir"] .danger-button {

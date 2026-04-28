@@ -109,6 +109,24 @@ def parse_form_number(value: Any, field_label: str, default: float = 0.0) -> flo
         )
 
 
+def split_item_description(value: str | None, first_line_limit: int = 46) -> tuple[str, str]:
+    text = " ".join(str(value or "").split()).strip()
+    if len(text) <= first_line_limit:
+        return text or "-", ""
+
+    cut_position = text.rfind(" ", 0, first_line_limit + 1)
+    if cut_position < max(12, first_line_limit // 2):
+        cut_position = first_line_limit
+    first_line = text[:cut_position].strip()
+    second_line = text[cut_position:].strip()
+    return first_line or "-", second_line
+
+
+@app.template_filter("split_item_description")
+def split_item_description_filter(value: str | None) -> tuple[str, str]:
+    return split_item_description(value)
+
+
 def material_order_clause(prefix: str = "") -> str:
     return (
         f"{prefix}color COLLATE NOCASE ASC, "

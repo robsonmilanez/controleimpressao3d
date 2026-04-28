@@ -300,31 +300,29 @@
                   <td data-label="Nº pedido">#{{ '%04d'|format(job["id"]) }}</td>
                   <td data-label="Cliente">{{ job["customer_display"] }}</td>
                   <td data-label="Item">
-                    <div class="job-item-inline" title="{{ job['list_item_name_full'] }}">
+                    <div class="job-lines-panel" title="{{ job['list_item_name_full'] }}">
                       {% for item_line in job['list_item_lines'] %}
-                        <strong>{{ item_line['name'] }}</strong>
-                      {% endfor %}
-                    </div>
-                  </td>
-                  <td data-label="Qtde">
-                    <div class="job-metric-inline">
-                      {% for item_line in job['list_item_lines'] %}
-                        <span>{{ item_line['quantity']|br_decimal }} un</span>
-                      {% endfor %}
-                    </div>
-                  </td>
-                  <td data-label="Status">{{ job["status"] }}</td>
-                  <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
-                  <td data-label="Valor">
-                    <div class="job-metric-inline">
-                      {% for item_line in job['list_item_lines'] %}
-                        <span>R$ {{ item_line['total_price']|br_money }}</span>
+                        <div class="job-line-row">
+                          <div class="job-line-item">
+                            <strong>{{ item_line['name'] }}</strong>
+                          </div>
+                          <div class="job-line-qty">{{ item_line['quantity']|br_decimal }} un</div>
+                          <div class="job-line-status">{{ job["status"] }}</div>
+                          <div class="job-line-due">{{ job["due_date"] or "-" }}</div>
+                          <div class="job-line-value">R$ {{ item_line['total_price']|br_money }}</div>
+                        </div>
                       {% endfor %}
                       {% if job['list_item_lines']|length > 1 %}
-                        <strong>Total: R$ {{ job["suggested_price"]|br_money }}</strong>
+                        <div class="job-line-total-summary">
+                          <strong>Total do pedido: R$ {{ job["suggested_price"]|br_money }}</strong>
+                        </div>
                       {% endif %}
                     </div>
                   </td>
+                  <td data-label="Qtde">{{ job['list_item_lines']|length }} item(ns)</td>
+                  <td data-label="Status">{{ job["status"] }}</td>
+                  <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
+                  <td data-label="Valor">R$ {{ job["suggested_price"]|br_money }}</td>
                   <td data-label="Excluir">
                     <form method="post" action="{{ url_for('delete_job', job_id=job['id']) }}" class="inline-form" onsubmit="return confirm('Excluir este pedido?');">
                       <button type="submit" class="danger-button">Excluir</button>

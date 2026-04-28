@@ -80,8 +80,14 @@
           <tbody>
             {% if service_lines %}
               {% for service in service_lines %}
+                {% set item_lines = service["service_name"]|split_item_description %}
                 <tr>
-                  <td data-label="Item">{{ service["service_name"] }}</td>
+                  <td data-label="Item">
+                    <strong>{{ item_lines[0] }}</strong>
+                    {% if item_lines[1] %}
+                      <span class="document-item-overflow">{{ item_lines[1] }}</span>
+                    {% endif %}
+                  </td>
                   <td data-label="Qtd.">{{ service["quantity"]|br_decimal }}</td>
                   <td data-label="Valor unit.">R$ {{ service["unit_price"]|br_money }}</td>
                   <td data-label="Acrescimo">R$ {{ service["addition_value"]|br_money }}</td>
@@ -90,8 +96,14 @@
                 </tr>
               {% endfor %}
             {% else %}
+              {% set item_lines = job["item_name"]|split_item_description %}
               <tr>
-                <td data-label="Item">{{ job["item_name"] }}</td>
+                <td data-label="Item">
+                  <strong>{{ item_lines[0] }}</strong>
+                  {% if item_lines[1] %}
+                    <span class="document-item-overflow">{{ item_lines[1] }}</span>
+                  {% endif %}
+                </td>
                 <td data-label="Qtd.">{{ job["quantity"] }} un</td>
                 <td data-label="Valor unit.">R$ {{ job["suggested_price"]|br_money }}</td>
                 <td data-label="Acrescimo">R$ 0,00</td>
