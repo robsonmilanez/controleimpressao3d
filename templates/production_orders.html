@@ -84,10 +84,22 @@
             <tbody>
               {% for job in jobs %}
                 <tr>
-                  <td data-label="Pedido">#{{ "%04d"|format(job["id"]) }}</td>
-                  <td data-label="Cliente">{{ job["customer_display"] }}</td>
+                  <td data-label="Pedido">
+                    <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">#{{ "%04d"|format(job["id"]) }}</a>
+                  </td>
+                  <td data-label="Cliente">
+                    {% if job["customer_history_url"] %}
+                      <a class="action-link" href="{{ job['customer_history_url'] }}">{{ job["customer_display"] }}</a>
+                    {% else %}
+                      {{ job["customer_display"] }}
+                    {% endif %}
+                  </td>
                   <td data-label="Item">
-                    <strong>{{ job["item_name"] }}</strong><br>
+                    {% if job["product_history_url"] %}
+                      <a class="action-link" href="{{ job['product_history_url'] }}"><strong>{{ job["item_name"] }}</strong></a><br>
+                    {% else %}
+                      <strong>{{ job["item_name"] }}</strong><br>
+                    {% endif %}
                     {{ job["material_lines_count"] }} linha(s) de produção · {{ job["component_lines_count"] }} componente(s)
                   </td>
                   <td data-label="Status">{{ job["status"] }}</td>

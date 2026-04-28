@@ -5230,6 +5230,136 @@ def fetch_products(db: sqlite3.Connection) -> list[dict[str, Any]]:
     return items
 
 
+def fetch_product_detail(db: sqlite3.Connection, product_id: int) -> dict[str, Any]:
+    row = db.execute(
+        """
+        SELECT
+            products.*,
+            materials.name AS material_name,
+            materials.material_type,
+            materials.color AS material_color
+        FROM products
+        LEFT JOIN materials ON materials.id = products.material_id
+        WHERE products.id = ?
+        """,
+        (product_id,),
+    ).fetchone()
+    if row is None:
+        abort(404)
+
+    product = dict(row)
+    materials_by_id = {
+        item["id"]: item
+        for item in db.execute(
+            f"SELECT * FROM materials ORDER BY {material_order_clause()}"
+        ).fetchall()
+    }
+    components_by_id = {
+        item["id"]: item
+        for item in db.execute("SELECT * FROM components ORDER BY name ASC").fetchall()
+    }
+
+    material_lines: list[dict[str, Any]] = []
+    for entry in parse_product_material_lines(product.get("additional_material_types"), materials_by_id):
+        material_id = parse_integerish(entry.get("material_id"))
+        material = materials_by_id.get(material_id)
+        if material is None:
+            continue
+        quantity_grams = float(entry.get("quantity_grams") or 0)
+        cost_per_kg = float(material["cost_per_kg"] or 0)
+        material_lines.append(
+            {
+                "material_id": material_id,
+                "label": build_product_material_label(material),
+                "material_type": material["material_type"] or "-",
+                "name": material["name"] or "-",
+                "color": material["color"] or "-",
+                "manufacturer_name": material["manufacturer_name"] or "-",
+                "quantity_grams": quantity_grams,
+                "print_hours": float(entry.get("print_hours") or 0),
+                "cost_per_kg": cost_per_kg,
+                "estimated_cost": round((quantity_grams * cost_per_kg) / 1000, 2),
+                "location": material["location"] or "-",
+            }
+        )
+
+    component_lines: list[dict[str, Any]] = []
+    for entry in parse_product_component_lines(product.get("accessories"), components_by_id):
+        component_id = parse_integerish(entry.get("component_id"))
+        component = components_by_id.get(component_id)
+        if component is None:
+            continue
+        quantity = float(entry.get("quantity") or 0)
+        unit_cost = float(component["unit_cost"] or 0)
+        component_lines.append(
+            {
+                "component_id": component_id,
+                "label": build_product_component_label(component),
+                "name": component["name"] or "-",
+                "component_type": component["component_type"] or "-",
+                "sku": component["sku"] or "-",
+                "manufacturer_name": component["manufacturer_name"] or "-",
+                "quantity": quantity,
+                "unit_measure": component["unit_measure"] or "un",
+                "unit_cost": unit_cost,
+                "estimated_cost": round(quantity * unit_cost, 2),
+                "location": component["location"] or "-",
+            }
+        )
+
+    material_cost_total = round(sum(line["estimated_cost"] for line in material_lines), 2)
+    component_cost_total = round(sum(line["estimated_cost"] for line in component_lines), 2)
+    total_print_hours = round(sum(line["print_hours"] for line in material_lines), 2)
+    printer_wear_total = round(
+        total_print_hours * float(product.get("printer_wear_cost_per_hour") or 0),
+        2,
+    )
+    energy_total = round(
+        total_print_hours * float(product.get("energy_cost_per_hour") or 0),
+        2,
+    )
+    operating_total = round(
+        float(product.get("labor_hours") or 0) * float(product.get("operating_cost_per_hour") or 0),
+        2,
+    )
+    design_total = round(
+        float(product.get("design_hours") or 0) * float(product.get("design_hourly_rate") or 0),
+        2,
+    )
+    sales_count_row = db.execute(
+        """
+        SELECT COUNT(DISTINCT jobs.id) AS total
+        FROM jobs
+        LEFT JOIN job_services ON job_services.job_id = jobs.id
+        WHERE jobs.product_id = ? OR job_services.product_id = ?
+        """,
+        (product_id, product_id),
+    ).fetchone()
+
+    return {
+        "product": product,
+        "material_lines": material_lines,
+        "component_lines": component_lines,
+        "totals": {
+            "material_cost": material_cost_total,
+            "component_cost": component_cost_total,
+            "printer_wear": printer_wear_total,
+            "energy": energy_total,
+            "operating": operating_total,
+            "design": design_total,
+            "extra_cost": float(product.get("extra_cost") or 0),
+            "unit_cost": float(product.get("unit_cost") or 0),
+            "sale_price": float(product.get("sale_price") or 0),
+            "margin_value": round(
+                float(product.get("sale_price") or 0) - float(product.get("unit_cost") or 0),
+                2,
+            ),
+            "print_hours": total_print_hours,
+            "sales_count": int(sales_count_row["total"] or 0),
+        },
+    }
+
+
 def sort_registry_records(
     records: list[dict[str, Any]],
     columns: list[dict[str, Any]],
@@ -5962,7 +6092,7 @@ def sales_orders_query() -> str:
             return False
         return True
 
-    filtered_jobs = [job for job in jobs if job_matches(job)]
+    filtered_jobs = prepare_query_jobs(db, [job for job in jobs if job_matches(job)])
     return render_template(
         "sales_orders.html",
         jobs=filtered_jobs,
@@ -6023,6 +6153,52 @@ def sale_products_query() -> str:
             },
         ),
         filters=product_filters,
+    )
+
+
+@app.route("/queries/customers/<int:customer_id>/jobs")
+def customer_jobs_query(customer_id: int) -> str:
+    db = get_db()
+    customer = db.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    if customer is None:
+        abort(404)
+    jobs = [
+        job
+        for job in fetch_jobs(db, sort_key="created_at", sort_direction="desc")
+        if parse_integerish(job["customer_id"]) == customer_id
+    ]
+    return render_template(
+        "query_jobs_history.html",
+        title=f"Compras de {customer['name']}",
+        subtitle="Todos os pedidos e orçamentos vinculados a este cliente.",
+        jobs=prepare_query_jobs(db, jobs),
+        empty_message="Nenhum pedido encontrado para este cliente.",
+        back_url=url_for("sales_orders_query"),
+    )
+
+
+@app.route("/queries/products/<int:product_id>/jobs")
+def product_jobs_query(product_id: int) -> str:
+    db = get_db()
+    product = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    if product is None:
+        abort(404)
+    jobs = []
+    for job in fetch_jobs(db, sort_key="created_at", sort_direction="desc"):
+        service_lines = db.execute(
+            "SELECT * FROM job_services WHERE job_id = ? ORDER BY id ASC",
+            (int(job["id"]),),
+        ).fetchall()
+        resolved_product = resolve_job_product(db, job, service_lines)
+        if resolved_product is not None and int(resolved_product["id"]) == product_id:
+            jobs.append(job)
+    return render_template(
+        "query_jobs_history.html",
+        title=f"Vendas de {product['name']}",
+        subtitle="Todos os pedidos em que este produto apareceu.",
+        jobs=prepare_query_jobs(db, jobs),
+        empty_message="Nenhuma venda encontrada para este produto.",
+        back_url=url_for("sale_products_query"),
     )
 
 
@@ -6103,9 +6279,10 @@ def production_orders() -> str:
         jobs,
         ["id", "customer_display", "item_name", "status", "printer_name"],
     )
+    prepared_jobs = prepare_query_jobs(db, filtered_jobs)
     return render_template(
         "production_orders.html",
-        jobs=filtered_jobs,
+        jobs=prepared_jobs,
         sort_key=effective_sort_key,
         sort_direction=sort_direction,
         sort_urls=build_sort_urls(
@@ -7855,6 +8032,32 @@ def fetch_job_detail_by_token(
     return fetch_job_detail(db, int(row["id"]))
 
 
+def prepare_query_jobs(
+    db: sqlite3.Connection,
+    jobs: list[sqlite3.Row | dict[str, Any]],
+) -> list[dict[str, Any]]:
+    prepared = prepare_jobs_for_list(jobs)
+    for item in prepared:
+        service_lines = db.execute(
+            "SELECT * FROM job_services WHERE job_id = ? ORDER BY id ASC",
+            (int(item["id"]),),
+        ).fetchall()
+        resolved_product = resolve_job_product(db, item, service_lines)
+        item["resolved_product_id"] = resolved_product["id"] if resolved_product else None
+        item["resolved_product_name"] = (
+            resolved_product["name"] if resolved_product else item.get("item_name") or "-"
+        )
+        item["customer_history_url"] = url_for(
+            "customer_jobs_query",
+            customer_id=item["customer_id"],
+        ) if item.get("customer_id") else ""
+        item["product_history_url"] = url_for(
+            "product_jobs_query",
+            product_id=resolved_product["id"],
+        ) if resolved_product else ""
+    return prepared
+
+
 def build_document_share_context(detail: dict[str, Any]) -> dict[str, str]:
     job = detail["job"]
     customer_url = url_for(
@@ -7900,6 +8103,14 @@ def job_production_document(job_id: int) -> str:
         **detail,
         **build_document_share_context(detail),
         public_view=False,
+    )
+
+
+@app.route("/queries/sale-products/<int:product_id>/pdf")
+def product_purchase_document(product_id: int) -> str:
+    return render_template(
+        "product_purchase_document.html",
+        **fetch_product_detail(get_db(), product_id),
     )
 
 

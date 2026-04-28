@@ -97,7 +97,7 @@
                 <tr>
                   <td data-label="Codigo">{{ product["sku"] or "-" }}</td>
                   <td data-label="Produto">
-                    <strong>{{ product["name"] }}</strong><br>
+                    <a class="action-link" href="{{ url_for('product_jobs_query', product_id=product['id']) }}"><strong>{{ product["name"] }}</strong></a><br>
                     {{ product["category"] or "-" }}
                   </td>
                   <td data-label="Material base">
@@ -113,6 +113,8 @@
                   <td data-label="Acoes">
                     <div class="action-group">
                       <a class="action-link" href="{{ url_for('edit_product', product_id=product['id']) }}">Abrir produto</a>
+                      <a class="action-link" href="{{ url_for('product_purchase_document', product_id=product['id']) }}">PDF</a>
+                      <a class="action-link" href="{{ url_for('product_jobs_query', product_id=product['id']) }}">Histórico</a>
                     </div>
                   </td>
                 </tr>
