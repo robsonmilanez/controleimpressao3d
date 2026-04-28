@@ -1043,16 +1043,17 @@ input[type="range"]:focus {
 }
 
 .job-item-inline {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  gap: 0.2rem;
+  align-items: start;
   min-width: 0;
-  white-space: nowrap;
 }
 
 .job-item-inline strong {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .material-row {
@@ -2905,11 +2906,7 @@ th {
 }
 
 .customer-document-page .customer-document-table .customer-col-total {
-  width: 11%;
-}
-
-.customer-document-page .customer-document-table .customer-col-notes {
-  width: 8%;
+  width: 19%;
 }
 
 .customer-document-page .customer-document-table th,
@@ -2935,6 +2932,11 @@ th {
 
 .customer-document-page .document-total {
   width: min(100%, 340px);
+}
+
+.customer-notes-list {
+  display: grid;
+  gap: 0.28rem;
 }
 
 .production-document-page .print-page {

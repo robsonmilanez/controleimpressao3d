@@ -157,9 +157,7 @@
       name="labor_hours"
       min="0"
       step="0.01"
-      value="{{ product['labor_hours'] if product else 0 }}"
-      data-auto-sync-source="print-hours"
-      data-auto-sync-enabled="{{ '0' if product and product['labor_hours'] and product['labor_hours'] != product['print_hours'] else '1' }}"
+      value="0"
     >
   </label>
   <label class="computed-field">

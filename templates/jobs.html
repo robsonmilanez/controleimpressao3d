@@ -301,7 +301,9 @@
                   <td data-label="Cliente">{{ job["customer_display"] }}</td>
                   <td data-label="Item">
                     <div class="job-item-inline" title="{{ job['list_item_name_full'] }}">
-                      <strong>{{ job["list_item_name"] }}</strong>
+                      {% for item_name in job['list_item_lines'] %}
+                        <strong>{{ item_name }}</strong>
+                      {% endfor %}
                     </div>
                   </td>
                   <td data-label="Qtde">{{ job["quantity"] }} un</td>

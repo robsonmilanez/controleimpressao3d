@@ -83,6 +83,32 @@ def normalize_shortcut_value(value: Any) -> str:
     return "" if normalized.startswith("__") else normalized
 
 
+def parse_form_decimal(value: Any, field_label: str, default: float = 0.0) -> float:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return default
+    try:
+        return parse_brazilian_decimal(normalized)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"Campo inválido: {field_label}. Use apenas números, por exemplo 10 ou 10,5."
+        )
+
+
+def parse_form_number(value: Any, field_label: str, default: float = 0.0) -> float:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return default
+    try:
+        if normalized.startswith("__"):
+            return default
+        return float(normalized.replace(",", "."))
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"Campo inválido: {field_label}. Use apenas números, por exemplo 10 ou 10,5."
+        )
+
+
 def material_order_clause(prefix: str = "") -> str:
     return (
         f"{prefix}color COLLATE NOCASE ASC, "
@@ -6516,8 +6542,19 @@ def edit_production_order(job_id: int) -> str:
     detail = fetch_job_detail(db, job_id)
 
     if request.method == "POST":
-        save_job_production_data(db, job_id, detail)
-        return redirect(url_for("edit_production_order", job_id=job_id))
+        try:
+            save_job_production_data(db, job_id, detail)
+            return redirect(url_for("edit_production_order", job_id=job_id))
+        except ValueError as error:
+            return render_template(
+                "production_order_edit.html",
+                **detail,
+                materials=materials_list,
+                components=references["components"],
+                printers=references["printers"],
+                filament_dryers=references["filament_dryers"],
+                error=str(error),
+            )
 
     return render_template(
         "production_order_edit.html",
@@ -6789,15 +6826,17 @@ def jobs() -> str:
                     delete_error="",
                 )
 
-            extra_cost = parse_brazilian_decimal(request.form.get("extra_cost"))
-            margin_percent = float(request.form.get("margin_percent") or 0)
-            labor_hours = float(request.form.get("labor_hours") or 0)
-            labor_hourly_rate = parse_brazilian_decimal(
-                request.form.get("labor_hourly_rate")
+            extra_cost = parse_form_decimal(request.form.get("extra_cost"), "Custos extras")
+            margin_percent = parse_form_number(request.form.get("margin_percent"), "Margem (%)")
+            labor_hours = parse_form_number(request.form.get("labor_hours"), "Horas operacionais")
+            labor_hourly_rate = parse_form_decimal(
+                request.form.get("labor_hourly_rate"),
+                "Mão de obra operacional/h",
             )
-            design_hours = float(request.form.get("design_hours") or 0)
-            design_hourly_rate = parse_brazilian_decimal(
-                request.form.get("design_hourly_rate")
+            design_hours = parse_form_number(request.form.get("design_hours"), "Horas de design")
+            design_hourly_rate = parse_form_decimal(
+                request.form.get("design_hourly_rate"),
+                "Valor design/h",
             )
 
             customer_total = sum(line["total_price"] for line in service_lines)
@@ -7236,10 +7275,12 @@ def prepare_jobs_for_list(jobs: list[sqlite3.Row]) -> list[dict[str, Any]]:
         if service_names:
             item["list_item_name"] = " | ".join(service_names)
             item["list_item_name_full"] = " | ".join(service_names)
+            item["list_item_lines"] = service_names
         else:
             fallback_name = str(item.get("item_name") or "-").strip() or "-"
             item["list_item_name"] = fallback_name
             item["list_item_name_full"] = fallback_name
+            item["list_item_lines"] = [fallback_name]
         item["item_name"] = item["list_item_name"]
         customer_url = url_for(
             "public_job_customer_document",
@@ -7282,12 +7323,18 @@ def save_job_production_data(
         component_lines,
     )
     requested_weight = sum(line["weight_grams"] for line in material_lines)
-    extra_cost = parse_brazilian_decimal(request.form.get("extra_cost"))
-    margin_percent = float(request.form.get("margin_percent") or 0)
-    labor_hours = float(request.form.get("labor_hours") or 0)
-    labor_hourly_rate = parse_brazilian_decimal(request.form.get("labor_hourly_rate"))
-    design_hours = float(request.form.get("design_hours") or 0)
-    design_hourly_rate = parse_brazilian_decimal(request.form.get("design_hourly_rate"))
+    extra_cost = parse_form_decimal(request.form.get("extra_cost"), "Custos extras")
+    margin_percent = parse_form_number(request.form.get("margin_percent"), "Margem (%)")
+    labor_hours = parse_form_number(request.form.get("labor_hours"), "Horas operacionais")
+    labor_hourly_rate = parse_form_decimal(
+        request.form.get("labor_hourly_rate"),
+        "Mão de obra operacional/h",
+    )
+    design_hours = parse_form_number(request.form.get("design_hours"), "Horas de design")
+    design_hourly_rate = parse_form_decimal(
+        request.form.get("design_hourly_rate"),
+        "Valor design/h",
+    )
     sale_total = sum(float(line["total_price"] or 0) for line in detail["service_lines"])
     cost_summary = summarize_cost_lines(
         material_lines=material_lines,
@@ -7714,236 +7761,258 @@ def edit_job(job_id: int) -> str:
                 today_date=date.today().isoformat(),
                 error="Selecione um cliente valido antes de salvar o pedido.",
             )
-        material_lines = build_job_material_lines(db)
-        component_lines = build_job_component_lines(db)
-        service_lines = build_job_service_lines(db)
-        material_lines, component_lines, resolved_product = apply_product_defaults_to_job_lines(
-            db,
-            detail["job"],
-            service_lines,
-            material_lines,
-            component_lines,
-        )
-        requested_weight = sum(line["weight_grams"] for line in material_lines)
-        extra_cost = parse_brazilian_decimal(request.form.get("extra_cost"))
-        margin_percent = float(request.form.get("margin_percent") or 0)
-        labor_hours = float(request.form.get("labor_hours") or 0)
-        labor_hourly_rate = parse_brazilian_decimal(
-            request.form.get("labor_hourly_rate")
-        )
-        design_hours = float(request.form.get("design_hours") or 0)
-        design_hourly_rate = parse_brazilian_decimal(
-            request.form.get("design_hourly_rate")
-        )
-        customer_total = sum(line["total_price"] for line in service_lines)
-        cost_summary = summarize_cost_lines(
-            material_lines=material_lines,
-            component_lines=component_lines,
-            labor_hours=labor_hours,
-            labor_hourly_rate=labor_hourly_rate,
-            design_hours=design_hours,
-            design_hourly_rate=design_hourly_rate,
-            extra_cost=extra_cost,
-            sale_total=customer_total,
-        )
-        total_cost = cost_summary["total_cost"]
-        suggested_price = (
-            customer_total
-            if customer_total > 0
-            else calculate_price_with_margin(total_cost, margin_percent)
-        )
-        print_hours = cost_summary["total_print_hours"]
-        dryer_hours = cost_summary["total_dryer_hours"]
-        energy_cost_per_hour = (
-            round(cost_summary["energy_cost"] / print_hours, 4) if print_hours else 0.0
-        )
-        operating_cost_per_hour = (
-            round(cost_summary["operating_cost"] / print_hours, 4) if print_hours else 0.0
-        )
-        dryer_cost_per_hour = (
-            round(cost_summary["dryer_cost"] / dryer_hours, 4) if dryer_hours else 0.0
-        )
-        primary_material_id = (
-            material_lines[0]["material_id"]
-            if material_lines
-            else int(detail["job"]["material_id"])
-        )
+        try:
+            material_lines = build_job_material_lines(db)
+            component_lines = build_job_component_lines(db)
+            service_lines = build_job_service_lines(db)
+            material_lines, component_lines, resolved_product = apply_product_defaults_to_job_lines(
+                db,
+                detail["job"],
+                service_lines,
+                material_lines,
+                component_lines,
+            )
+            requested_weight = sum(line["weight_grams"] for line in material_lines)
+            extra_cost = parse_form_decimal(request.form.get("extra_cost"), "Custos extras")
+            margin_percent = parse_form_number(request.form.get("margin_percent"), "Margem (%)")
+            labor_hours = parse_form_number(request.form.get("labor_hours"), "Horas operacionais")
+            labor_hourly_rate = parse_form_decimal(
+                request.form.get("labor_hourly_rate"),
+                "Mão de obra operacional/h",
+            )
+            design_hours = parse_form_number(request.form.get("design_hours"), "Horas de design")
+            design_hourly_rate = parse_form_decimal(
+                request.form.get("design_hourly_rate"),
+                "Valor design/h",
+            )
+            customer_total = sum(line["total_price"] for line in service_lines)
+            cost_summary = summarize_cost_lines(
+                material_lines=material_lines,
+                component_lines=component_lines,
+                labor_hours=labor_hours,
+                labor_hourly_rate=labor_hourly_rate,
+                design_hours=design_hours,
+                design_hourly_rate=design_hourly_rate,
+                extra_cost=extra_cost,
+                sale_total=customer_total,
+            )
+            total_cost = cost_summary["total_cost"]
+            suggested_price = (
+                customer_total
+                if customer_total > 0
+                else calculate_price_with_margin(total_cost, margin_percent)
+            )
+            print_hours = cost_summary["total_print_hours"]
+            dryer_hours = cost_summary["total_dryer_hours"]
+            energy_cost_per_hour = (
+                round(cost_summary["energy_cost"] / print_hours, 4) if print_hours else 0.0
+            )
+            operating_cost_per_hour = (
+                round(cost_summary["operating_cost"] / print_hours, 4) if print_hours else 0.0
+            )
+            dryer_cost_per_hour = (
+                round(cost_summary["dryer_cost"] / dryer_hours, 4) if dryer_hours else 0.0
+            )
+            primary_material_id = (
+                material_lines[0]["material_id"]
+                if material_lines
+                else int(detail["job"]["material_id"])
+            )
 
-        db.execute(
-            """
-            UPDATE jobs
-            SET
-                customer_name = ?,
-                customer_id = ?,
-                item_name = ?,
-                product_id = ?,
-                status = ?,
-                created_at = ?,
-                material_id = ?,
-                weight_grams = ?,
-                print_hours = ?,
-                energy_cost_per_hour = ?,
-                operating_cost_per_hour = ?,
-                extra_cost = ?,
-                margin_percent = ?,
-                total_cost = ?,
-                suggested_price = ?,
-                notes = ?,
-                customer_notes = ?,
-                internal_notes = ?,
-                representative_id = ?,
-                partner_store_id = ?,
-                due_date = ?,
-                quantity = ?,
-                sale_channel = ?,
-                printer_id = ?,
-                filament_dryer_id = ?,
-                dryer_hours = ?,
-                dryer_cost_per_hour = ?,
-                labor_hours = ?,
-                labor_hourly_rate = ?,
-                design_hours = ?,
-                design_hourly_rate = ?,
-                valid_until = ?,
-                payment_terms = ?,
-                model_link = ?
-            WHERE id = ?
-            """,
-            (
-                customer["name"],
-                customer_id,
-                item_name,
-                (
-                    service_lines[0]["product_id"]
-                    if service_lines and service_lines[0]["product_id"]
-                    else (resolved_product["id"] if resolved_product else None)
-                ),
-                status,
-                request.form.get("created_at", "").strip()
-                or str(detail["job"]["created_at"])[:10],
-                primary_material_id,
-                requested_weight,
-                print_hours,
-                energy_cost_per_hour,
-                operating_cost_per_hour,
-                extra_cost,
-                margin_percent,
-                total_cost,
-                suggested_price,
-                request.form.get("internal_notes", "").strip(),
-                request.form.get("customer_notes", "").strip(),
-                request.form.get("internal_notes", "").strip(),
-                (
-                    int(request.form["representative_id"])
-                    if request.form.get("representative_id")
-                    else None
-                ),
-                (
-                    int(request.form["partner_store_id"])
-                    if request.form.get("partner_store_id")
-                    else None
-                ),
-                request.form.get("due_date") or None,
-                parse_integerish(request.form.get("quantity"), 1),
-                request.form.get("sale_channel", "").strip(),
-                (
-                    material_lines[0]["printer_id"] if material_lines else None
-                ),
-                (
-                    material_lines[0]["filament_dryer_id"] if material_lines else None
-                ),
-                dryer_hours,
-                dryer_cost_per_hour,
-                labor_hours,
-                labor_hourly_rate,
-                design_hours,
-                design_hourly_rate,
-                request.form.get("valid_until") or None,
-                normalize_shortcut_value(request.form.get("payment_terms")),
-                request.form.get("model_link", "").strip(),
-                job_id,
-            ),
-        )
-        db.execute("DELETE FROM job_materials WHERE job_id = ?", (job_id,))
-        db.execute("DELETE FROM job_components WHERE job_id = ?", (job_id,))
-        db.execute("DELETE FROM job_services WHERE job_id = ?", (job_id,))
-
-        for line in material_lines:
             db.execute(
                 """
-                INSERT INTO job_materials (
-                    job_id,
-                    material_id,
-                    weight_grams,
+                UPDATE jobs
+                SET
+                    customer_name = ?,
+                    customer_id = ?,
+                    item_name = ?,
+                    product_id = ?,
+                    status = ?,
+                    created_at = ?,
+                    material_id = ?,
+                    weight_grams = ?,
+                    print_hours = ?,
+                    energy_cost_per_hour = ?,
+                    operating_cost_per_hour = ?,
+                    extra_cost = ?,
+                    margin_percent = ?,
+                    total_cost = ?,
+                    suggested_price = ?,
+                    notes = ?,
+                    customer_notes = ?,
+                    internal_notes = ?,
+                    representative_id = ?,
+                    partner_store_id = ?,
+                    due_date = ?,
+                    quantity = ?,
+                    sale_channel = ?,
+                    printer_id = ?,
+                    filament_dryer_id = ?,
+                    dryer_hours = ?,
+                    dryer_cost_per_hour = ?,
+                    labor_hours = ?,
+                    labor_hourly_rate = ?,
+                    design_hours = ?,
+                    design_hourly_rate = ?,
+                    valid_until = ?,
+                    payment_terms = ?,
+                    model_link = ?
+                WHERE id = ?
+                """,
+                (
+                    customer["name"],
+                    customer_id,
+                    item_name,
+                    (
+                        service_lines[0]["product_id"]
+                        if service_lines and service_lines[0]["product_id"]
+                        else (resolved_product["id"] if resolved_product else None)
+                    ),
+                    status,
+                    request.form.get("created_at", "").strip()
+                    or str(detail["job"]["created_at"])[:10],
+                    primary_material_id,
+                    requested_weight,
                     print_hours,
-                    printer_id,
                     energy_cost_per_hour,
                     operating_cost_per_hour,
-                    filament_dryer_id,
+                    extra_cost,
+                    margin_percent,
+                    total_cost,
+                    suggested_price,
+                    request.form.get("internal_notes", "").strip(),
+                    request.form.get("customer_notes", "").strip(),
+                    request.form.get("internal_notes", "").strip(),
+                    (
+                        int(request.form["representative_id"])
+                        if request.form.get("representative_id")
+                        else None
+                    ),
+                    (
+                        int(request.form["partner_store_id"])
+                        if request.form.get("partner_store_id")
+                        else None
+                    ),
+                    request.form.get("due_date") or None,
+                    parse_integerish(request.form.get("quantity"), 1),
+                    request.form.get("sale_channel", "").strip(),
+                    (
+                        material_lines[0]["printer_id"] if material_lines else None
+                    ),
+                    (
+                        material_lines[0]["filament_dryer_id"] if material_lines else None
+                    ),
                     dryer_hours,
                     dryer_cost_per_hour,
-                    notes
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
+                    labor_hours,
+                    labor_hourly_rate,
+                    design_hours,
+                    design_hourly_rate,
+                    request.form.get("valid_until") or None,
+                    normalize_shortcut_value(request.form.get("payment_terms")),
+                    request.form.get("model_link", "").strip(),
                     job_id,
-                    line["material_id"],
-                    line["weight_grams"],
-                    line["print_hours"],
-                    line["printer_id"],
-                    line["energy_cost_per_hour"],
-                    line["operating_cost_per_hour"],
-                    line["filament_dryer_id"],
-                    line["dryer_hours"],
-                    line["dryer_cost_per_hour"],
-                    line["notes"],
                 ),
             )
-        for line in component_lines:
-            db.execute(
-                """
-                INSERT INTO job_components (job_id, component_id, quantity, notes)
-                VALUES (?, ?, ?, ?)
-                """,
-                (job_id, line["component_id"], line["quantity"], line["notes"]),
-            )
-        for line in service_lines:
-            db.execute(
-                """
-                INSERT INTO job_services (
-                    job_id,
-                    service_name,
-                    product_id,
-                    category,
-                    quantity,
-                    hours,
-                    unit_price,
-                    addition_value,
-                    discount_value,
-                    total_price,
-                    show_to_customer,
-                    notes
+            db.execute("DELETE FROM job_materials WHERE job_id = ?", (job_id,))
+            db.execute("DELETE FROM job_components WHERE job_id = ?", (job_id,))
+            db.execute("DELETE FROM job_services WHERE job_id = ?", (job_id,))
+
+            for line in material_lines:
+                db.execute(
+                    """
+                    INSERT INTO job_materials (
+                        job_id,
+                        material_id,
+                        weight_grams,
+                        print_hours,
+                        printer_id,
+                        energy_cost_per_hour,
+                        operating_cost_per_hour,
+                        filament_dryer_id,
+                        dryer_hours,
+                        dryer_cost_per_hour,
+                        notes
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        job_id,
+                        line["material_id"],
+                        line["weight_grams"],
+                        line["print_hours"],
+                        line["printer_id"],
+                        line["energy_cost_per_hour"],
+                        line["operating_cost_per_hour"],
+                        line["filament_dryer_id"],
+                        line["dryer_hours"],
+                        line["dryer_cost_per_hour"],
+                        line["notes"],
+                    ),
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
-                """,
-                (
-                    job_id,
-                    line["service_name"],
-                    line["product_id"],
-                    line["category"],
-                    line["quantity"],
-                    line["hours"],
-                    line["unit_price"],
-                    line["addition_value"],
-                    line["discount_value"],
-                    line["total_price"],
-                    line["notes"],
-                ),
+            for line in component_lines:
+                db.execute(
+                    """
+                    INSERT INTO job_components (job_id, component_id, quantity, notes)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (job_id, line["component_id"], line["quantity"], line["notes"]),
+                )
+            for line in service_lines:
+                db.execute(
+                    """
+                    INSERT INTO job_services (
+                        job_id,
+                        service_name,
+                        product_id,
+                        category,
+                        quantity,
+                        hours,
+                        unit_price,
+                        addition_value,
+                        discount_value,
+                        total_price,
+                        show_to_customer,
+                        notes
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    """,
+                    (
+                        job_id,
+                        line["service_name"],
+                        line["product_id"],
+                        line["category"],
+                        line["quantity"],
+                        line["hours"],
+                        line["unit_price"],
+                        line["addition_value"],
+                        line["discount_value"],
+                        line["total_price"],
+                        line["notes"],
+                    ),
+                )
+            save_job_photos(job_id)
+            db.commit()
+            return redirect(url_for("jobs"))
+        except ValueError as error:
+            db.rollback()
+            return render_template(
+                "job_edit.html",
+                **detail,
+                materials=materials_list,
+                components=references["components"],
+                products=references["products"],
+                statuses=JOB_STATUSES,
+                customers=references["customers"],
+                representatives=references["representatives"],
+                partner_stores=references["partner_stores"],
+                payment_terms=references["payment_terms"],
+                sales_channels=references["sales_channels"],
+                printers=references["printers"],
+                filament_dryers=references["filament_dryers"],
+                today_date=date.today().isoformat(),
+                error=str(error),
             )
-        save_job_photos(job_id)
-        db.commit()
-        return redirect(url_for("jobs"))
 
     return render_template(
         "job_edit.html",

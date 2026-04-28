@@ -66,7 +66,6 @@
             <col class="customer-col-add">
             <col class="customer-col-discount">
             <col class="customer-col-total">
-            <col class="customer-col-notes">
           </colgroup>
           <thead>
             <tr>
@@ -76,7 +75,6 @@
               <th>Acrescimo</th>
               <th>Desconto</th>
               <th>Total</th>
-              <th>Obs.</th>
             </tr>
           </thead>
           <tbody>
@@ -89,7 +87,6 @@
                   <td data-label="Acrescimo">R$ {{ service["addition_value"]|br_money }}</td>
                   <td data-label="Desconto">R$ {{ service["discount_value"]|br_money }}</td>
                   <td data-label="Total">R$ {{ service["total_price"]|br_money }}</td>
-                  <td data-label="Obs.">{{ service["notes"] or "-" }}</td>
                 </tr>
               {% endfor %}
             {% else %}
@@ -100,12 +97,28 @@
                 <td data-label="Acrescimo">R$ 0,00</td>
                 <td data-label="Desconto">R$ 0,00</td>
                 <td data-label="Total">R$ {{ job["suggested_price"]|br_money }}</td>
-                <td data-label="Obs.">-</td>
               </tr>
             {% endif %}
           </tbody>
         </table>
       </section>
+
+      {% set service_notes = [] %}
+      {% for service in service_lines %}
+        {% if service["notes"] %}
+          {% set _ = service_notes.append({"name": service["service_name"], "note": service["notes"]}) %}
+        {% endif %}
+      {% endfor %}
+      {% if service_notes %}
+        <section class="document-section">
+          <h2>Obs. dos itens</h2>
+          <div class="customer-notes-list">
+            {% for entry in service_notes %}
+              <p><strong>{{ entry["name"] }}:</strong> {{ entry["note"] }}</p>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
 
       {% if job["customer_notes"] %}
         <section class="document-section">

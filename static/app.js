@@ -2432,9 +2432,6 @@ function setupProductBuilder() {
       return;
     }
 
-    let operationalHoursAutoSync =
-      operationalHoursField.dataset.autoSyncEnabled !== "0";
-
     const getMaterialTotals = () => {
       const rows = Array.from(materialCollection.querySelectorAll(".collection-row"));
       return rows.reduce(
@@ -2554,12 +2551,6 @@ function setupProductBuilder() {
 
       weightField.value = formatDecimal(materialTotals.weight);
       printHoursField.value = formatDecimal(materialTotals.hours);
-      if (
-        operationalHoursAutoSync &&
-        !document.activeElement?.isSameNode(operationalHoursField)
-      ) {
-        operationalHoursField.value = formatDecimal(materialTotals.hours);
-      }
       materialCostField.value = formatCurrency(materialTotals.cost);
       materialGrandTotal.textContent = `R$ ${formatCurrency(materialTotals.cost)}`;
       if (componentGrandTotal) {
@@ -2583,10 +2574,6 @@ function setupProductBuilder() {
     });
 
     form.addEventListener("input", (event) => {
-      if (event.target === operationalHoursField) {
-        operationalHoursAutoSync = false;
-        operationalHoursField.dataset.autoSyncEnabled = "0";
-      }
       if (
         event.target.matches("[name='product_material_quantity']") ||
         event.target.matches("[name='product_material_print_hours']") ||
@@ -2606,10 +2593,6 @@ function setupProductBuilder() {
     });
 
     form.addEventListener("change", (event) => {
-      if (event.target === operationalHoursField) {
-        operationalHoursAutoSync = false;
-        operationalHoursField.dataset.autoSyncEnabled = "0";
-      }
       if (
         event.target.matches("[name='product_material_quantity']") ||
         event.target.matches("[name='product_material_print_hours']") ||
@@ -2639,12 +2622,6 @@ function setupProductBuilder() {
       activePricingSource = "margin";
       updatePricing();
     });
-
-    if (!parseNumber(operationalHoursField.value)) {
-      operationalHoursAutoSync = true;
-      operationalHoursField.dataset.autoSyncEnabled = "1";
-      operationalHoursField.value = formatDecimal(parseNumber(printHoursField.value));
-    }
 
     materialCollection.addEventListener("input", updateTotals);
     if (componentCollection) {
