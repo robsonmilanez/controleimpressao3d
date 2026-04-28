@@ -1313,15 +1313,125 @@ function setupCurrencyFields() {
   };
 
   fields.forEach((field) => {
-    field.value = formatCurrency(field.value);
+    if (!String(field.value || "").trim().startsWith("=")) {
+      field.value = formatCurrency(field.value);
+    }
     field.addEventListener("blur", () => {
+      if (resolveFormulaField(field, { kind: "currency" })) {
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+      }
       field.value = formatCurrency(field.value);
     });
     field.addEventListener("change", () => {
+      if (resolveFormulaField(field, { kind: "currency" })) {
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+      }
       field.value = formatCurrency(field.value);
     });
+    field.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") {
+        return;
+      }
+      if (resolveFormulaField(field, { kind: "currency" })) {
+        event.preventDefault();
+        field.value = formatCurrency(field.value);
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
     field.form?.addEventListener("submit", () => {
+      resolveFormulaField(field, { kind: "currency" });
       field.value = formatCurrency(field.value);
+    });
+  });
+}
+
+function normalizeFormulaExpression(rawValue) {
+  const value = String(rawValue || "").trim();
+  if (!value.startsWith("=")) {
+    return "";
+  }
+  const expression = value.slice(1).replace(/\s+/g, "");
+  if (!expression) {
+    return "";
+  }
+  if (!/^[0-9+\-*/().,]+$/.test(expression)) {
+    return "";
+  }
+  return expression.replace(/,/g, ".");
+}
+
+function evaluateMathExpression(rawValue) {
+  const expression = normalizeFormulaExpression(rawValue);
+  if (!expression) {
+    return null;
+  }
+  try {
+    const result = Function(`"use strict"; return (${expression});`)();
+    if (!Number.isFinite(result)) {
+      return null;
+    }
+    return result;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function resolveFormulaField(field, { kind = "number" } = {}) {
+  if (!field || field.readOnly || field.disabled) {
+    return false;
+  }
+  const result = evaluateMathExpression(field.value);
+  if (result === null) {
+    return false;
+  }
+  if (kind === "currency") {
+    field.value = String(result);
+    return true;
+  }
+  const step = String(field.getAttribute("step") || "").trim();
+  const decimals =
+    step && step.includes(".") ? Math.min(step.split(".")[1].length, 6) : 2;
+  field.value = Number(result).toFixed(decimals);
+  return true;
+}
+
+function setupFormulaFields() {
+  const fields = Array.from(
+    document.querySelectorAll(
+      "input[type='number'], input.currency-field, input[data-formula='true']"
+    )
+  ).filter((field) => !field.readOnly && !field.disabled);
+
+  fields.forEach((field) => {
+    if (field.dataset.formulaReady === "1") {
+      return;
+    }
+    field.dataset.formulaReady = "1";
+    const kind = field.classList.contains("currency-field") ? "currency" : "number";
+
+    field.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") {
+        return;
+      }
+      if (!String(field.value || "").trim().startsWith("=")) {
+        return;
+      }
+      if (resolveFormulaField(field, { kind })) {
+        event.preventDefault();
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+
+    field.addEventListener("blur", () => {
+      if (!String(field.value || "").trim().startsWith("=")) {
+        return;
+      }
+      if (resolveFormulaField(field, { kind })) {
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+      }
     });
   });
 }
@@ -2122,6 +2232,10 @@ function setupJobCollections() {
           field.value = collectionName === "services" ? "1" : "0";
           return;
         }
+        if (field.name === "product_material_part_name") {
+          field.value = "";
+          return;
+        }
         if (field.name === "quantity" && collectionName === "services") {
           field.value = "1";
           return;
@@ -2150,6 +2264,7 @@ function setupJobCollections() {
       collection.appendChild(row);
       setupSelectShortcuts(row);
       setupSearchableSelects(row);
+      setupFormulaFields();
       collection.dispatchEvent(new Event("input", { bubbles: true }));
     });
   });
@@ -3278,6 +3393,7 @@ function setupHistoryBackLinks() {
 setupSupplierShortcut();
 setupSelectShortcuts();
 setupSearchableSelects();
+setupFormulaFields();
 setupCurrencyFields();
 setupDateMasks();
 setupCommercialDateDefaults();

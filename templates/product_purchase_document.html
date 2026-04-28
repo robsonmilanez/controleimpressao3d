@@ -36,44 +36,65 @@
         </dl>
       </header>
 
-      <section class="document-commercial-grid product-summary-grid">
-        <article>
-          <span>Material base</span>
-          <strong>{{ product["material_name"] or "-" }}{% if product["material_color"] %} · {{ product["material_color"] }}{% endif %}</strong>
+      <section class="document-grid product-purchase-top-grid">
+        <article class="product-purchase-hero-card">
+          <div class="product-purchase-hero-grid">
+            <div class="product-purchase-photo-block">
+              {% if photo_lines %}
+                <div class="document-photos product-purchase-photo-list">
+                  {% for photo in photo_lines[:4] %}
+                    <img src="{{ url_for('uploaded_product_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or product['name'] }}">
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="product-purchase-empty-photo">Sem fotos</div>
+              {% endif %}
+            </div>
+            <div class="product-purchase-summary-stack">
+              <div class="product-purchase-summary-grid">
+                <article>
+                  <span>Preço de venda</span>
+                  <strong>R$ {{ totals["sale_price"]|br_money }}</strong>
+                </article>
+                <article>
+                  <span>Custo total</span>
+                  <strong>R$ {{ totals["unit_cost"]|br_money }}</strong>
+                </article>
+                <article>
+                  <span>Lucro estimado</span>
+                  <strong>R$ {{ totals["margin_value"]|br_money }}</strong>
+                </article>
+                <article>
+                  <span>Peso</span>
+                  <strong>{{ product["weight_grams"]|br_decimal }} g</strong>
+                </article>
+                <article>
+                  <span>Impressão</span>
+                  <strong>{{ totals["print_hours"]|br_decimal }} h</strong>
+                </article>
+                <article>
+                  <span>Estoque / mín.</span>
+                  <strong>{{ product["stock_quantity"]|br_decimal }} / {{ product["minimum_quantity"]|br_decimal }}</strong>
+                </article>
+              </div>
+              <div class="product-purchase-detail-line">
+                <span>Material base</span>
+                <strong>{{ product["material_name"] or "-" }}{% if product["material_color"] %} · {{ product["material_color"] }}{% endif %}</strong>
+              </div>
+              <div class="product-purchase-detail-line">
+                <span>Descrição</span>
+                <strong>{{ product["description"] or "-" }}</strong>
+              </div>
+            </div>
+          </div>
         </article>
-        <article>
-          <span>Peso</span>
-          <strong>{{ product["weight_grams"]|br_decimal }} g</strong>
-        </article>
-        <article>
-          <span>Impressão</span>
-          <strong>{{ totals["print_hours"]|br_decimal }} h</strong>
-        </article>
-        <article>
-          <span>Preço de venda</span>
-          <strong>R$ {{ totals["sale_price"]|br_money }}</strong>
-        </article>
-        <article>
-          <span>Custo</span>
-          <strong>R$ {{ totals["unit_cost"]|br_money }}</strong>
-        </article>
-        <article>
-          <span>Estoque / mín.</span>
-          <strong>{{ product["stock_quantity"]|br_decimal }} / {{ product["minimum_quantity"]|br_decimal }}</strong>
-        </article>
-      </section>
 
-      <section class="document-section">
-        <h2>Descrição</h2>
-        <p>{{ product["description"] or "-" }}</p>
-      </section>
-
-      <section class="document-grid product-purchase-grid">
         <article>
           <h2>Filamentos</h2>
           <table class="document-table">
             <thead>
               <tr>
+                <th>Parte</th>
                 <th>Material</th>
                 <th>Qtde</th>
                 <th>Hrs</th>
@@ -83,13 +104,14 @@
             <tbody>
               {% for line in material_lines %}
                 <tr>
+                  <td>{{ line["part_name"] or "-" }}</td>
                   <td>{{ line["name"] }}{% if line["color"] %} · {{ line["color"] }}{% endif %}</td>
                   <td>{{ line["quantity_grams"]|br_decimal }} g</td>
                   <td>{{ line["print_hours"]|br_decimal }}</td>
                   <td>R$ {{ line["estimated_cost"]|br_money }}</td>
                 </tr>
               {% else %}
-                <tr><td colspan="4">Nenhum filamento detalhado.</td></tr>
+                <tr><td colspan="5">Nenhum filamento detalhado.</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -118,48 +140,42 @@
             </tbody>
           </table>
         </article>
-      </section>
 
-      {% if product["photo_path"] %}
-        <section class="document-section">
-          <h2>Foto</h2>
-          <div class="document-photos">
-            <img src="{{ url_for('uploaded_product_file', filename=product['photo_path']) }}" alt="{{ product['photo_original_name'] or product['name'] }}">
-          </div>
-        </section>
-      {% endif %}
+        <article class="product-purchase-costs-block">
+          <h2>Resumo de custos</h2>
+          <section class="document-commercial-grid product-cost-grid">
+            <article>
+              <span>Filamentos</span>
+              <strong>R$ {{ totals["material_cost"]|br_money }}</strong>
+            </article>
+            <article>
+              <span>Componentes</span>
+              <strong>R$ {{ totals["component_cost"]|br_money }}</strong>
+            </article>
+            <article>
+              <span>Desgaste</span>
+              <strong>R$ {{ totals["printer_wear"]|br_money }}</strong>
+            </article>
+            <article>
+              <span>Energia</span>
+              <strong>R$ {{ totals["energy"]|br_money }}</strong>
+            </article>
+            <article>
+              <span>Operacional</span>
+              <strong>R$ {{ totals["operating"]|br_money }}</strong>
+            </article>
+            <article>
+              <span>Design + extras</span>
+              <strong>R$ {{ (totals["design"] + totals["extra_cost"])|br_money }}</strong>
+            </article>
+          </section>
+        </article>
 
-      <section class="document-commercial-grid product-cost-grid">
-        <article>
-          <span>Filamentos</span>
-          <strong>R$ {{ totals["material_cost"]|br_money }}</strong>
+        <article class="product-purchase-internal-block">
+          <h2>Detalhes internos</h2>
+          <p><strong>Link do modelo:</strong> {{ product["model_link"] or "-" }}</p>
+          <p><strong>Observações:</strong> {{ product["notes"] or "-" }}</p>
         </article>
-        <article>
-          <span>Componentes</span>
-          <strong>R$ {{ totals["component_cost"]|br_money }}</strong>
-        </article>
-        <article>
-          <span>Desgaste</span>
-          <strong>R$ {{ totals["printer_wear"]|br_money }}</strong>
-        </article>
-        <article>
-          <span>Energia</span>
-          <strong>R$ {{ totals["energy"]|br_money }}</strong>
-        </article>
-        <article>
-          <span>Operacional</span>
-          <strong>R$ {{ totals["operating"]|br_money }}</strong>
-        </article>
-        <article>
-          <span>Design + extras</span>
-          <strong>R$ {{ (totals["design"] + totals["extra_cost"])|br_money }}</strong>
-        </article>
-      </section>
-
-      <section class="document-section">
-        <h2>Detalhes internos</h2>
-        <p><strong>Link do modelo:</strong> {{ product["model_link"] or "-" }}</p>
-        <p><strong>Observações:</strong> {{ product["notes"] or "-" }}</p>
       </section>
     </main>
   </body>

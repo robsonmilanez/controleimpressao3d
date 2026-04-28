@@ -27,7 +27,7 @@
   <p>Defina os filamentos usados pelo produto, com quantidade e tempo de impressão, e depois os componentes vinculados.</p>
 </div>
 
-{% set material_rows = product_material_lines if product_material_lines is defined and product_material_lines else ([{'material_id': (product['material_id'] if product and product['material_id'] else None), 'quantity_grams': (product['weight_grams'] if product else 0), 'print_hours': (product['print_hours'] if product else 0)}] if product else [{'material_id': None, 'quantity_grams': 0, 'print_hours': 0}]) %}
+{% set material_rows = product_material_lines if product_material_lines is defined and product_material_lines else ([{'material_id': (product['material_id'] if product and product['material_id'] else None), 'part_name': '', 'quantity_grams': (product['weight_grams'] if product else 0), 'print_hours': (product['print_hours'] if product else 0)}] if product else [{'material_id': None, 'part_name': '', 'quantity_grams': 0, 'print_hours': 0}]) %}
 <div class="collection-subsection full">
   <div class="collection-subsection-header">
     <div>
@@ -47,6 +47,10 @@
             <option value="{{ material['id'] }}" data-cost-per-kg="{{ material['cost_per_kg'] or 0 }}" {% if row['material_id'] == material['id'] %}selected{% endif %}>{{ material|material_label }}</option>
           {% endfor %}
         </select>
+      </label>
+      <label class="product-material-part-field">
+        Peça/Parte do Produto
+        <input type="text" name="product_material_part_name" value="{{ row['part_name'] or '' }}" placeholder="Base, tampa, corpo, encaixe...">
       </label>
       <label class="product-material-metric-field">
         Qtde (g)
@@ -207,13 +211,17 @@
   <input type="url" name="model_link" value="{{ product['model_link'] if product else '' }}" placeholder="https://...">
 </label>
 <label class="full">
-  Foto do produto
-  <input type="file" name="product_photo" accept="image/*">
+  Fotos do produto
+  <input type="file" name="product_photos" accept="image/*" multiple>
 </label>
-{% if product and product['photo_path'] %}
-  <div class="full product-photo-preview">
-    <span>Foto atual</span>
-    <img src="{{ url_for('uploaded_product_file', filename=product['photo_path']) }}" alt="{{ product['photo_original_name'] or product['name'] }}">
+{% if product_photo_lines is defined and product_photo_lines %}
+  <div class="full product-photo-preview-grid">
+    <span>Fotos atuais</span>
+    <div class="product-photo-preview-list">
+      {% for photo in product_photo_lines %}
+        <img src="{{ url_for('uploaded_product_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or product['name'] }}">
+      {% endfor %}
+    </div>
   </div>
 {% endif %}
 <label class="full">

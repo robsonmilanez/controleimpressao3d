@@ -490,6 +490,15 @@ def init_db() -> None:
             FOREIGN KEY(job_id) REFERENCES jobs(id)
         );
 
+        CREATE TABLE IF NOT EXISTS product_photos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            original_name TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(product_id) REFERENCES products(id)
+        );
+
         CREATE TABLE IF NOT EXISTS inventory_movements (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             material_id INTEGER NOT NULL,
@@ -1903,7 +1912,7 @@ def build_job_lines_from_product(
                 ),
                 "dryer_hours": print_hours if dryer else 0.0,
                 "dryer_cost_per_hour": dryer_cost_per_hour,
-                "notes": str(entry.get("label") or "").strip(),
+                "notes": str(entry.get("part_name") or entry.get("label") or "").strip(),
             }
         )
 
@@ -1987,22 +1996,88 @@ def save_job_photos(job_id: int) -> None:
         )
 
 
-def save_product_photo(product_id: int) -> dict[str, str] | None:
-    uploaded_file = request.files.get("product_photo")
-    if not uploaded_file or not uploaded_file.filename:
-        return None
-
-    filename = secure_filename(uploaded_file.filename)
-    if not filename:
-        return None
+def save_product_photos(product_id: int) -> list[dict[str, str]]:
+    uploaded_files = request.files.getlist("product_photos")
+    if not uploaded_files:
+        fallback_file = request.files.get("product_photo")
+        uploaded_files = [fallback_file] if fallback_file else []
 
     PRODUCT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    target_name = f"product-{product_id}-{filename}"
-    uploaded_file.save(PRODUCT_UPLOAD_DIR / target_name)
-    return {
-        "photo_path": target_name,
-        "photo_original_name": uploaded_file.filename,
-    }
+    db = get_db()
+    saved_files: list[dict[str, str]] = []
+    existing_count_row = db.execute(
+        "SELECT COUNT(*) AS total FROM product_photos WHERE product_id = ?",
+        (product_id,),
+    ).fetchone()
+    next_index = int(existing_count_row["total"] or 0) + 1
+
+    for uploaded_file in uploaded_files:
+        if not uploaded_file or not uploaded_file.filename:
+            continue
+        filename = secure_filename(uploaded_file.filename)
+        if not filename:
+            continue
+        target_name = f"product-{product_id}-{next_index}-{filename}"
+        uploaded_file.save(PRODUCT_UPLOAD_DIR / target_name)
+        db.execute(
+            """
+            INSERT INTO product_photos (product_id, file_path, original_name)
+            VALUES (?, ?, ?)
+            """,
+            (
+                product_id,
+                target_name,
+                uploaded_file.filename,
+            ),
+        )
+        saved_files.append(
+            {
+                "photo_path": target_name,
+                "photo_original_name": uploaded_file.filename,
+            }
+        )
+        next_index += 1
+    return saved_files
+
+
+def fetch_product_photos(db: sqlite3.Connection, product: sqlite3.Row | dict[str, Any]) -> list[dict[str, Any]]:
+    product_id = parse_integerish(product["id"] if isinstance(product, sqlite3.Row) else product.get("id"))
+    if product_id <= 0:
+        return []
+
+    photo_lines = [
+        dict(row)
+        for row in db.execute(
+            """
+            SELECT id, file_path, original_name, created_at
+            FROM product_photos
+            WHERE product_id = ?
+            ORDER BY id ASC
+            """,
+            (product_id,),
+        ).fetchall()
+    ]
+    legacy_path = (
+        product["photo_path"]
+        if isinstance(product, sqlite3.Row)
+        else product.get("photo_path")
+    )
+    legacy_name = (
+        product["photo_original_name"]
+        if isinstance(product, sqlite3.Row)
+        else product.get("photo_original_name")
+    )
+    if legacy_path and not any(line["file_path"] == legacy_path for line in photo_lines):
+        photo_lines.insert(
+            0,
+            {
+                "id": 0,
+                "file_path": legacy_path,
+                "original_name": legacy_name,
+                "created_at": "",
+            },
+        )
+    return photo_lines
 
 
 def generate_sequential_code(
@@ -2094,6 +2169,7 @@ def parse_product_material_lines(
                 {
                     "material_id": material_id or None,
                     "label": label,
+                    "part_name": str(entry.get("part_name") or "").strip(),
                     "quantity_grams": float(entry.get("quantity_grams") or 0),
                     "print_hours": float(entry.get("print_hours") or 0),
                 }
@@ -2104,6 +2180,7 @@ def parse_product_material_lines(
         {
             "material_id": None,
             "label": line.strip(),
+            "part_name": "",
             "quantity_grams": 0.0,
             "print_hours": 0.0,
         }
@@ -3572,6 +3649,7 @@ def build_product_form_data(
     product_material_lines: list[dict[str, Any]] = []
     detailed_material_lines: list[dict[str, Any]] = []
     material_ids = get_form_list("product_material_id")
+    material_part_names = get_form_list("product_material_part_name")
     material_quantities = get_form_list("product_material_quantity")
     material_print_hours = get_form_list("product_material_print_hours")
     for index, raw_material_id in enumerate(material_ids):
@@ -3595,6 +3673,9 @@ def build_product_form_data(
             {
                 "material_id": material_id,
                 "label": build_product_material_label(material),
+                "part_name": material_part_names[index].strip()
+                if index < len(material_part_names)
+                else "",
                 "quantity_grams": quantity_grams,
                 "print_hours": line_print_hours,
             }
@@ -5226,6 +5307,7 @@ def fetch_products(db: sqlite3.Connection) -> list[dict[str, Any]]:
             item.get("accessories"),
             components_by_id,
         )
+        item["photo_lines"] = fetch_product_photos(db, item)
         items.append(item)
     return items
 
@@ -5271,6 +5353,7 @@ def fetch_product_detail(db: sqlite3.Connection, product_id: int) -> dict[str, A
             {
                 "material_id": material_id,
                 "label": build_product_material_label(material),
+                "part_name": str(entry.get("part_name") or "").strip(),
                 "material_type": material["material_type"] or "-",
                 "name": material["name"] or "-",
                 "color": material["color"] or "-",
@@ -5338,6 +5421,7 @@ def fetch_product_detail(db: sqlite3.Connection, product_id: int) -> dict[str, A
 
     return {
         "product": product,
+        "photo_lines": fetch_product_photos(db, product),
         "material_lines": material_lines,
         "component_lines": component_lines,
         "totals": {
@@ -5525,8 +5609,9 @@ def products() -> str:
                 ),
             )
             created_id = cursor.lastrowid
-            photo_data = save_product_photo(created_id)
-            if photo_data:
+            photo_lines = save_product_photos(created_id)
+            if photo_lines:
+                cover_photo = photo_lines[0]
                 db.execute(
                     """
                     UPDATE products
@@ -5534,8 +5619,8 @@ def products() -> str:
                     WHERE id = ?
                     """,
                     (
-                        photo_data["photo_path"],
-                        photo_data["photo_original_name"],
+                        cover_photo["photo_path"],
+                        cover_photo["photo_original_name"],
                         created_id,
                     ),
                 )
@@ -5683,8 +5768,9 @@ def edit_product(product_id: int) -> str:
                 product_id,
             ),
         )
-        photo_data = save_product_photo(product_id)
-        if photo_data:
+        photo_lines = save_product_photos(product_id)
+        if photo_lines and (not product["photo_path"]):
+            cover_photo = photo_lines[0]
             db.execute(
                 """
                 UPDATE products
@@ -5692,8 +5778,8 @@ def edit_product(product_id: int) -> str:
                 WHERE id = ?
                 """,
                 (
-                    photo_data["photo_path"],
-                    photo_data["photo_original_name"],
+                    cover_photo["photo_path"],
+                    cover_photo["photo_original_name"],
                     product_id,
                 ),
             )
@@ -5703,6 +5789,7 @@ def edit_product(product_id: int) -> str:
     return render_template(
         "product_edit.html",
         product=product,
+        product_photo_lines=fetch_product_photos(db, product),
         materials=materials_list,
         components=references["components"],
         product_material_lines=parse_product_material_lines(
