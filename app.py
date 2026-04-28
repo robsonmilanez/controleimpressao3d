@@ -2080,6 +2080,92 @@ def fetch_product_photos(db: sqlite3.Connection, product: sqlite3.Row | dict[str
     return photo_lines
 
 
+def sync_product_references(
+    db: sqlite3.Connection,
+    product_id: int,
+    previous_name: str,
+    next_name: str,
+) -> None:
+    old_name = str(previous_name or "").strip()
+    new_name = str(next_name or "").strip()
+    if product_id <= 0 or not new_name or old_name == new_name:
+        return
+
+    db.execute(
+        """
+        UPDATE job_services
+        SET service_name = ?
+        WHERE product_id = ? AND TRIM(COALESCE(service_name, '')) = ?
+        """,
+        (new_name, product_id, old_name),
+    )
+    db.execute(
+        """
+        UPDATE jobs
+        SET item_name = ?
+        WHERE product_id = ? AND TRIM(COALESCE(item_name, '')) = ?
+        """,
+        (new_name, product_id, old_name),
+    )
+    db.execute(
+        """
+        UPDATE commercial_entries
+        SET product_name = ?
+        WHERE TRIM(COALESCE(product_name, '')) = ?
+        """,
+        (new_name, old_name),
+    )
+
+
+def delete_product_photo_record(db: sqlite3.Connection, product_id: int, photo_id: int) -> bool:
+    photo = db.execute(
+        """
+        SELECT id, file_path, original_name
+        FROM product_photos
+        WHERE id = ? AND product_id = ?
+        """,
+        (photo_id, product_id),
+    ).fetchone()
+    if photo is None:
+        return False
+
+    db.execute(
+        "DELETE FROM product_photos WHERE id = ? AND product_id = ?",
+        (photo_id, product_id),
+    )
+    photo_path = str(photo["file_path"] or "").strip()
+    if photo_path:
+        target = PRODUCT_UPLOAD_DIR / photo_path
+        if target.exists():
+            target.unlink()
+
+    product = db.execute("SELECT photo_path FROM products WHERE id = ?", (product_id,)).fetchone()
+    if product and str(product["photo_path"] or "").strip() == photo_path:
+        replacement = db.execute(
+            """
+            SELECT file_path, original_name
+            FROM product_photos
+            WHERE product_id = ?
+            ORDER BY id ASC
+            LIMIT 1
+            """,
+            (product_id,),
+        ).fetchone()
+        db.execute(
+            """
+            UPDATE products
+            SET photo_path = ?, photo_original_name = ?
+            WHERE id = ?
+            """,
+            (
+                replacement["file_path"] if replacement else None,
+                replacement["original_name"] if replacement else None,
+                product_id,
+            ),
+        )
+    return True
+
+
 def generate_sequential_code(
     db: sqlite3.Connection, table_name: str, column_name: str, prefix: str
 ) -> str:
@@ -5708,6 +5794,7 @@ def edit_product(product_id: int) -> str:
 
     if request.method == "POST":
         product_data = build_product_form_data(db, existing_product=product)
+        previous_name = str(product["name"] or "").strip()
         db.execute(
             """
             UPDATE products
@@ -5768,6 +5855,12 @@ def edit_product(product_id: int) -> str:
                 product_id,
             ),
         )
+        sync_product_references(
+            db,
+            product_id,
+            previous_name,
+            product_data["name"],
+        )
         photo_lines = save_product_photos(product_id)
         if photo_lines and (not product["photo_path"]):
             cover_photo = photo_lines[0]
@@ -5812,6 +5905,17 @@ def delete_product(product_id: int) -> str:
     db.execute("DELETE FROM products WHERE id = ?", (product_id,))
     db.commit()
     return redirect(url_for("products"))
+
+
+@app.route("/products/<int:product_id>/photos/<int:photo_id>/delete", methods=["POST"])
+def delete_product_photo(product_id: int, photo_id: int) -> str:
+    db = get_db()
+    product = db.execute("SELECT id, photo_path FROM products WHERE id = ?", (product_id,)).fetchone()
+    if product is None:
+        abort(404)
+    if delete_product_photo_record(db, product_id, photo_id):
+        db.commit()
+    return redirect(url_for("edit_product", product_id=product_id))
 
 
 @app.route("/inventory", methods=["GET", "POST"])

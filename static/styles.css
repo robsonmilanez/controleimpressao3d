@@ -3129,12 +3129,22 @@ th {
   gap: 0.7rem;
 }
 
+.product-photo-card {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: start;
+}
+
 .product-photo-preview-list img {
   width: 118px;
   height: 88px;
   border-radius: 14px;
   object-fit: cover;
   border: 1px solid var(--line);
+}
+
+.product-photo-delete-form {
+  margin: 0;
 }
 
 @page {

@@ -152,7 +152,15 @@
   </label>
   <label>
     Horas operacional
-    <input type="number" name="labor_hours" min="0" step="0.01" value="{{ product['labor_hours'] if product else 0 }}">
+    <input
+      type="number"
+      name="labor_hours"
+      min="0"
+      step="0.01"
+      value="{{ product['labor_hours'] if product else 0 }}"
+      data-auto-sync-source="print-hours"
+      data-auto-sync-enabled="{{ '0' if product and product['labor_hours'] and product['labor_hours'] != product['print_hours'] else '1' }}"
+    >
   </label>
   <label class="computed-field">
     Mão de obra operacional/h
@@ -219,7 +227,14 @@
     <span>Fotos atuais</span>
     <div class="product-photo-preview-list">
       {% for photo in product_photo_lines %}
-        <img src="{{ url_for('uploaded_product_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or product['name'] }}">
+        <div class="product-photo-card">
+          <img src="{{ url_for('uploaded_product_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or product['name'] }}">
+          {% if product and photo['id'] %}
+            <form method="post" action="{{ url_for('delete_product_photo', product_id=product['id'], photo_id=photo['id']) }}" class="inline-form product-photo-delete-form" onsubmit="return confirm('Excluir esta foto?');">
+              <button type="submit" class="secondary-button">Excluir foto</button>
+            </form>
+          {% endif %}
+        </div>
       {% endfor %}
     </div>
   </div>
