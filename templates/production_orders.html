@@ -15,15 +15,69 @@
         <h2>Ordens cadastradas</h2>
       </div>
       {% if jobs %}
+        <form id="production-orders-filter-form" method="get" class="table-filter-form">
+          <input type="hidden" name="sort" value="{{ sort_key }}">
+          <input type="hidden" name="direction" value="{{ sort_direction }}">
+        </form>
         <div class="table-wrap">
           <table class="responsive-table">
             <thead>
               <tr>
-                <th>Pedido</th>
-                <th>Cliente</th>
-                <th>Item</th>
-                <th>Status</th>
-                <th>Produção</th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['id'] %}is-active{% endif %}" data-filter-target="production-orders-filter-id">Pedido</button>
+                      <a class="sort-link {% if sort_key == 'id' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['id']['asc' if sort_key != 'id' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'id' and sort_direction == 'asc' else '↓' if sort_key == 'id' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="production-orders-filter-id">
+                      <input form="production-orders-filter-form" class="header-filter-control" type="text" name="filter_id" value="{{ filters['id'] }}" placeholder="Pesquisar pedido">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['customer_display'] %}is-active{% endif %}" data-filter-target="production-orders-filter-customer">Cliente</button>
+                      <a class="sort-link {% if sort_key == 'customer_display' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['customer_display']['asc' if sort_key != 'customer_display' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'customer_display' and sort_direction == 'asc' else '↓' if sort_key == 'customer_display' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="production-orders-filter-customer">
+                      <input form="production-orders-filter-form" class="header-filter-control" type="text" name="filter_customer_display" value="{{ filters['customer_display'] }}" placeholder="Pesquisar cliente">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['item_name'] %}is-active{% endif %}" data-filter-target="production-orders-filter-item">Item</button>
+                      <a class="sort-link {% if sort_key == 'item_name' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['item_name']['asc' if sort_key != 'item_name' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'item_name' and sort_direction == 'asc' else '↓' if sort_key == 'item_name' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="production-orders-filter-item">
+                      <input form="production-orders-filter-form" class="header-filter-control" type="text" name="filter_item_name" value="{{ filters['item_name'] }}" placeholder="Pesquisar item">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['status'] %}is-active{% endif %}" data-filter-target="production-orders-filter-status">Status</button>
+                      <a class="sort-link {% if sort_key == 'status' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['status']['asc' if sort_key != 'status' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'status' and sort_direction == 'asc' else '↓' if sort_key == 'status' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="production-orders-filter-status">
+                      <input form="production-orders-filter-form" class="header-filter-control" type="text" name="filter_status" value="{{ filters['status'] }}" placeholder="Pesquisar status">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['printer_name'] %}is-active{% endif %}" data-filter-target="production-orders-filter-printer">Produção</button>
+                      <a class="sort-link {% if sort_key == 'printer_name' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['printer_name']['asc' if sort_key != 'printer_name' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'printer_name' and sort_direction == 'asc' else '↓' if sort_key == 'printer_name' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="production-orders-filter-printer">
+                      <input form="production-orders-filter-form" class="header-filter-control" type="text" name="filter_printer_name" value="{{ filters['printer_name'] }}" placeholder="Pesquisar produção">
+                    </div>
+                  </div>
+                </th>
                 <th>Ações</th>
               </tr>
             </thead>

@@ -80,17 +80,92 @@
           <h2>Extrato de movimentações</h2>
         </div>
         {% if statement_rows %}
+          <form id="filament-movements-filter-form" method="get" class="table-filter-form">
+            <input type="hidden" name="material_id" value="{{ selected_material_id }}">
+            <input type="hidden" name="sort" value="{{ sort_key }}">
+            <input type="hidden" name="direction" value="{{ sort_direction }}">
+          </form>
           <div class="table-wrap">
             <table class="responsive-table movement-statement-table">
               <thead>
                 <tr>
-                  <th>Data</th>
-                  <th>OP/Pedido</th>
-                  <th>Descricao</th>
-                  <th>Quantidade</th>
-                  <th>Valor</th>
-                  <th>Saldo</th>
-                  <th>Obs.</th>
+                  <th>
+                    <div class="table-header-filter">
+                      <span class="sortable-header">
+                        <button type="button" class="header-filter-trigger {% if filters['created_at'] %}is-active{% endif %}" data-filter-target="filament-filter-date">Data</button>
+                        <a class="sort-link {% if sort_key == 'created_at' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['created_at']['asc' if sort_key != 'created_at' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'created_at' and sort_direction == 'asc' else '↓' if sort_key == 'created_at' and sort_direction == 'desc' else '↕' }}</a>
+                      </span>
+                      <div class="header-filter-popover" id="filament-filter-date">
+                        <input form="filament-movements-filter-form" class="header-filter-control" type="text" name="filter_created_at" value="{{ filters['created_at'] }}" placeholder="Pesquisar data">
+                      </div>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="table-header-filter">
+                      <span class="sortable-header">
+                        <button type="button" class="header-filter-trigger {% if filters['reference'] %}is-active{% endif %}" data-filter-target="filament-filter-reference">OP/Pedido</button>
+                        <a class="sort-link {% if sort_key == 'reference' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['reference']['asc' if sort_key != 'reference' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'reference' and sort_direction == 'asc' else '↓' if sort_key == 'reference' and sort_direction == 'desc' else '↕' }}</a>
+                      </span>
+                      <div class="header-filter-popover" id="filament-filter-reference">
+                        <input form="filament-movements-filter-form" class="header-filter-control" type="text" name="filter_reference" value="{{ filters['reference'] }}" placeholder="Pesquisar pedido">
+                      </div>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="table-header-filter">
+                      <span class="sortable-header">
+                        <button type="button" class="header-filter-trigger {% if filters['description'] %}is-active{% endif %}" data-filter-target="filament-filter-description">Descricao</button>
+                        <a class="sort-link {% if sort_key == 'description' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['description']['asc' if sort_key != 'description' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'description' and sort_direction == 'asc' else '↓' if sort_key == 'description' and sort_direction == 'desc' else '↕' }}</a>
+                      </span>
+                      <div class="header-filter-popover" id="filament-filter-description">
+                        <input form="filament-movements-filter-form" class="header-filter-control" type="text" name="filter_description" value="{{ filters['description'] }}" placeholder="Pesquisar descricao">
+                      </div>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="table-header-filter">
+                      <span class="sortable-header">
+                        <button type="button" class="header-filter-trigger {% if filters['quantity_label'] %}is-active{% endif %}" data-filter-target="filament-filter-quantity">Quantidade</button>
+                        <a class="sort-link {% if sort_key == 'quantity_value' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['quantity_value']['asc' if sort_key != 'quantity_value' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'quantity_value' and sort_direction == 'asc' else '↓' if sort_key == 'quantity_value' and sort_direction == 'desc' else '↕' }}</a>
+                      </span>
+                      <div class="header-filter-popover" id="filament-filter-quantity">
+                        <input form="filament-movements-filter-form" class="header-filter-control" type="text" name="filter_quantity_label" value="{{ filters['quantity_label'] }}" placeholder="Pesquisar quantidade">
+                      </div>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="table-header-filter">
+                      <span class="sortable-header">
+                        <button type="button" class="header-filter-trigger {% if filters['value_label'] %}is-active{% endif %}" data-filter-target="filament-filter-value">Valor</button>
+                        <a class="sort-link {% if sort_key == 'value_amount' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['value_amount']['asc' if sort_key != 'value_amount' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'value_amount' and sort_direction == 'asc' else '↓' if sort_key == 'value_amount' and sort_direction == 'desc' else '↕' }}</a>
+                      </span>
+                      <div class="header-filter-popover" id="filament-filter-value">
+                        <input form="filament-movements-filter-form" class="header-filter-control" type="text" name="filter_value_label" value="{{ filters['value_label'] }}" placeholder="Pesquisar valor">
+                      </div>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="table-header-filter">
+                      <span class="sortable-header">
+                        <button type="button" class="header-filter-trigger {% if filters['balance_label'] %}is-active{% endif %}" data-filter-target="filament-filter-balance">Saldo</button>
+                        <a class="sort-link {% if sort_key == 'balance_value' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['balance_value']['asc' if sort_key != 'balance_value' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'balance_value' and sort_direction == 'asc' else '↓' if sort_key == 'balance_value' and sort_direction == 'desc' else '↕' }}</a>
+                      </span>
+                      <div class="header-filter-popover" id="filament-filter-balance">
+                        <input form="filament-movements-filter-form" class="header-filter-control" type="text" name="filter_balance_label" value="{{ filters['balance_label'] }}" placeholder="Pesquisar saldo">
+                      </div>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="table-header-filter">
+                      <span class="sortable-header">
+                        <button type="button" class="header-filter-trigger {% if filters['notes'] %}is-active{% endif %}" data-filter-target="filament-filter-notes">Obs.</button>
+                        <a class="sort-link {% if sort_key == 'notes' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['notes']['asc' if sort_key != 'notes' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'notes' and sort_direction == 'asc' else '↓' if sort_key == 'notes' and sort_direction == 'desc' else '↕' }}</a>
+                      </span>
+                      <div class="header-filter-popover" id="filament-filter-notes">
+                        <input form="filament-movements-filter-form" class="header-filter-control" type="text" name="filter_notes" value="{{ filters['notes'] }}" placeholder="Pesquisar observacao">
+                      </div>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody>

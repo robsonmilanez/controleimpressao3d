@@ -2199,10 +2199,9 @@ def fetch_commercial_item_options(db: sqlite3.Connection) -> list[dict[str, Any]
 
 
 def fetch_recent_commercial_entries(
-    db: sqlite3.Connection, limit: int = 20
+    db: sqlite3.Connection, limit: int | None = None
 ) -> list[sqlite3.Row]:
-    return db.execute(
-        """
+    query = """
         SELECT
             commercial_entries.*,
             COALESCE(commercial_entries.invoice_group_id, 'entry-' || commercial_entries.id) AS effective_group_id,
@@ -2218,10 +2217,10 @@ def fetch_recent_commercial_entries(
         LEFT JOIN components ON components.id = commercial_entries.component_id
         ORDER BY COALESCE(commercial_entries.invoice_date, commercial_entries.entry_date, commercial_entries.created_at) DESC,
                  commercial_entries.id DESC
-        LIMIT ?
-        """,
-        (limit,),
-    ).fetchall()
+    """
+    if limit is None:
+        return db.execute(query).fetchall()
+    return db.execute(f"{query}\nLIMIT ?", (limit,)).fetchall()
 
 
 def fetch_commercial_entry(
@@ -4669,23 +4668,29 @@ def registry_page(section: str) -> str:
     records = page.get("records", [])
     columns = page.get("columns", [])
     if records and columns:
+        filter_keys = [column["key"] for column in columns]
+        filtered_records, column_filters = filter_records_by_keys(records, filter_keys)
         effective_sort_key = (
             registry_sort_key if registry_sort_key in {column["key"] for column in columns}
             else columns[0]["key"]
         )
         page["records"] = sort_registry_records(
-            records,
+            filtered_records,
             columns,
             effective_sort_key,
             registry_sort_direction,
         )
         page["sort_key"] = effective_sort_key
         page["sort_direction"] = registry_sort_direction
+        page["filters"] = column_filters
         return_to_value = request.args.get("return_to", "").strip()
         delete_error_value = request.args.get("delete_error", "").strip()
 
         def build_registry_sort_url(column_key: str, direction: str) -> str:
             params = {"sort": column_key, "direction": direction}
+            for filter_key, filter_value in column_filters.items():
+                if filter_value:
+                    params[f"filter_{filter_key}"] = filter_value
             if return_to_value:
                 params["return_to"] = return_to_value
             if delete_error_value:
@@ -5251,11 +5256,65 @@ def sort_registry_records(
     )
 
 
+def filter_records_by_keys(
+    records: list[Any],
+    column_keys: list[str],
+    *,
+    filters: dict[str, str] | None = None,
+    prefix: str = "filter_",
+) -> tuple[list[Any], dict[str, str]]:
+    active_filters = filters or {
+        key: request.args.get(f"{prefix}{key}", "").strip() for key in column_keys
+    }
+
+    def normalized_text(value: Any) -> str:
+        return str(value or "").strip().casefold()
+
+    filtered_records = [
+        record
+        for record in records
+        if all(
+            not active_filters.get(key)
+            or normalized_text(active_filters[key])
+            in normalized_text(record[key] if isinstance(record, sqlite3.Row) else record.get(key))
+            for key in column_keys
+        )
+    ]
+    return filtered_records, active_filters
+
+
+def build_sort_urls(
+    *,
+    endpoint: str,
+    column_keys: list[str],
+    current_sort_key: str,
+    current_sort_direction: str,
+    endpoint_kwargs: dict[str, Any] | None = None,
+    extra_params: dict[str, Any] | None = None,
+) -> dict[str, dict[str, str]]:
+    endpoint_kwargs = endpoint_kwargs or {}
+    extra_params = extra_params or {}
+    urls: dict[str, dict[str, str]] = {}
+    for column_key in column_keys:
+        urls[column_key] = {}
+        for direction in ("asc", "desc"):
+            params = {"sort": column_key, "direction": direction}
+            for key, value in extra_params.items():
+                if value not in {None, ""}:
+                    params[key] = value
+            urls[column_key][direction] = url_for(endpoint, **endpoint_kwargs, **params)
+    return urls
+
+
 @app.route("/products", methods=["GET", "POST"])
 def products() -> str:
     db = get_db()
     references = fetch_reference_data(db)
     return_to = request.values.get("return_to", "").strip()
+    sort_key = request.args.get("sort", "name").strip()
+    sort_direction = (
+        "desc" if request.args.get("direction", "").strip().lower() == "desc" else "asc"
+    )
     (
         default_product_energy_cost_per_hour,
         default_product_operating_cost_per_hour,
@@ -5359,15 +5418,56 @@ def products() -> str:
             app.logger.exception("Erro ao salvar produto")
             product_error = f"Erro ao salvar produto: {error}"
 
+    product_records = fetch_products(db)
+    product_columns = [
+        {"key": "sku"},
+        {"key": "name"},
+        {"key": "material_name"},
+        {"key": "unit_cost"},
+        {"key": "sale_price"},
+        {"key": "stock_quantity"},
+        {"key": "status"},
+    ]
+    filtered_products, product_filters = filter_records_by_keys(
+        product_records,
+        [column["key"] for column in product_columns],
+    )
+    effective_sort_key = (
+        sort_key if sort_key in {column["key"] for column in product_columns} else "name"
+    )
+    sorted_products = sort_registry_records(
+        filtered_products,
+        product_columns,
+        effective_sort_key,
+        sort_direction,
+    )
+
     return render_template(
         "products.html",
-        products=fetch_products(db),
+        products=sorted_products,
         materials=materials_list,
         components=references["components"],
         next_product_code=generate_sequential_code(db, "products", "sku", "P"),
         return_to=return_to,
         error=product_error,
         delete_error=request.args.get("delete_error", "").strip(),
+        sort_key=effective_sort_key,
+        sort_direction=sort_direction,
+        sort_urls=build_sort_urls(
+            endpoint="products",
+            column_keys=[column["key"] for column in product_columns],
+            current_sort_key=effective_sort_key,
+            current_sort_direction=sort_direction,
+            extra_params={
+                "return_to": return_to,
+                **{
+                    f"filter_{key}": value
+                    for key, value in product_filters.items()
+                    if value
+                },
+            },
+        ),
+        filters=product_filters,
         default_product_wear_cost_per_hour=default_product_wear_cost_per_hour,
         default_product_energy_cost_per_hour=default_product_energy_cost_per_hour,
         default_product_operating_cost_per_hour=default_product_operating_cost_per_hour,
@@ -5619,6 +5719,11 @@ def filament_movements_query() -> str:
             (selected_material_id,),
         ).fetchone()
 
+    sort_key = request.args.get("sort", "created_at").strip()
+    sort_direction = request.args.get("direction", "desc").strip().lower()
+    if sort_direction not in {"asc", "desc"}:
+        sort_direction = "desc"
+
     statement_rows: list[dict[str, Any]] = []
     opening_balance = 0.0
     current_balance = float(selected_material["stock_grams"] or 0) if selected_material else 0.0
@@ -5656,6 +5761,9 @@ def filament_movements_query() -> str:
                     "quantity_label": f"{br_decimal(opening_balance)} g",
                     "value_label": f"R$ {br_money((opening_balance * opening_unit_cost) / 1000)}",
                     "balance_label": f"{br_decimal(running_balance)} g",
+                    "quantity_value": opening_balance,
+                    "value_amount": (opening_balance * opening_unit_cost) / 1000,
+                    "balance_value": running_balance,
                     "direction": "Entrada",
                     "notes": "Estoque inicial do cadastro",
                 }
@@ -5706,10 +5814,47 @@ def filament_movements_query() -> str:
                         f"{'+' if signed_quantity >= 0 else '-'}R$ {br_money(movement_value)}"
                     ),
                     "balance_label": f"{br_decimal(running_balance)} g",
+                    "quantity_value": signed_quantity,
+                    "value_amount": movement_value if signed_quantity >= 0 else -movement_value,
+                    "balance_value": running_balance,
                     "direction": direction,
                     "notes": movement["notes"] or movement["job_item_name"] or "-",
                 }
             )
+
+    valid_sort_keys = {
+        "created_at",
+        "reference",
+        "description",
+        "quantity_value",
+        "value_amount",
+        "balance_value",
+        "notes",
+    }
+    effective_sort_key = sort_key if sort_key in valid_sort_keys else "created_at"
+    reverse = sort_direction == "desc"
+
+    def movement_sort_value(row: dict[str, Any]) -> tuple[int, Any]:
+        value = row.get(effective_sort_key)
+        if effective_sort_key in {"quantity_value", "value_amount", "balance_value"}:
+            numeric_value = float(value or 0)
+            return (0, numeric_value)
+        text_value = str(value or "").strip()
+        return (0 if text_value else 1, text_value.casefold())
+
+    statement_rows, movement_filters = filter_records_by_keys(
+        statement_rows,
+        [
+            "created_at",
+            "reference",
+            "description",
+            "quantity_label",
+            "value_label",
+            "balance_label",
+            "notes",
+        ],
+    )
+    statement_rows = sorted(statement_rows, key=movement_sort_value, reverse=reverse)
 
     return render_template(
         "filament_movements.html",
@@ -5718,6 +5863,31 @@ def filament_movements_query() -> str:
         selected_material_id=selected_material_id,
         statement_rows=statement_rows,
         opening_balance=opening_balance,
+        sort_key=effective_sort_key,
+        sort_direction=sort_direction,
+        sort_urls=build_sort_urls(
+            endpoint="filament_movements_query",
+            column_keys=[
+                "created_at",
+                "reference",
+                "description",
+                "quantity_value",
+                "value_amount",
+                "balance_value",
+                "notes",
+            ],
+            current_sort_key=effective_sort_key,
+            current_sort_direction=sort_direction,
+            extra_params={
+                "material_id": selected_material_id,
+                **{
+                    f"filter_{key}": value
+                    for key, value in movement_filters.items()
+                    if value
+                },
+            },
+        ),
+        filters=movement_filters,
     )
 
 
@@ -5741,13 +5911,27 @@ def queries() -> str:
 @app.route("/queries/sales-orders")
 def sales_orders_query() -> str:
     db = get_db()
-    jobs = fetch_jobs(db)
+    sort_key = request.args.get("sort", "created_at").strip()
+    sort_direction = request.args.get("direction", "desc").strip().lower()
+    if sort_direction not in {"asc", "desc"}:
+        sort_direction = "desc"
+    valid_sort_keys = {
+        "id",
+        "status",
+        "created_at",
+        "customer_display",
+        "item_name",
+        "suggested_price",
+    }
+    effective_sort_key = sort_key if sort_key in valid_sort_keys else "created_at"
+    jobs = fetch_jobs(db, sort_key=effective_sort_key, sort_direction=sort_direction)
     filters = {
         "created_at": request.args.get("created_at", "").strip(),
         "job_number": request.args.get("job_number", "").strip(),
         "item_name": request.args.get("item_name", "").strip(),
         "customer_name": request.args.get("customer_name", "").strip(),
         "status": request.args.get("status", "").strip(),
+        "suggested_price": request.args.get("suggested_price", "").strip(),
     }
 
     def normalize(value: Any) -> str:
@@ -5772,22 +5956,167 @@ def sales_orders_query() -> str:
             return False
         if filters["status"] and normalize(filters["status"]) not in normalize(job["status"]):
             return False
+        if filters["suggested_price"] and normalize(filters["suggested_price"]) not in normalize(
+            br_money(job["suggested_price"])
+        ):
+            return False
         return True
 
     filtered_jobs = [job for job in jobs if job_matches(job)]
-    return render_template("sales_orders.html", jobs=filtered_jobs, filters=filters)
+    return render_template(
+        "sales_orders.html",
+        jobs=filtered_jobs,
+        filters=filters,
+        sort_key=effective_sort_key,
+        sort_direction=sort_direction,
+        sort_urls=build_sort_urls(
+            endpoint="sales_orders_query",
+            column_keys=list(valid_sort_keys),
+            current_sort_key=effective_sort_key,
+            current_sort_direction=sort_direction,
+            extra_params=filters,
+        ),
+    )
 
 
 @app.route("/queries/sale-products")
 def sale_products_query() -> str:
     db = get_db()
-    return render_template("sale_products.html", products=fetch_products(db))
+    sort_key = request.args.get("sort", "name").strip()
+    sort_direction = (
+        "desc" if request.args.get("direction", "").strip().lower() == "desc" else "asc"
+    )
+    product_records = fetch_products(db)
+    product_columns = [
+        {"key": "sku"},
+        {"key": "name"},
+        {"key": "material_name"},
+        {"key": "sale_channel"},
+        {"key": "status"},
+        {"key": "sale_price"},
+    ]
+    filtered_products, product_filters = filter_records_by_keys(
+        product_records,
+        [column["key"] for column in product_columns],
+    )
+    effective_sort_key = (
+        sort_key if sort_key in {column["key"] for column in product_columns} else "name"
+    )
+    sorted_products = sort_registry_records(
+        filtered_products,
+        product_columns,
+        effective_sort_key,
+        sort_direction,
+    )
+    return render_template(
+        "sale_products.html",
+        products=sorted_products,
+        sort_key=effective_sort_key,
+        sort_direction=sort_direction,
+        sort_urls=build_sort_urls(
+            endpoint="sale_products_query",
+            column_keys=[column["key"] for column in product_columns],
+            current_sort_key=effective_sort_key,
+            current_sort_direction=sort_direction,
+            extra_params={
+                f"filter_{key}": value for key, value in product_filters.items() if value
+            },
+        ),
+        filters=product_filters,
+    )
+
+
+@app.route("/queries/components")
+def components_query() -> str:
+    db = get_db()
+    references = fetch_reference_data(db)
+    component_records = [
+        {
+            "id": row["id"],
+            "sku": row["sku"] or "-",
+            "name": row["name"],
+            "component_type": row["component_type"] or "-",
+            "manufacturer_name": row["manufacturer_name"] or "-",
+            "unit_measure": row["unit_measure"] or "-",
+            "stock_quantity": br_decimal(row["stock_quantity"]),
+            "unit_cost": f"R$ {br_money(row['unit_cost'])}",
+            "location": row["location"] or "-",
+        }
+        for row in references["components"]
+    ]
+    component_columns = [
+        {"key": "sku"},
+        {"key": "name"},
+        {"key": "component_type"},
+        {"key": "manufacturer_name"},
+        {"key": "unit_measure"},
+        {"key": "stock_quantity"},
+        {"key": "unit_cost"},
+        {"key": "location"},
+    ]
+    sort_key = request.args.get("sort", "name").strip()
+    sort_direction = (
+        "desc" if request.args.get("direction", "").strip().lower() == "desc" else "asc"
+    )
+    filtered_components, component_filters = filter_records_by_keys(
+        component_records,
+        [column["key"] for column in component_columns],
+    )
+    effective_sort_key = (
+        sort_key if sort_key in {column["key"] for column in component_columns} else "name"
+    )
+    sorted_components = sort_registry_records(
+        filtered_components,
+        component_columns,
+        effective_sort_key,
+        sort_direction,
+    )
+    return render_template(
+        "components_query.html",
+        components=sorted_components,
+        sort_key=effective_sort_key,
+        sort_direction=sort_direction,
+        sort_urls=build_sort_urls(
+            endpoint="components_query",
+            column_keys=[column["key"] for column in component_columns],
+            current_sort_key=effective_sort_key,
+            current_sort_direction=sort_direction,
+            extra_params={
+                f"filter_{key}": value for key, value in component_filters.items() if value
+            },
+        ),
+        filters=component_filters,
+    )
 
 
 @app.route("/queries/production-orders")
 def production_orders() -> str:
     db = get_db()
-    return render_template("production_orders.html", jobs=fetch_jobs(db))
+    sort_key = request.args.get("sort", "created_at").strip()
+    sort_direction = request.args.get("direction", "desc").strip().lower()
+    if sort_direction not in {"asc", "desc"}:
+        sort_direction = "desc"
+    valid_sort_keys = {"id", "customer_display", "item_name", "status", "printer_name"}
+    effective_sort_key = sort_key if sort_key in valid_sort_keys else "id"
+    jobs = fetch_jobs(db, sort_key=effective_sort_key, sort_direction=sort_direction)
+    filtered_jobs, job_filters = filter_records_by_keys(
+        jobs,
+        ["id", "customer_display", "item_name", "status", "printer_name"],
+    )
+    return render_template(
+        "production_orders.html",
+        jobs=filtered_jobs,
+        sort_key=effective_sort_key,
+        sort_direction=sort_direction,
+        sort_urls=build_sort_urls(
+            endpoint="production_orders",
+            column_keys=["id", "customer_display", "item_name", "status", "printer_name"],
+            current_sort_key=effective_sort_key,
+            current_sort_direction=sort_direction,
+            extra_params={f"filter_{key}": value for key, value in job_filters.items() if value},
+        ),
+        filters=job_filters,
+    )
 
 
 @app.route("/queries/production-orders/<int:job_id>", methods=["GET", "POST"])
@@ -6361,9 +6690,22 @@ def jobs() -> str:
             db.rollback()
             app.logger.exception("Erro ao salvar pedido")
             jobs_list = fetch_jobs(db)
+            prepared_jobs = prepare_jobs_for_list(jobs_list)
+            job_filters = {
+                key: ""
+                for key in [
+                    "id",
+                    "customer_display",
+                    "item_name",
+                    "quantity",
+                    "status",
+                    "due_date",
+                    "suggested_price",
+                ]
+            }
             return render_template(
                 "jobs.html",
-                jobs=prepare_jobs_for_list(jobs_list),
+                jobs=prepared_jobs,
                 materials=materials_list,
                 components=references["components"],
                 products=references["products"],
@@ -6380,6 +6722,15 @@ def jobs() -> str:
                 today_date=date.today().isoformat(),
                 valid_until_date=(date.today() + timedelta(days=5)).isoformat(),
                 delete_error="",
+                sort_key="created_at",
+                sort_direction="desc",
+                filters=job_filters,
+                sort_urls=build_sort_urls(
+                    endpoint="jobs",
+                    column_keys=list(job_filters.keys()),
+                    current_sort_key="created_at",
+                    current_sort_direction="desc",
+                ),
             )
 
     sort_key = request.args.get("sort", "created_at").strip()
@@ -6387,9 +6738,14 @@ def jobs() -> str:
     if sort_direction not in {"asc", "desc"}:
         sort_direction = "desc"
     jobs_list = fetch_jobs(db, sort_key=sort_key, sort_direction=sort_direction)
+    prepared_jobs = prepare_jobs_for_list(jobs_list)
+    prepared_jobs, job_filters = filter_records_by_keys(
+        prepared_jobs,
+        ["id", "customer_display", "item_name", "quantity", "status", "due_date", "suggested_price"],
+    )
     return render_template(
         "jobs.html",
-        jobs=prepare_jobs_for_list(jobs_list),
+        jobs=prepared_jobs,
         materials=materials_list,
         components=references["components"],
         products=references["products"],
@@ -6408,6 +6764,14 @@ def jobs() -> str:
         delete_error=request.args.get("delete_error", "").strip(),
         sort_key=sort_key,
         sort_direction=sort_direction,
+        filters=job_filters,
+        sort_urls=build_sort_urls(
+            endpoint="jobs",
+            column_keys=["id", "customer_display", "item_name", "quantity", "status", "due_date", "suggested_price"],
+            current_sort_key=sort_key,
+            current_sort_direction=sort_direction,
+            extra_params={f"filter_{key}": value for key, value in job_filters.items() if value},
+        ),
     )
 
 
@@ -6434,6 +6798,7 @@ def fetch_jobs(
         "created_at": f"jobs.created_at {normalized_direction}, jobs.id {normalized_direction}",
         "customer_display": f"COALESCE(customers.name, jobs.customer_name) COLLATE NOCASE {normalized_direction}, jobs.id DESC",
         "item_name": f"jobs.item_name COLLATE NOCASE {normalized_direction}, jobs.id DESC",
+        "printer_name": f"COALESCE(printers.name, '') COLLATE NOCASE {normalized_direction}, jobs.id DESC",
         "quantity": f"jobs.quantity {normalized_direction}, jobs.id DESC",
         "status": f"jobs.status COLLATE NOCASE {normalized_direction}, jobs.id DESC",
         "due_date": f"COALESCE(jobs.due_date, '') {normalized_direction}, jobs.id DESC",

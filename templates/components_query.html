@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Consultar Componentes{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Consultas</p>
+    <h2>Consultar componentes</h2>
+    <p class="subtitle">
+      Veja apenas a listagem dos componentes cadastrados, com pesquisa por coluna e classificação no cabeçalho.
+    </p>
+  </section>
+
+  <section class="panel-grid single">
+    <article class="panel">
+      <div class="panel-header">
+        <h2>Componentes cadastrados</h2>
+      </div>
+      {% if components %}
+        <form id="components-query-filter-form" method="get" class="table-filter-form">
+          <input type="hidden" name="sort" value="{{ sort_key }}">
+          <input type="hidden" name="direction" value="{{ sort_direction }}">
+        </form>
+        <div class="table-wrap">
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['sku'] %}is-active{% endif %}" data-filter-target="components-query-filter-sku">Codigo</button>
+                      <a class="sort-link {% if sort_key == 'sku' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['sku']['asc' if sort_key != 'sku' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'sku' and sort_direction == 'asc' else '↓' if sort_key == 'sku' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="components-query-filter-sku">
+                      <input form="components-query-filter-form" class="header-filter-control" type="text" name="filter_sku" value="{{ filters['sku'] }}" placeholder="Pesquisar codigo">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['name'] %}is-active{% endif %}" data-filter-target="components-query-filter-name">Componente</button>
+                      <a class="sort-link {% if sort_key == 'name' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['name']['asc' if sort_key != 'name' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'name' and sort_direction == 'asc' else '↓' if sort_key == 'name' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="components-query-filter-name">
+                      <input form="components-query-filter-form" class="header-filter-control" type="text" name="filter_name" value="{{ filters['name'] }}" placeholder="Pesquisar componente">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['component_type'] %}is-active{% endif %}" data-filter-target="components-query-filter-type">Tipo</button>
+                      <a class="sort-link {% if sort_key == 'component_type' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['component_type']['asc' if sort_key != 'component_type' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'component_type' and sort_direction == 'asc' else '↓' if sort_key == 'component_type' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="components-query-filter-type">
+                      <input form="components-query-filter-form" class="header-filter-control" type="text" name="filter_component_type" value="{{ filters['component_type'] }}" placeholder="Pesquisar tipo">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['manufacturer_name'] %}is-active{% endif %}" data-filter-target="components-query-filter-manufacturer">Fabricante</button>
+                      <a class="sort-link {% if sort_key == 'manufacturer_name' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['manufacturer_name']['asc' if sort_key != 'manufacturer_name' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'manufacturer_name' and sort_direction == 'asc' else '↓' if sort_key == 'manufacturer_name' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="components-query-filter-manufacturer">
+                      <input form="components-query-filter-form" class="header-filter-control" type="text" name="filter_manufacturer_name" value="{{ filters['manufacturer_name'] }}" placeholder="Pesquisar fabricante">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['unit_measure'] %}is-active{% endif %}" data-filter-target="components-query-filter-unit">Unidade</button>
+                      <a class="sort-link {% if sort_key == 'unit_measure' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['unit_measure']['asc' if sort_key != 'unit_measure' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'unit_measure' and sort_direction == 'asc' else '↓' if sort_key == 'unit_measure' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="components-query-filter-unit">
+                      <input form="components-query-filter-form" class="header-filter-control" type="text" name="filter_unit_measure" value="{{ filters['unit_measure'] }}" placeholder="Pesquisar unidade">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['stock_quantity'] %}is-active{% endif %}" data-filter-target="components-query-filter-stock">Estoque</button>
+                      <a class="sort-link {% if sort_key == 'stock_quantity' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['stock_quantity']['asc' if sort_key != 'stock_quantity' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'stock_quantity' and sort_direction == 'asc' else '↓' if sort_key == 'stock_quantity' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="components-query-filter-stock">
+                      <input form="components-query-filter-form" class="header-filter-control" type="text" name="filter_stock_quantity" value="{{ filters['stock_quantity'] }}" placeholder="Pesquisar estoque">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['unit_cost'] %}is-active{% endif %}" data-filter-target="components-query-filter-cost">Custo</button>
+                      <a class="sort-link {% if sort_key == 'unit_cost' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['unit_cost']['asc' if sort_key != 'unit_cost' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'unit_cost' and sort_direction == 'asc' else '↓' if sort_key == 'unit_cost' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="components-query-filter-cost">
+                      <input form="components-query-filter-form" class="header-filter-control" type="text" name="filter_unit_cost" value="{{ filters['unit_cost'] }}" placeholder="Pesquisar custo">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['location'] %}is-active{% endif %}" data-filter-target="components-query-filter-location">Local</button>
+                      <a class="sort-link {% if sort_key == 'location' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['location']['asc' if sort_key != 'location' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'location' and sort_direction == 'asc' else '↓' if sort_key == 'location' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="components-query-filter-location">
+                      <input form="components-query-filter-form" class="header-filter-control" type="text" name="filter_location" value="{{ filters['location'] }}" placeholder="Pesquisar local">
+                    </div>
+                  </div>
+                </th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for component in components %}
+                <tr>
+                  <td data-label="Codigo">{{ component["sku"] }}</td>
+                  <td data-label="Componente"><strong>{{ component["name"] }}</strong></td>
+                  <td data-label="Tipo">{{ component["component_type"] }}</td>
+                  <td data-label="Fabricante">{{ component["manufacturer_name"] }}</td>
+                  <td data-label="Unidade">{{ component["unit_measure"] }}</td>
+                  <td data-label="Estoque">{{ component["stock_quantity"] }}</td>
+                  <td data-label="Custo">{{ component["unit_cost"] }}</td>
+                  <td data-label="Local">{{ component["location"] }}</td>
+                  <td data-label="Acoes">
+                    <a class="action-link" href="{{ url_for('edit_registry_item', section='components', record_id=component['id']) }}">Abrir componente</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty">Nenhum componente cadastrado.</p>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

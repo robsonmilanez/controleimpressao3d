@@ -182,8 +182,8 @@
                 <th class="code-cell">
                   <div class="table-header-filter">
                     <span class="sortable-header">
-                      <button type="button" class="header-filter-trigger" data-filter-target="filter-sku">Cod</button>
-                      <button type="button" class="sort-link {% if sort_key == 'sku' %}is-active{% endif %}" data-sort-key="sku">{{ '↑' if sort_key == 'sku' and sort_direction == 'desc' else '↓' if sort_key == 'sku' and sort_direction == 'asc' else '↕' }}</button>
+                      <button type="button" class="header-filter-trigger {% if filters['sku'] %}is-active{% endif %}" data-filter-target="filter-sku">Cod</button>
+                      <button type="button" class="sort-link {% if sort_key == 'sku' %}is-active{% endif %}" data-sort-key="sku">{{ '↑' if sort_key == 'sku' and sort_direction == 'asc' else '↓' if sort_key == 'sku' and sort_direction == 'desc' else '↕' }}</button>
                     </span>
                     <div class="header-filter-popover" id="filter-sku">
                       <input form="materials-filter-form" class="header-filter-control" type="text" name="sku" value="{{ filters['sku'] }}" placeholder="Filtrar codigo">
@@ -198,8 +198,8 @@
                 <th>
                   <div class="table-header-filter">
                     <span class="sortable-header">
-                      <button type="button" class="header-filter-trigger" data-filter-target="filter-material-type">Tipo</button>
-                      <button type="button" class="sort-link {% if sort_key == 'material_type' %}is-active{% endif %}" data-sort-key="material_type">{{ '↑' if sort_key == 'material_type' and sort_direction == 'desc' else '↓' if sort_key == 'material_type' and sort_direction == 'asc' else '↕' }}</button>
+                      <button type="button" class="header-filter-trigger {% if filters['material_type'] %}is-active{% endif %}" data-filter-target="filter-material-type">Tipo</button>
+                      <button type="button" class="sort-link {% if sort_key == 'material_type' %}is-active{% endif %}" data-sort-key="material_type">{{ '↑' if sort_key == 'material_type' and sort_direction == 'asc' else '↓' if sort_key == 'material_type' and sort_direction == 'desc' else '↕' }}</button>
                     </span>
                     <div class="header-filter-popover" id="filter-material-type">
                       <input form="materials-filter-form" class="header-filter-control" type="text" name="material_type" value="{{ filters['material_type'] }}" placeholder="Filtrar tipo">
@@ -214,8 +214,8 @@
                 <th>
                   <div class="table-header-filter">
                     <span class="sortable-header">
-                      <button type="button" class="header-filter-trigger" data-filter-target="filter-color">Cor</button>
-                      <button type="button" class="sort-link {% if sort_key == 'color' %}is-active{% endif %}" data-sort-key="color">{{ '↑' if sort_key == 'color' and sort_direction == 'desc' else '↓' if sort_key == 'color' and sort_direction == 'asc' else '↕' }}</button>
+                      <button type="button" class="header-filter-trigger {% if filters['color'] %}is-active{% endif %}" data-filter-target="filter-color">Cor</button>
+                      <button type="button" class="sort-link {% if sort_key == 'color' %}is-active{% endif %}" data-sort-key="color">{{ '↑' if sort_key == 'color' and sort_direction == 'asc' else '↓' if sort_key == 'color' and sort_direction == 'desc' else '↕' }}</button>
                     </span>
                     <div class="header-filter-popover" id="filter-color">
                       <input form="materials-filter-form" class="header-filter-control" type="text" name="color" value="{{ filters['color'] }}" placeholder="Filtrar cor">
@@ -230,8 +230,8 @@
                 <th>
                   <div class="table-header-filter">
                     <span class="sortable-header">
-                      <button type="button" class="header-filter-trigger" data-filter-target="filter-name">Linha/Serie</button>
-                      <button type="button" class="sort-link {% if sort_key == 'name' %}is-active{% endif %}" data-sort-key="name">{{ '↑' if sort_key == 'name' and sort_direction == 'desc' else '↓' if sort_key == 'name' and sort_direction == 'asc' else '↕' }}</button>
+                      <button type="button" class="header-filter-trigger {% if filters['name'] %}is-active{% endif %}" data-filter-target="filter-name">Linha/Serie</button>
+                      <button type="button" class="sort-link {% if sort_key == 'name' %}is-active{% endif %}" data-sort-key="name">{{ '↑' if sort_key == 'name' and sort_direction == 'asc' else '↓' if sort_key == 'name' and sort_direction == 'desc' else '↕' }}</button>
                     </span>
                     <div class="header-filter-popover" id="filter-name">
                       <input form="materials-filter-form" class="header-filter-control" type="text" name="name" value="{{ filters['name'] }}" placeholder="Filtrar linha">
@@ -246,8 +246,8 @@
                 <th>
                   <div class="table-header-filter">
                     <span class="sortable-header">
-                      <button type="button" class="header-filter-trigger" data-filter-target="filter-manufacturer">Marca/Fabricante</button>
-                      <button type="button" class="sort-link {% if sort_key == 'manufacturer_name' %}is-active{% endif %}" data-sort-key="manufacturer_name">{{ '↑' if sort_key == 'manufacturer_name' and sort_direction == 'desc' else '↓' if sort_key == 'manufacturer_name' and sort_direction == 'asc' else '↕' }}</button>
+                      <button type="button" class="header-filter-trigger {% if filters['manufacturer_name'] %}is-active{% endif %}" data-filter-target="filter-manufacturer">Marca/Fabricante</button>
+                      <button type="button" class="sort-link {% if sort_key == 'manufacturer_name' %}is-active{% endif %}" data-sort-key="manufacturer_name">{{ '↑' if sort_key == 'manufacturer_name' and sort_direction == 'asc' else '↓' if sort_key == 'manufacturer_name' and sort_direction == 'desc' else '↕' }}</button>
                     </span>
                     <div class="header-filter-popover" id="filter-manufacturer">
                       <input form="materials-filter-form" class="header-filter-control" type="text" name="manufacturer_name" value="{{ filters['manufacturer_name'] }}" placeholder="Filtrar fabricante">
@@ -262,8 +262,8 @@
                 <th>
                   <div class="table-header-filter">
                     <span class="sortable-header">
-                      <button type="button" class="header-filter-trigger" data-filter-target="filter-lot">Lote</button>
-                      <button type="button" class="sort-link {% if sort_key == 'lot_number' %}is-active{% endif %}" data-sort-key="lot_number">{{ '↑' if sort_key == 'lot_number' and sort_direction == 'desc' else '↓' if sort_key == 'lot_number' and sort_direction == 'asc' else '↕' }}</button>
+                      <button type="button" class="header-filter-trigger {% if filters['lot_number'] %}is-active{% endif %}" data-filter-target="filter-lot">Lote</button>
+                      <button type="button" class="sort-link {% if sort_key == 'lot_number' %}is-active{% endif %}" data-sort-key="lot_number">{{ '↑' if sort_key == 'lot_number' and sort_direction == 'asc' else '↓' if sort_key == 'lot_number' and sort_direction == 'desc' else '↕' }}</button>
                     </span>
                     <div class="header-filter-popover" id="filter-lot">
                       <input form="materials-filter-form" class="header-filter-control" type="text" name="lot_number" value="{{ filters['lot_number'] }}" placeholder="Filtrar lote">
@@ -278,8 +278,8 @@
                 <th>
                   <div class="table-header-filter">
                     <span class="sortable-header">
-                      <button type="button" class="header-filter-trigger" data-filter-target="filter-location">Local</button>
-                      <button type="button" class="sort-link {% if sort_key == 'location' %}is-active{% endif %}" data-sort-key="location">{{ '↑' if sort_key == 'location' and sort_direction == 'desc' else '↓' if sort_key == 'location' and sort_direction == 'asc' else '↕' }}</button>
+                      <button type="button" class="header-filter-trigger {% if filters['location'] %}is-active{% endif %}" data-filter-target="filter-location">Local</button>
+                      <button type="button" class="sort-link {% if sort_key == 'location' %}is-active{% endif %}" data-sort-key="location">{{ '↑' if sort_key == 'location' and sort_direction == 'asc' else '↓' if sort_key == 'location' and sort_direction == 'desc' else '↕' }}</button>
                     </span>
                     <div class="header-filter-popover" id="filter-location">
                       <input form="materials-filter-form" class="header-filter-control" type="text" name="location" value="{{ filters['location'] }}" placeholder="Filtrar local">

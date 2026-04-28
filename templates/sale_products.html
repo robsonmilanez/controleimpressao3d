@@ -15,16 +15,80 @@
         <h2>Produtos cadastrados</h2>
       </div>
       {% if products %}
+        <form id="sale-products-filter-form" method="get" class="table-filter-form">
+          <input type="hidden" name="sort" value="{{ sort_key }}">
+          <input type="hidden" name="direction" value="{{ sort_direction }}">
+        </form>
         <div class="table-wrap">
           <table class="responsive-table">
             <thead>
               <tr>
-                <th>Codigo</th>
-                <th>Produto</th>
-                <th>Material base</th>
-                <th>Canal</th>
-                <th>Status</th>
-                <th>Preco</th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['sku'] %}is-active{% endif %}" data-filter-target="sale-products-filter-sku">Codigo</button>
+                      <a class="sort-link {% if sort_key == 'sku' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['sku']['asc' if sort_key != 'sku' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'sku' and sort_direction == 'asc' else '↓' if sort_key == 'sku' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="sale-products-filter-sku">
+                      <input form="sale-products-filter-form" class="header-filter-control" type="text" name="filter_sku" value="{{ filters['sku'] }}" placeholder="Pesquisar codigo">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['name'] %}is-active{% endif %}" data-filter-target="sale-products-filter-name">Produto</button>
+                      <a class="sort-link {% if sort_key == 'name' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['name']['asc' if sort_key != 'name' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'name' and sort_direction == 'asc' else '↓' if sort_key == 'name' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="sale-products-filter-name">
+                      <input form="sale-products-filter-form" class="header-filter-control" type="text" name="filter_name" value="{{ filters['name'] }}" placeholder="Pesquisar produto">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['material_name'] %}is-active{% endif %}" data-filter-target="sale-products-filter-material">Material base</button>
+                      <a class="sort-link {% if sort_key == 'material_name' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['material_name']['asc' if sort_key != 'material_name' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'material_name' and sort_direction == 'asc' else '↓' if sort_key == 'material_name' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="sale-products-filter-material">
+                      <input form="sale-products-filter-form" class="header-filter-control" type="text" name="filter_material_name" value="{{ filters['material_name'] }}" placeholder="Pesquisar material">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['sale_channel'] %}is-active{% endif %}" data-filter-target="sale-products-filter-channel">Canal</button>
+                      <a class="sort-link {% if sort_key == 'sale_channel' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['sale_channel']['asc' if sort_key != 'sale_channel' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'sale_channel' and sort_direction == 'asc' else '↓' if sort_key == 'sale_channel' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="sale-products-filter-channel">
+                      <input form="sale-products-filter-form" class="header-filter-control" type="text" name="filter_sale_channel" value="{{ filters['sale_channel'] }}" placeholder="Pesquisar canal">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['status'] %}is-active{% endif %}" data-filter-target="sale-products-filter-status">Status</button>
+                      <a class="sort-link {% if sort_key == 'status' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['status']['asc' if sort_key != 'status' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'status' and sort_direction == 'asc' else '↓' if sort_key == 'status' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="sale-products-filter-status">
+                      <input form="sale-products-filter-form" class="header-filter-control" type="text" name="filter_status" value="{{ filters['status'] }}" placeholder="Pesquisar status">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['sale_price'] %}is-active{% endif %}" data-filter-target="sale-products-filter-price">Preco</button>
+                      <a class="sort-link {% if sort_key == 'sale_price' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['sale_price']['asc' if sort_key != 'sale_price' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'sale_price' and sort_direction == 'asc' else '↓' if sort_key == 'sale_price' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="sale-products-filter-price">
+                      <input form="sale-products-filter-form" class="header-filter-control" type="text" name="filter_sale_price" value="{{ filters['sale_price'] }}" placeholder="Pesquisar preco">
+                    </div>
+                  </div>
+                </th>
                 <th>Acoes</th>
               </tr>
             </thead>

@@ -556,7 +556,7 @@ function setupMaterialsCatalogClientFiltering() {
     sortButtons.forEach((button) => {
       const isActive = button.dataset.sortKey === state.sortKey;
       button.classList.toggle("is-active", isActive);
-      button.textContent = !isActive ? "↕" : state.sortDirection === "asc" ? "↓" : "↑";
+      button.textContent = !isActive ? "↕" : state.sortDirection === "asc" ? "↑" : "↓";
     });
     if (hiddenSortField) {
       hiddenSortField.value = state.sortKey;
