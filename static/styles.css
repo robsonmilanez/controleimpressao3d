@@ -956,10 +956,10 @@ input[type="range"]:focus {
   width: 100%;
   min-height: 28px;
   min-width: 0;
-  padding: 0.25rem 0.38rem;
-  font-size: 0.66rem;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.59rem;
   text-align: center;
-  border-radius: 9px;
+  border-radius: 8px;
   line-height: 1.1;
 }
 
@@ -975,7 +975,7 @@ input[type="range"]:focus {
 
 .jobs-list-table th:nth-child(1),
 .jobs-list-table td:nth-child(1) {
-  width: 22rem;
+  width: 18rem;
 }
 
 .jobs-list-table th:nth-child(2),
@@ -990,12 +990,12 @@ input[type="range"]:focus {
 
 .jobs-list-table th:nth-child(4),
 .jobs-list-table td:nth-child(4) {
-  width: 20rem;
+  width: 24rem;
 }
 
 .jobs-list-table th:nth-child(5),
 .jobs-list-table td:nth-child(5) {
-  width: 6rem;
+  width: 7rem;
 }
 
 .jobs-list-table th:nth-child(6),
@@ -1051,9 +1051,21 @@ input[type="range"]:focus {
 
 .job-item-inline strong {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.job-metric-inline {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: center;
+}
+
+.job-metric-inline span,
+.job-metric-inline strong {
+  display: block;
+  line-height: 1.2;
 }
 
 .material-row {

@@ -2561,18 +2561,6 @@ function setupProductBuilder() {
       updatePricing();
     };
 
-    form.addEventListener("keydown", (event) => {
-      if (
-        event.target.matches("[name='product_material_print_hours']") &&
-        event.key === "Tab" &&
-        !event.shiftKey &&
-        addMaterialButton
-      ) {
-        event.preventDefault();
-        addMaterialButton.focus();
-      }
-    });
-
     form.addEventListener("input", (event) => {
       if (
         event.target.matches("[name='product_material_quantity']") ||

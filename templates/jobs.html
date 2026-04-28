@@ -301,15 +301,30 @@
                   <td data-label="Cliente">{{ job["customer_display"] }}</td>
                   <td data-label="Item">
                     <div class="job-item-inline" title="{{ job['list_item_name_full'] }}">
-                      {% for item_name in job['list_item_lines'] %}
-                        <strong>{{ item_name }}</strong>
+                      {% for item_line in job['list_item_lines'] %}
+                        <strong>{{ item_line['name'] }}</strong>
                       {% endfor %}
                     </div>
                   </td>
-                  <td data-label="Qtde">{{ job["quantity"] }} un</td>
+                  <td data-label="Qtde">
+                    <div class="job-metric-inline">
+                      {% for item_line in job['list_item_lines'] %}
+                        <span>{{ item_line['quantity']|br_decimal }} un</span>
+                      {% endfor %}
+                    </div>
+                  </td>
                   <td data-label="Status">{{ job["status"] }}</td>
                   <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
-                  <td data-label="Valor">R$ {{ job["suggested_price"]|br_money }}</td>
+                  <td data-label="Valor">
+                    <div class="job-metric-inline">
+                      {% for item_line in job['list_item_lines'] %}
+                        <span>R$ {{ item_line['total_price']|br_money }}</span>
+                      {% endfor %}
+                      {% if job['list_item_lines']|length > 1 %}
+                        <strong>Total: R$ {{ job["suggested_price"]|br_money }}</strong>
+                      {% endif %}
+                    </div>
+                  </td>
                   <td data-label="Excluir">
                     <form method="post" action="{{ url_for('delete_job', job_id=job['id']) }}" class="inline-form" onsubmit="return confirm('Excluir este pedido?');">
                       <button type="submit" class="danger-button">Excluir</button>

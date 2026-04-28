@@ -109,23 +109,20 @@
           {% set _ = service_notes.append({"name": service["service_name"], "note": service["notes"]}) %}
         {% endif %}
       {% endfor %}
-      {% if service_notes %}
-        <section class="document-section">
-          <h2>Obs. dos itens</h2>
-          <div class="customer-notes-list">
-            {% for entry in service_notes %}
-              <p><strong>{{ entry["name"] }}:</strong> {{ entry["note"] }}</p>
-            {% endfor %}
-          </div>
-        </section>
-      {% endif %}
-
-      {% if job["customer_notes"] %}
-        <section class="document-section">
-          <h2>Obs. do cliente</h2>
-          <p>{{ job["customer_notes"] }}</p>
-        </section>
-      {% endif %}
+      <section class="document-section">
+        <h2>Observações</h2>
+        <div class="customer-notes-list">
+          {% if job["customer_notes"] %}
+            <p><strong>Obs. do cliente:</strong> {{ job["customer_notes"] }}</p>
+          {% endif %}
+          {% for entry in service_notes %}
+            <p><strong>{{ entry["name"] }}:</strong> {{ entry["note"] }}</p>
+          {% endfor %}
+          {% if not job["customer_notes"] and not service_notes %}
+            <p>-</p>
+          {% endif %}
+        </div>
+      </section>
 
       {% if photo_lines %}
         <section class="document-section">

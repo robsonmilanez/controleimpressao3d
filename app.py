@@ -7260,27 +7260,38 @@ def prepare_jobs_for_list(jobs: list[sqlite3.Row]) -> list[dict[str, Any]]:
         item = dict(job)
         service_lines = db.execute(
             """
-            SELECT service_name
+            SELECT service_name, quantity, total_price
             FROM job_services
             WHERE job_id = ?
             ORDER BY id ASC
             """,
             (item["id"],),
         ).fetchall()
-        service_names = [
-            str(line["service_name"] or "").strip()
+        service_entries = [
+            {
+                "name": str(line["service_name"] or "").strip(),
+                "quantity": float(line["quantity"] or 0),
+                "total_price": float(line["total_price"] or 0),
+            }
             for line in service_lines
             if str(line["service_name"] or "").strip()
         ]
-        if service_names:
+        service_names = [entry["name"] for entry in service_entries]
+        if service_entries:
             item["list_item_name"] = " | ".join(service_names)
             item["list_item_name_full"] = " | ".join(service_names)
-            item["list_item_lines"] = service_names
+            item["list_item_lines"] = service_entries
         else:
             fallback_name = str(item.get("item_name") or "-").strip() or "-"
             item["list_item_name"] = fallback_name
             item["list_item_name_full"] = fallback_name
-            item["list_item_lines"] = [fallback_name]
+            item["list_item_lines"] = [
+                {
+                    "name": fallback_name,
+                    "quantity": float(item.get("quantity") or 0),
+                    "total_price": float(item.get("suggested_price") or 0),
+                }
+            ]
         item["item_name"] = item["list_item_name"]
         customer_url = url_for(
             "public_job_customer_document",
