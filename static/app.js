@@ -3257,6 +3257,24 @@ function setupServiceWorker() {
   });
 }
 
+function setupHistoryBackLinks() {
+  const links = Array.from(document.querySelectorAll(".history-back-link, .back-link"));
+  links.forEach((link) => {
+    if (link.dataset.historyBackReady === "1") {
+      return;
+    }
+    link.dataset.historyBackReady = "1";
+    link.addEventListener("click", (event) => {
+      const referrer = document.referrer || "";
+      const sameOriginReferrer = referrer.startsWith(window.location.origin);
+      if (window.history.length > 1 && sameOriginReferrer) {
+        event.preventDefault();
+        window.history.back();
+      }
+    });
+  });
+}
+
 setupSupplierShortcut();
 setupSelectShortcuts();
 setupSearchableSelects();
@@ -3282,4 +3300,5 @@ setupMaterialsCatalogClientFiltering();
 setupAutoFilterForms();
 setupHeaderFilterPopovers();
 setupMaterialsCatalogAnchor();
+setupHistoryBackLinks();
 setupServiceWorker();

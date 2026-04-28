@@ -44,39 +44,18 @@
       </form>
       {% if jobs %}
         <div class="table-wrap">
-          <table class="responsive-table">
+          <table class="responsive-table jobs-list-table">
             <thead>
               <tr>
+                <th>Ações</th>
                 <th>
                   <div class="table-header-filter">
                     <span class="sortable-header">
-                      <button type="button" class="header-filter-trigger {% if filters['job_number'] %}is-active{% endif %}" data-filter-target="sales-orders-filter-job">Pedido</button>
+                      <button type="button" class="header-filter-trigger {% if filters['job_number'] %}is-active{% endif %}" data-filter-target="sales-orders-filter-job">Nº pedido</button>
                       <a class="sort-link {% if sort_key == 'id' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['id']['asc' if sort_key != 'id' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'id' and sort_direction == 'asc' else '↓' if sort_key == 'id' and sort_direction == 'desc' else '↕' }}</a>
                     </span>
                     <div class="header-filter-popover" id="sales-orders-filter-job">
                       <input form="sales-orders-filter-form" class="header-filter-control" type="text" name="job_number" value="{{ filters['job_number'] }}" placeholder="Pesquisar pedido">
-                    </div>
-                  </div>
-                </th>
-                <th>
-                  <div class="table-header-filter">
-                    <span class="sortable-header">
-                      <button type="button" class="header-filter-trigger {% if filters['status'] %}is-active{% endif %}" data-filter-target="sales-orders-filter-status">Status</button>
-                      <a class="sort-link {% if sort_key == 'status' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['status']['asc' if sort_key != 'status' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'status' and sort_direction == 'asc' else '↓' if sort_key == 'status' and sort_direction == 'desc' else '↕' }}</a>
-                    </span>
-                    <div class="header-filter-popover" id="sales-orders-filter-status">
-                      <input form="sales-orders-filter-form" class="header-filter-control" type="text" name="status" value="{{ filters['status'] }}" placeholder="Pesquisar status">
-                    </div>
-                  </div>
-                </th>
-                <th>
-                  <div class="table-header-filter">
-                    <span class="sortable-header">
-                      <button type="button" class="header-filter-trigger {% if filters['created_at'] %}is-active{% endif %}" data-filter-target="sales-orders-filter-date">Data</button>
-                      <a class="sort-link {% if sort_key == 'created_at' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['created_at']['asc' if sort_key != 'created_at' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'created_at' and sort_direction == 'asc' else '↓' if sort_key == 'created_at' and sort_direction == 'desc' else '↕' }}</a>
-                    </span>
-                    <div class="header-filter-popover" id="sales-orders-filter-date">
-                      <input form="sales-orders-filter-form" class="header-filter-control" type="text" name="created_at" value="{{ filters['created_at'] }}" placeholder="Pesquisar data">
                     </div>
                   </div>
                 </th>
@@ -105,6 +84,39 @@
                 <th>
                   <div class="table-header-filter">
                     <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger" data-filter-target="sales-orders-filter-quantity">Qtde</button>
+                      <a class="sort-link {% if sort_key == 'quantity' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['quantity']['asc' if sort_key != 'quantity' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'quantity' and sort_direction == 'asc' else '↓' if sort_key == 'quantity' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="sales-orders-filter-quantity">
+                      <input form="sales-orders-filter-form" class="header-filter-control" type="text" name="quantity" placeholder="Pesquisar quantidade">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['status'] %}is-active{% endif %}" data-filter-target="sales-orders-filter-status">Status</button>
+                      <a class="sort-link {% if sort_key == 'status' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['status']['asc' if sort_key != 'status' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'status' and sort_direction == 'asc' else '↓' if sort_key == 'status' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="sales-orders-filter-status">
+                      <input form="sales-orders-filter-form" class="header-filter-control" type="text" name="status" value="{{ filters['status'] }}" placeholder="Pesquisar status">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
+                      <button type="button" class="header-filter-trigger {% if filters['created_at'] %}is-active{% endif %}" data-filter-target="sales-orders-filter-date">Prazo</button>
+                      <a class="sort-link {% if sort_key == 'due_date' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['due_date']['asc' if sort_key != 'due_date' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'due_date' and sort_direction == 'asc' else '↓' if sort_key == 'due_date' and sort_direction == 'desc' else '↕' }}</a>
+                    </span>
+                    <div class="header-filter-popover" id="sales-orders-filter-date">
+                      <input form="sales-orders-filter-form" class="header-filter-control" type="text" name="created_at" value="{{ filters['created_at'] }}" placeholder="Pesquisar data/prazo">
+                    </div>
+                  </div>
+                </th>
+                <th>
+                  <div class="table-header-filter">
+                    <span class="sortable-header">
                       <button type="button" class="header-filter-trigger {% if filters['suggested_price'] %}is-active{% endif %}" data-filter-target="sales-orders-filter-value">Valor</button>
                       <a class="sort-link {% if sort_key == 'suggested_price' %}is-active{% endif %} preserve-scroll-link" href="{{ sort_urls['suggested_price']['asc' if sort_key != 'suggested_price' or sort_direction == 'desc' else 'desc'] }}">{{ '↑' if sort_key == 'suggested_price' and sort_direction == 'asc' else '↓' if sort_key == 'suggested_price' and sort_direction == 'desc' else '↕' }}</a>
                     </span>
@@ -113,17 +125,24 @@
                     </div>
                   </div>
                 </th>
-                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               {% for job in jobs %}
                 <tr>
+                  <td data-label="Ações">
+                    <div class="table-action-group">
+                      <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Editar</a>
+                      <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF</a>
+                      <a class="action-link" href="{{ job['whatsapp_customer_url'] }}" target="_blank" rel="noopener noreferrer">Whats Pedido</a>
+                      <a class="action-link" href="{{ url_for('edit_production_order', job_id=job['id']) }}">Abrir OP</a>
+                      <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF OP</a>
+                      <a class="action-link" href="{{ job['whatsapp_production_url'] }}" target="_blank" rel="noopener noreferrer">Whats OP</a>
+                    </div>
+                  </td>
                   <td data-label="Pedido">
                     <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">#{{ "%04d"|format(job["id"]) }}</a>
                   </td>
-                  <td data-label="Status">{{ job["status"] }}</td>
-                  <td data-label="Data">{{ job["created_at"]|br_date }}</td>
                   <td data-label="Cliente">
                     {% if job["customer_history_url"] %}
                       <a class="action-link" href="{{ job['customer_history_url'] }}">{{ job["customer_display"] }}</a>
@@ -137,15 +156,11 @@
                     {% else %}
                       <strong>{{ job["item_name"] }}</strong><br>
                     {% endif %}
-                    {{ job["quantity"] }} un
                   </td>
+                  <td data-label="Qtde">{{ job["quantity"] }} un</td>
+                  <td data-label="Status">{{ job["status"] }}</td>
+                  <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
                   <td data-label="Valor">R$ {{ job["suggested_price"]|br_money }}</td>
-                  <td data-label="Ações">
-                    <div class="action-group">
-                      <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Abrir pedido</a>
-                      <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF do cliente</a>
-                    </div>
-                  </td>
                 </tr>
               {% endfor %}
             </tbody>

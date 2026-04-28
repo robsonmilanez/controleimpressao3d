@@ -6047,8 +6047,10 @@ def sales_orders_query() -> str:
         sort_direction = "desc"
     valid_sort_keys = {
         "id",
+        "quantity",
         "status",
         "created_at",
+        "due_date",
         "customer_display",
         "item_name",
         "suggested_price",
@@ -6060,6 +6062,7 @@ def sales_orders_query() -> str:
         "job_number": request.args.get("job_number", "").strip(),
         "item_name": request.args.get("item_name", "").strip(),
         "customer_name": request.args.get("customer_name", "").strip(),
+        "quantity": request.args.get("quantity", "").strip(),
         "status": request.args.get("status", "").strip(),
         "suggested_price": request.args.get("suggested_price", "").strip(),
     }
@@ -6083,6 +6086,8 @@ def sales_orders_query() -> str:
         if filters["item_name"] and normalize(filters["item_name"]) not in normalize(job["item_name"]):
             return False
         if filters["customer_name"] and normalize(filters["customer_name"]) not in normalize(job["customer_display"]):
+            return False
+        if filters["quantity"] and normalize(filters["quantity"]) not in normalize(job["quantity"]):
             return False
         if filters["status"] and normalize(filters["status"]) not in normalize(job["status"]):
             return False
