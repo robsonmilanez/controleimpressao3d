@@ -2872,6 +2872,71 @@ th {
   border: 1px solid #d4d9df;
 }
 
+.customer-document-page .document-header h1 {
+  font-size: 1.38rem;
+}
+
+.customer-document-page .document-header p,
+.customer-document-page .document-grid p,
+.customer-document-page .document-section p,
+.customer-document-page .document-total p {
+  font-size: 0.92rem;
+}
+
+.customer-document-page .customer-document-table {
+  table-layout: fixed;
+}
+
+.customer-document-page .customer-document-table .customer-col-item {
+  width: 45%;
+}
+
+.customer-document-page .customer-document-table .customer-col-qty {
+  width: 5%;
+}
+
+.customer-document-page .customer-document-table .customer-col-unit {
+  width: 11%;
+}
+
+.customer-document-page .customer-document-table .customer-col-add,
+.customer-document-page .customer-document-table .customer-col-discount {
+  width: 10%;
+}
+
+.customer-document-page .customer-document-table .customer-col-total {
+  width: 11%;
+}
+
+.customer-document-page .customer-document-table .customer-col-notes {
+  width: 8%;
+}
+
+.customer-document-page .customer-document-table th,
+.customer-document-page .customer-document-table td {
+  padding: 0.38rem 0.18rem;
+  font-size: 0.78rem;
+}
+
+.customer-document-page .customer-document-table th {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.customer-document-page .customer-document-table td:first-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.customer-document-page .customer-document-table td:nth-child(6) {
+  font-size: 0.83rem;
+}
+
+.customer-document-page .document-total {
+  width: min(100%, 340px);
+}
+
 .production-document-page .print-page {
   padding-top: 0.3rem;
   padding-bottom: 1rem;

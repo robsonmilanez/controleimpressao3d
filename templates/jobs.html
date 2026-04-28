@@ -300,8 +300,8 @@
                   <td data-label="Nº pedido">#{{ '%04d'|format(job["id"]) }}</td>
                   <td data-label="Cliente">{{ job["customer_display"] }}</td>
                   <td data-label="Item">
-                    <div class="job-item-inline">
-                      <strong>{{ job["item_name"] }}</strong>
+                    <div class="job-item-inline" title="{{ job['list_item_name_full'] }}">
+                      <strong>{{ job["list_item_name"] }}</strong>
                     </div>
                   </td>
                   <td data-label="Qtde">{{ job["quantity"] }} un</td>

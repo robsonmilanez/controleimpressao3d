@@ -58,7 +58,16 @@
 
       <section class="document-section">
         <h2>Detalhes do pedido</h2>
-        <table class="document-table">
+        <table class="document-table customer-document-table">
+          <colgroup>
+            <col class="customer-col-item">
+            <col class="customer-col-qty">
+            <col class="customer-col-unit">
+            <col class="customer-col-add">
+            <col class="customer-col-discount">
+            <col class="customer-col-total">
+            <col class="customer-col-notes">
+          </colgroup>
           <thead>
             <tr>
               <th>Item</th>
@@ -98,23 +107,21 @@
         </table>
       </section>
 
-      {% if photo_lines %}
-        <section class="document-section">
-          <h2>Fotos do produto</h2>
-          {% if photo_lines %}
-            <div class="document-photos">
-              {% for photo in photo_lines %}
-                <img src="{{ url_for('uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
-              {% endfor %}
-            </div>
-          {% endif %}
-        </section>
-      {% endif %}
-
       {% if job["customer_notes"] %}
         <section class="document-section">
           <h2>Obs. do cliente</h2>
           <p>{{ job["customer_notes"] }}</p>
+        </section>
+      {% endif %}
+
+      {% if photo_lines %}
+        <section class="document-section">
+          <h2>Fotos do produto</h2>
+          <div class="document-photos">
+            {% for photo in photo_lines %}
+              <img src="{{ url_for('uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
+            {% endfor %}
+          </div>
         </section>
       {% endif %}
 

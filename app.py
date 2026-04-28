@@ -78,6 +78,11 @@ def parse_loose_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def normalize_shortcut_value(value: Any) -> str:
+    normalized = str(value or "").strip()
+    return "" if normalized.startswith("__") else normalized
+
+
 def material_order_clause(prefix: str = "") -> str:
     return (
         f"{prefix}color COLLATE NOCASE ASC, "
@@ -6913,7 +6918,7 @@ def jobs() -> str:
                     design_hours,
                     design_hourly_rate,
                     request.form.get("valid_until") or None,
-                    request.form.get("payment_terms", "").strip(),
+                    normalize_shortcut_value(request.form.get("payment_terms")),
                     request.form.get("model_link", "").strip(),
                     (
                         material_lines[0]["printer_id"] if material_lines else None
@@ -7210,9 +7215,32 @@ def fetch_jobs(
 
 
 def prepare_jobs_for_list(jobs: list[sqlite3.Row]) -> list[dict[str, Any]]:
+    db = get_db()
     prepared_jobs: list[dict[str, Any]] = []
     for job in jobs:
         item = dict(job)
+        service_lines = db.execute(
+            """
+            SELECT service_name
+            FROM job_services
+            WHERE job_id = ?
+            ORDER BY id ASC
+            """,
+            (item["id"],),
+        ).fetchall()
+        service_names = [
+            str(line["service_name"] or "").strip()
+            for line in service_lines
+            if str(line["service_name"] or "").strip()
+        ]
+        if service_names:
+            item["list_item_name"] = " | ".join(service_names)
+            item["list_item_name_full"] = " | ".join(service_names)
+        else:
+            fallback_name = str(item.get("item_name") or "-").strip() or "-"
+            item["list_item_name"] = fallback_name
+            item["list_item_name_full"] = fallback_name
+        item["item_name"] = item["list_item_name"]
         customer_url = url_for(
             "public_job_customer_document",
             token=item["customer_document_token"],
@@ -7508,7 +7536,7 @@ def save_job_commercial_data(
             suggested_price,
             request.form.get("customer_notes", "").strip(),
             request.form.get("valid_until") or None,
-            request.form.get("payment_terms", "").strip(),
+            normalize_shortcut_value(request.form.get("payment_terms")),
             request.form.get("model_link", "").strip(),
             (material_lines[0]["printer_id"] if material_lines else detail["job"]["printer_id"]),
             (
@@ -7831,7 +7859,7 @@ def edit_job(job_id: int) -> str:
                 design_hours,
                 design_hourly_rate,
                 request.form.get("valid_until") or None,
-                request.form.get("payment_terms", "").strip(),
+                normalize_shortcut_value(request.form.get("payment_terms")),
                 request.form.get("model_link", "").strip(),
                 job_id,
             ),
@@ -7966,6 +7994,9 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
     ).fetchone()
     if job is None:
         abort(404)
+
+    job = dict(job)
+    job["payment_terms"] = normalize_shortcut_value(job.get("payment_terms"))
 
     material_lines = db.execute(
         """
