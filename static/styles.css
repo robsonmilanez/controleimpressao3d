@@ -990,7 +990,7 @@ input[type="range"]:focus {
 
 .jobs-list-table th:nth-child(4),
 .jobs-list-table td:nth-child(4) {
-  width: 24rem;
+  width: 34rem;
 }
 
 .jobs-list-table th:nth-child(5),
@@ -1020,7 +1020,7 @@ input[type="range"]:focus {
 
 .jobs-list-table td[data-label="Cliente"],
 .jobs-list-table td[data-label="Item"] {
-  vertical-align: middle;
+  vertical-align: top;
 }
 
 .jobs-list-table td[data-label="Ações"] {
@@ -1039,55 +1039,40 @@ input[type="range"]:focus {
 .jobs-list-table td[data-label="Excluir"] {
   text-align: center;
   white-space: nowrap;
-  vertical-align: middle;
+  vertical-align: top;
 }
 
-.job-lines-panel {
+.jobs-list-table td[rowspan] {
+  vertical-align: top;
+}
+
+.job-item-row.job-group-start td {
+  border-top: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.job-item-row.job-group-end td {
+  border-bottom: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.job-customer-cell {
   display: grid;
-  gap: 0.38rem;
-  min-width: 0;
+  gap: 0.35rem;
+  justify-items: center;
 }
 
-.job-line-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.9fr) minmax(74px, 0.42fr) minmax(104px, 0.55fr) minmax(66px, 0.34fr) minmax(112px, 0.58fr);
-  gap: 0.7rem;
-  align-items: start;
-  padding: 0.28rem 0;
-  border-top: 2px solid rgba(255, 255, 255, 0.12);
-}
-
-.job-line-row:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.job-line-item strong,
-.job-line-qty,
-.job-line-status,
-.job-line-due,
-.job-line-value {
+.job-item-name-cell strong {
   display: block;
-  line-height: 1.2;
-}
-
-.job-line-item strong {
+  line-height: 1.25;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
-.job-line-qty,
-.job-line-status,
-.job-line-due,
-.job-line-value {
-  text-align: center;
-  white-space: nowrap;
-}
-
-.job-line-total-summary {
-  padding-top: 0.4rem;
-  border-top: 2px solid rgba(255, 255, 255, 0.16);
-  text-align: right;
+.job-order-total-note {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.2;
+  white-space: normal;
 }
 
 .material-row {

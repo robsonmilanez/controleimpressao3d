@@ -286,49 +286,45 @@
             </thead>
             <tbody>
               {% for job in jobs %}
-                <tr>
-                  <td data-label="Ações">
-                    <div class="table-action-group">
-                      <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Editar</a>
-                      <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF</a>
-                      <a class="action-link" href="{{ job['whatsapp_customer_url'] }}" target="_blank" rel="noopener noreferrer">Whats Pedido</a>
-                      <a class="action-link" href="{{ url_for('edit_production_order', job_id=job['id']) }}">Abrir OP</a>
-                      <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF OP</a>
-                      <a class="action-link" href="{{ job['whatsapp_production_url'] }}" target="_blank" rel="noopener noreferrer">Whats OP</a>
-                    </div>
-                  </td>
-                  <td data-label="Nº pedido">#{{ '%04d'|format(job["id"]) }}</td>
-                  <td data-label="Cliente">{{ job["customer_display"] }}</td>
-                  <td data-label="Item">
-                    <div class="job-lines-panel" title="{{ job['list_item_name_full'] }}">
-                      {% for item_line in job['list_item_lines'] %}
-                        <div class="job-line-row">
-                          <div class="job-line-item">
-                            <strong>{{ item_line['name'] }}</strong>
-                          </div>
-                          <div class="job-line-qty">{{ item_line['quantity']|br_decimal }} un</div>
-                          <div class="job-line-status">{{ job["status"] }}</div>
-                          <div class="job-line-due">{{ job["due_date"] or "-" }}</div>
-                          <div class="job-line-value">R$ {{ item_line['total_price']|br_money }}</div>
+                {% set item_lines = job['list_item_lines'] if job['list_item_lines'] else [{'name': job['item_name'] or '-', 'quantity': job['quantity'] or 0, 'total_price': job['suggested_price'] or 0}] %}
+                {% set item_count = item_lines|length %}
+                {% for item_line in item_lines %}
+                  <tr class="job-item-row{% if loop.first %} job-group-start{% endif %}{% if loop.last %} job-group-end{% endif %}">
+                    {% if loop.first %}
+                      <td data-label="Ações" rowspan="{{ item_count }}">
+                        <div class="table-action-group">
+                          <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Editar</a>
+                          <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF</a>
+                          <a class="action-link" href="{{ job['whatsapp_customer_url'] }}" target="_blank" rel="noopener noreferrer">Whats Pedido</a>
+                          <a class="action-link" href="{{ url_for('edit_production_order', job_id=job['id']) }}">Abrir OP</a>
+                          <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF OP</a>
+                          <a class="action-link" href="{{ job['whatsapp_production_url'] }}" target="_blank" rel="noopener noreferrer">Whats OP</a>
                         </div>
-                      {% endfor %}
-                      {% if job['list_item_lines']|length > 1 %}
-                        <div class="job-line-total-summary">
-                          <strong>Total do pedido: R$ {{ job["suggested_price"]|br_money }}</strong>
+                      </td>
+                      <td data-label="Nº pedido" rowspan="{{ item_count }}">#{{ '%04d'|format(job["id"]) }}</td>
+                      <td data-label="Cliente" rowspan="{{ item_count }}">
+                        <div class="job-customer-cell">
+                          <strong>{{ job["customer_display"] }}</strong>
+                          {% if item_count > 1 %}
+                            <span class="job-order-total-note">Total do pedido: R$ {{ job["suggested_price"]|br_money }}</span>
+                          {% endif %}
                         </div>
-                      {% endif %}
-                    </div>
-                  </td>
-                  <td data-label="Qtde">{{ job['list_item_lines']|length }} item(ns)</td>
-                  <td data-label="Status">{{ job["status"] }}</td>
-                  <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
-                  <td data-label="Valor">R$ {{ job["suggested_price"]|br_money }}</td>
-                  <td data-label="Excluir">
-                    <form method="post" action="{{ url_for('delete_job', job_id=job['id']) }}" class="inline-form" onsubmit="return confirm('Excluir este pedido?');">
-                      <button type="submit" class="danger-button">Excluir</button>
-                    </form>
-                  </td>
-                </tr>
+                      </td>
+                    {% endif %}
+                    <td data-label="Item" class="job-item-name-cell"><strong>{{ item_line['name'] }}</strong></td>
+                    <td data-label="Qtde">{{ item_line['quantity']|br_decimal }} un</td>
+                    <td data-label="Status">{{ job["status"] }}</td>
+                    <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
+                    <td data-label="Valor">R$ {{ item_line['total_price']|br_money }}</td>
+                    {% if loop.first %}
+                      <td data-label="Excluir" rowspan="{{ item_count }}">
+                        <form method="post" action="{{ url_for('delete_job', job_id=job['id']) }}" class="inline-form" onsubmit="return confirm('Excluir este pedido?');">
+                          <button type="submit" class="danger-button">Excluir</button>
+                        </form>
+                      </td>
+                    {% endif %}
+                  </tr>
+                {% endfor %}
               {% endfor %}
             </tbody>
           </table>

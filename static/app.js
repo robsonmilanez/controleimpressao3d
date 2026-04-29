@@ -2615,6 +2615,34 @@ function setupProductBuilder() {
     if (componentCollection) {
       componentCollection.addEventListener("input", updateTotals);
     }
+
+    form.addEventListener(
+      "submit",
+      (event) => {
+        if (event.submitter?.hasAttribute("formaction")) {
+          return;
+        }
+        const submitButton =
+          event.submitter ||
+          form.querySelector("button[type='submit']:not([formaction]), input[type='submit']");
+        if (!submitButton || submitButton.dataset.submitLocked === "1") {
+          return;
+        }
+        submitButton.dataset.submitLocked = "1";
+        if (!submitButton.dataset.originalLabel) {
+          submitButton.dataset.originalLabel = submitButton.textContent || submitButton.value || "";
+        }
+        if ("textContent" in submitButton) {
+          submitButton.textContent = "Salvando...";
+        }
+        if ("value" in submitButton && submitButton.tagName === "INPUT") {
+          submitButton.value = "Salvando...";
+        }
+        submitButton.disabled = true;
+      },
+      { capture: true }
+    );
+
     updateTotals();
   });
 }

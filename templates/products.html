@@ -21,7 +21,7 @@
       {% if error %}
         <p class="error">{{ error }}</p>
       {% endif %}
-      <form method="post" class="form-grid material-form" enctype="multipart/form-data">
+      <form method="post" class="form-grid material-form" enctype="multipart/form-data" novalidate data-product-form="1">
         {% if return_to %}
           <input type="hidden" name="return_to" value="{{ return_to }}">
         {% endif %}

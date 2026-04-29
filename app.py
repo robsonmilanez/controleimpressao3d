@@ -2054,19 +2054,14 @@ def save_product_photos(product_id: int) -> list[dict[str, str]]:
     PRODUCT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     db = get_db()
     saved_files: list[dict[str, str]] = []
-    existing_count_row = db.execute(
-        "SELECT COUNT(*) AS total FROM product_photos WHERE product_id = ?",
-        (product_id,),
-    ).fetchone()
-    next_index = int(existing_count_row["total"] or 0) + 1
-
     for uploaded_file in uploaded_files:
         if not uploaded_file or not uploaded_file.filename:
             continue
         filename = secure_filename(uploaded_file.filename)
         if not filename:
             continue
-        target_name = f"product-{product_id}-{next_index}-{filename}"
+        unique_token = uuid.uuid4().hex[:10]
+        target_name = f"product-{product_id}-{unique_token}-{filename}"
         uploaded_file.save(PRODUCT_UPLOAD_DIR / target_name)
         db.execute(
             """
@@ -2085,7 +2080,6 @@ def save_product_photos(product_id: int) -> list[dict[str, str]]:
                 "photo_original_name": uploaded_file.filename,
             }
         )
-        next_index += 1
     return saved_files
 
 
@@ -2156,16 +2150,6 @@ def sync_product_references(
         """,
         (new_name, product_id, old_name),
     )
-    db.execute(
-        """
-        UPDATE commercial_entries
-        SET product_name = ?
-        WHERE TRIM(COALESCE(product_name, '')) = ?
-        """,
-        (new_name, old_name),
-    )
-
-
 def delete_product_photo_record(db: sqlite3.Connection, product_id: int, photo_id: int) -> bool:
     photo = db.execute(
         """
@@ -3795,12 +3779,20 @@ def build_product_form_data(
         if material is None:
             continue
         quantity_grams = (
-            parse_loose_float(material_quantities[index], 0.0)
+            parse_form_number(
+                material_quantities[index],
+                f"Qtde (g) do filamento {index + 1}",
+                0.0,
+            )
             if index < len(material_quantities)
             else 0.0
         )
         line_print_hours = (
-            parse_loose_float(material_print_hours[index], 0.0)
+            parse_form_number(
+                material_print_hours[index],
+                f"Impressão (h) do filamento {index + 1}",
+                0.0,
+            )
             if index < len(material_print_hours)
             else 0.0
         )
@@ -3834,7 +3826,11 @@ def build_product_form_data(
         if component is None:
             continue
         quantity = (
-            parse_loose_float(component_quantities[index], 0.0)
+            parse_form_number(
+                component_quantities[index],
+                f"Quantidade do componente {index + 1}",
+                0.0,
+            )
             if index < len(component_quantities)
             else 0.0
         )
@@ -3865,10 +3861,16 @@ def build_product_form_data(
     energy_cost_per_hour = parse_brazilian_decimal(
         request.form.get("energy_cost_per_hour")
     )
-    operating_cost_per_hour = parse_brazilian_decimal(
-        request.form.get("operating_cost_per_hour")
+    operating_cost_per_hour = parse_form_decimal(
+        request.form.get("operating_cost_per_hour"),
+        "Mão de obra operacional/h",
+        0.0,
     )
-    labor_hours = parse_loose_float(request.form.get("labor_hours"), 0.0)
+    labor_hours = parse_form_number(
+        request.form.get("labor_hours"),
+        "Horas operacional",
+        0.0,
+    )
     labor_hourly_rate = 0.0
     design_hours = (
         parse_loose_float(request.form.get("design_hours"), 0.0)
@@ -3877,9 +3879,21 @@ def build_product_form_data(
         if existing_product
         else 0.0
     )
-    design_hourly_rate = parse_brazilian_decimal(request.form.get("design_hourly_rate"))
-    extra_cost = parse_brazilian_decimal(request.form.get("extra_cost"))
-    margin_percent = parse_loose_float(request.form.get("margin_percent"), 0.0)
+    design_hourly_rate = parse_form_decimal(
+        request.form.get("design_hourly_rate"),
+        "Valor design/h",
+        0.0,
+    )
+    extra_cost = parse_form_decimal(
+        request.form.get("extra_cost"),
+        "Custos extras",
+        0.0,
+    )
+    margin_percent = parse_form_number(
+        request.form.get("margin_percent"),
+        "Margem (%)",
+        0.0,
+    )
     unit_cost, calculated_sale_price = calculate_detailed_job_values(
         material_lines=detailed_material_lines,
         component_lines=detailed_component_lines,
@@ -3895,12 +3909,20 @@ def build_product_form_data(
         extra_cost=extra_cost,
         margin_percent=margin_percent,
     )
-    sale_price = parse_brazilian_decimal(request.form.get("sale_price"))
+    sale_price = parse_form_decimal(
+        request.form.get("sale_price"),
+        "Preço de venda",
+        0.0,
+    )
     if sale_price <= 0:
         sale_price = calculated_sale_price
 
+    product_name = request.form.get("name", "").strip()
+    if not product_name:
+        raise ValueError("Preencha o nome do produto antes de salvar.")
+
     return {
-        "name": request.form.get("name", "").strip(),
+        "name": product_name,
         "category": request.form.get("category", "").strip(),
         "description": request.form.get("description", "").strip(),
         "material_id": material_id,
@@ -3917,8 +3939,16 @@ def build_product_form_data(
         "margin_percent": margin_percent,
         "unit_cost": unit_cost,
         "sale_price": sale_price,
-        "stock_quantity": parse_loose_float(request.form.get("stock_quantity"), 0.0),
-        "minimum_quantity": parse_loose_float(request.form.get("minimum_quantity"), 0.0),
+        "stock_quantity": parse_form_number(
+            request.form.get("stock_quantity"),
+            "Estoque pronto",
+            0.0,
+        ),
+        "minimum_quantity": parse_form_number(
+            request.form.get("minimum_quantity"),
+            "Minimo",
+            0.0,
+        ),
         "sale_channel": (
             request.form.get("sale_channel", "").strip()
             if "sale_channel" in request.form
