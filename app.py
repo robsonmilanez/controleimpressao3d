@@ -5840,111 +5840,133 @@ def edit_product(product_id: int) -> str:
     materials_list = db.execute(
         f"SELECT * FROM materials ORDER BY {material_order_clause()}"
     ).fetchall()
+    materials_by_id = {row["id"]: row for row in materials_list}
+    components_by_id = {row["id"]: row for row in references["components"]}
+    render_product: sqlite3.Row | dict[str, Any] = product
+    render_material_lines = parse_product_material_lines(
+        product["additional_material_types"],
+        materials_by_id,
+    )
+    render_component_lines = parse_product_component_lines(
+        product["accessories"],
+        components_by_id,
+    )
+    product_error = None
 
     if request.method == "POST":
-        product_data = build_product_form_data(db, existing_product=product)
-        previous_name = str(product["name"] or "").strip()
-        db.execute(
-            """
-            UPDATE products
-            SET
-                name = ?,
-                category = ?,
-                description = ?,
-                material_id = ?,
-                additional_material_types = ?,
-                accessories = ?,
-                weight_grams = ?,
-                print_hours = ?,
-                printer_wear_cost_per_hour = ?,
-                energy_cost_per_hour = ?,
-                operating_cost_per_hour = ?,
-                labor_hours = ?,
-                labor_hourly_rate = ?,
-                design_hours = ?,
-                design_hourly_rate = ?,
-                extra_cost = ?,
-                margin_percent = ?,
-                unit_cost = ?,
-                sale_price = ?,
-                stock_quantity = ?,
-                minimum_quantity = ?,
-                sale_channel = ?,
-                status = ?,
-                model_link = ?,
-                notes = ?
-            WHERE id = ?
-            """,
-            (
-                product_data["name"],
-                product_data["category"],
-                product_data["description"],
-                product_data["material_id"],
+        product_data = None
+        try:
+            product_data = build_product_form_data(db, existing_product=product)
+            render_product = {**dict(product), **product_data}
+            render_material_lines = parse_product_material_lines(
                 product_data["additional_material_types"],
+                materials_by_id,
+            )
+            render_component_lines = parse_product_component_lines(
                 product_data["accessories"],
-                product_data["weight_grams"],
-                product_data["print_hours"],
-                product_data["printer_wear_cost_per_hour"],
-                product_data["energy_cost_per_hour"],
-                product_data["operating_cost_per_hour"],
-                product_data["labor_hours"],
-                product_data["labor_hourly_rate"],
-                product_data["design_hours"],
-                product_data["design_hourly_rate"],
-                product_data["extra_cost"],
-                product_data["margin_percent"],
-                product_data["unit_cost"],
-                product_data["sale_price"],
-                product_data["stock_quantity"],
-                product_data["minimum_quantity"],
-                product_data["sale_channel"],
-                product_data["status"],
-                product_data["model_link"],
-                product_data["notes"],
-                product_id,
-            ),
-        )
-        sync_product_references(
-            db,
-            product_id,
-            previous_name,
-            product_data["name"],
-        )
-        photo_lines = save_product_photos(product_id)
-        if photo_lines and (not product["photo_path"]):
-            cover_photo = photo_lines[0]
+                components_by_id,
+            )
+            previous_name = str(product["name"] or "").strip()
             db.execute(
                 """
                 UPDATE products
-                SET photo_path = ?, photo_original_name = ?
+                SET
+                    name = ?,
+                    category = ?,
+                    description = ?,
+                    material_id = ?,
+                    additional_material_types = ?,
+                    accessories = ?,
+                    weight_grams = ?,
+                    print_hours = ?,
+                    printer_wear_cost_per_hour = ?,
+                    energy_cost_per_hour = ?,
+                    operating_cost_per_hour = ?,
+                    labor_hours = ?,
+                    labor_hourly_rate = ?,
+                    design_hours = ?,
+                    design_hourly_rate = ?,
+                    extra_cost = ?,
+                    margin_percent = ?,
+                    unit_cost = ?,
+                    sale_price = ?,
+                    stock_quantity = ?,
+                    minimum_quantity = ?,
+                    sale_channel = ?,
+                    status = ?,
+                    model_link = ?,
+                    notes = ?
                 WHERE id = ?
                 """,
                 (
-                    cover_photo["photo_path"],
-                    cover_photo["photo_original_name"],
+                    product_data["name"],
+                    product_data["category"],
+                    product_data["description"],
+                    product_data["material_id"],
+                    product_data["additional_material_types"],
+                    product_data["accessories"],
+                    product_data["weight_grams"],
+                    product_data["print_hours"],
+                    product_data["printer_wear_cost_per_hour"],
+                    product_data["energy_cost_per_hour"],
+                    product_data["operating_cost_per_hour"],
+                    product_data["labor_hours"],
+                    product_data["labor_hourly_rate"],
+                    product_data["design_hours"],
+                    product_data["design_hourly_rate"],
+                    product_data["extra_cost"],
+                    product_data["margin_percent"],
+                    product_data["unit_cost"],
+                    product_data["sale_price"],
+                    product_data["stock_quantity"],
+                    product_data["minimum_quantity"],
+                    product_data["sale_channel"],
+                    product_data["status"],
+                    product_data["model_link"],
+                    product_data["notes"],
                     product_id,
                 ),
             )
-        db.commit()
-        return redirect(url_for("products"))
+            sync_product_references(
+                db,
+                product_id,
+                previous_name,
+                product_data["name"],
+            )
+            photo_lines = save_product_photos(product_id)
+            if photo_lines and (not product["photo_path"]):
+                cover_photo = photo_lines[0]
+                db.execute(
+                    """
+                    UPDATE products
+                    SET photo_path = ?, photo_original_name = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        cover_photo["photo_path"],
+                        cover_photo["photo_original_name"],
+                        product_id,
+                    ),
+                )
+            db.commit()
+            return redirect(url_for("products"))
+        except Exception as error:
+            db.rollback()
+            app.logger.exception("Erro ao atualizar produto")
+            product_error = f"Erro ao salvar produto: {error}"
 
     return render_template(
         "product_edit.html",
-        product=product,
+        product=render_product,
         product_photo_lines=fetch_product_photos(db, product),
         materials=materials_list,
         components=references["components"],
-        product_material_lines=parse_product_material_lines(
-            product["additional_material_types"],
-            {row["id"]: row for row in materials_list},
-        ),
-        product_component_lines=parse_product_component_lines(
-            product["accessories"],
-            {row["id"]: row for row in references["components"]},
-        ),
+        product_material_lines=render_material_lines,
+        product_component_lines=render_component_lines,
         default_product_wear_cost_per_hour=default_product_wear_cost_per_hour,
         default_product_energy_cost_per_hour=default_product_energy_cost_per_hour,
         default_product_operating_cost_per_hour=default_product_operating_cost_per_hour,
+        error=product_error,
     )
 
 
