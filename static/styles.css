@@ -1014,27 +1014,27 @@ input[type="range"]:focus {
 
 .jobs-list-table th:nth-child(4),
 .jobs-list-table td:nth-child(4) {
-  width: 46rem;
+  width: 48rem;
 }
 
 .jobs-list-table th:nth-child(5),
 .jobs-list-table td:nth-child(5) {
-  width: 6rem;
+  width: 5.5rem;
 }
 
 .jobs-list-table th:nth-child(6),
 .jobs-list-table td:nth-child(6) {
-  width: 7rem;
+  width: 6.75rem;
 }
 
 .jobs-list-table th:nth-child(7),
 .jobs-list-table td:nth-child(7) {
-  width: 5.5rem;
+  width: 4.75rem;
 }
 
 .jobs-list-table th:nth-child(8),
 .jobs-list-table td:nth-child(8) {
-  width: 8.5rem;
+  width: 9.5rem;
 }
 
 .jobs-list-table td[data-label="Cliente"],
@@ -1108,11 +1108,13 @@ input[type="range"]:focus {
   font-weight: 700;
   letter-spacing: 0.04em;
   white-space: nowrap;
+  text-decoration: none;
 }
 
 .job-value-cell {
   display: grid;
   gap: 0.2rem;
+  width: 100%;
   justify-items: end;
 }
 
@@ -1123,6 +1125,11 @@ input[type="range"]:focus {
   line-height: 1.2;
   white-space: nowrap;
   text-align: right;
+}
+
+.jobs-list-table td[data-label="Valor"] {
+  text-align: right;
+  padding-right: 0.2rem;
 }
 
 .material-row {
@@ -2958,15 +2965,15 @@ th {
 }
 
 .customer-document-page .customer-document-table .customer-col-item {
-  width: 60%;
+  width: 64%;
 }
 
 .customer-document-page .customer-document-table .customer-col-qty {
-  width: 4%;
+  width: 5%;
 }
 
 .customer-document-page .customer-document-table .customer-col-unit {
-  width: 8%;
+  width: 9%;
 }
 
 .customer-document-page .customer-document-table .customer-col-add,
@@ -2975,7 +2982,7 @@ th {
 }
 
 .customer-document-page .customer-document-table .customer-col-total {
-  width: 14%;
+  width: 8%;
 }
 
 .customer-document-page .customer-document-table th,
@@ -2986,7 +2993,12 @@ th {
 
 .customer-document-page .customer-document-table th {
   font-size: 0.72rem;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
+  text-align: right;
+}
+
+.customer-document-page .customer-document-table th:first-child {
+  text-align: left;
 }
 
 .customer-document-page .customer-document-table td:first-child {
@@ -3005,6 +3017,7 @@ th {
   font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
+  text-decoration: none;
 }
 
 .document-item-description {
@@ -3017,6 +3030,14 @@ th {
 
 .customer-document-page .customer-document-table td:nth-child(6) {
   font-size: 0.83rem;
+  text-align: right;
+}
+
+.customer-document-page .customer-document-table td:nth-child(2),
+.customer-document-page .customer-document-table td:nth-child(3),
+.customer-document-page .customer-document-table td:nth-child(4),
+.customer-document-page .customer-document-table td:nth-child(5) {
+  text-align: right;
 }
 
 .document-item-overflow {

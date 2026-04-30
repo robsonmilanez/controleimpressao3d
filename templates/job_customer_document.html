@@ -13,6 +13,7 @@
         {% if not public_view %}
           <a class="action-link history-back-link" href="{{ url_for('jobs') }}">Voltar</a>
           <a class="action-link" href="{{ whatsapp_customer_url }}" target="_blank" rel="noopener noreferrer">Enviar WhatsApp</a>
+          <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">Abrir OP</a>
         {% endif %}
         <button type="button" onclick="window.print()">Gerar PDF</button>
       </div>
@@ -72,8 +73,8 @@
               <th>Item</th>
               <th>Qtd.</th>
               <th>Valor unit.</th>
-              <th>Acrescimo</th>
-              <th>Desconto</th>
+              <th>Acrésc.</th>
+              <th>Desc.</th>
               <th>Total</th>
             </tr>
           </thead>
@@ -84,7 +85,7 @@
                 <tr>
                   <td data-label="Item">
                     <div class="document-item-cell">
-                      <span class="document-item-op">OP {{ service["production_order_number"] }}</span>
+                      <a class="document-item-op" href="{{ url_for('job_production_document', job_id=job['id']) }}#op-{{ service['production_order_number'] }}">OP {{ service["production_order_number"] }}</a>
                       <div class="document-item-description">
                         <strong>{{ item_lines[0] }}</strong>
                         {% if item_lines[1] %}
