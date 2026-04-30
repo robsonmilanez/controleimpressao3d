@@ -308,17 +308,28 @@
                       <td data-label="Cliente" rowspan="{{ item_count }}">
                         <div class="job-customer-cell">
                           <strong>{{ job["customer_display"] }}</strong>
-                          {% if item_count > 1 %}
-                            <span class="job-order-total-note">Total do pedido: R$ {{ job["suggested_price"]|br_money }}</span>
-                          {% endif %}
                         </div>
                       </td>
                     {% endif %}
-                    <td data-label="Item" class="job-item-name-cell"><strong>{{ item_line['name'] }}</strong></td>
+                    <td data-label="Item" class="job-item-name-cell">
+                      <div class="job-item-heading">
+                        <strong>{{ item_line['name'] }}</strong>
+                        <span class="job-item-production-number job-item-production-number-inline">OP {{ item_line['production_order_number'] }}</span>
+                      </div>
+                    </td>
                     <td data-label="Qtde">{{ item_line['quantity']|br_decimal }} un</td>
                     <td data-label="Status">{{ job["status"] }}</td>
                     <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
-                    <td data-label="Valor">R$ {{ item_line['total_price']|br_money }}</td>
+                    {% if loop.first %}
+                      <td data-label="Valor" rowspan="{{ item_count }}">
+                        <div class="job-value-cell">
+                          {% for value_line in item_lines %}
+                            <span>R$ {{ value_line['total_price']|br_money }}</span>
+                          {% endfor %}
+                          <span class="job-order-total-note">Total do pedido: R$ {{ job["suggested_price"]|br_money }}</span>
+                        </div>
+                      </td>
+                    {% endif %}
                     {% if loop.first %}
                       <td data-label="Excluir" rowspan="{{ item_count }}">
                         <form method="post" action="{{ url_for('delete_job', job_id=job['id']) }}" class="inline-form" onsubmit="return confirm('Excluir este pedido?');">

@@ -6393,12 +6393,14 @@ def sales_orders_query() -> str:
         return True
 
     filtered_jobs = [job for job in jobs if job_matches(job)]
+    current_return_to = request.full_path[:-1] if request.full_path.endswith("?") else request.full_path
     return render_template(
         "sales_orders.html",
         jobs=filtered_jobs,
         filters=filters,
         sort_key=effective_sort_key,
         sort_direction=sort_direction,
+        current_return_to=current_return_to,
         sort_urls=build_sort_urls(
             endpoint="sales_orders_query",
             column_keys=list(valid_sort_keys),
@@ -7333,6 +7335,7 @@ def prepare_jobs_for_list(jobs: list[sqlite3.Row]) -> list[dict[str, Any]]:
     prepared_jobs: list[dict[str, Any]] = []
     for job in jobs:
         item = dict(job)
+        job_number = f"{int(item['id']):04d}"
         service_lines = db.execute(
             """
             SELECT service_name, quantity, total_price
@@ -7342,15 +7345,19 @@ def prepare_jobs_for_list(jobs: list[sqlite3.Row]) -> list[dict[str, Any]]:
             """,
             (item["id"],),
         ).fetchall()
-        service_entries = [
-            {
-                "name": str(line["service_name"] or "").strip(),
-                "quantity": float(line["quantity"] or 0),
-                "total_price": float(line["total_price"] or 0),
-            }
-            for line in service_lines
-            if str(line["service_name"] or "").strip()
-        ]
+        service_entries = []
+        for index, line in enumerate(service_lines, start=1):
+            service_name = str(line["service_name"] or "").strip()
+            if not service_name:
+                continue
+            service_entries.append(
+                {
+                    "name": service_name,
+                    "quantity": float(line["quantity"] or 0),
+                    "total_price": float(line["total_price"] or 0),
+                    "production_order_number": f"{job_number}-{index}",
+                }
+            )
         service_names = [entry["name"] for entry in service_entries]
         if service_entries:
             item["list_item_name"] = " | ".join(service_names)
@@ -7365,6 +7372,7 @@ def prepare_jobs_for_list(jobs: list[sqlite3.Row]) -> list[dict[str, Any]]:
                     "name": fallback_name,
                     "quantity": float(item.get("quantity") or 0),
                     "total_price": float(item.get("suggested_price") or 0),
+                    "production_order_number": f"{job_number}-1",
                 }
             ]
         item["item_name"] = item["list_item_name"]
@@ -8223,6 +8231,16 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         """,
         (job_id,),
     ).fetchall()
+    numbered_service_lines: list[dict[str, Any]] = []
+    job_number = f"{int(job['id']):04d}"
+    for index, line in enumerate(service_lines, start=1):
+        numbered_service_lines.append(
+            {
+                **dict(line),
+                "production_order_number": f"{job_number}-{index}",
+            }
+        )
+    service_lines = numbered_service_lines
     resolved_product = resolve_job_product(db, job, service_lines)
     material_lines, component_lines, _ = apply_product_defaults_to_job_lines(
         db,

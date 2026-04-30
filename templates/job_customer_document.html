@@ -83,6 +83,7 @@
                 {% set item_lines = service["service_name"]|split_item_description %}
                 <tr>
                   <td data-label="Item">
+                    <span class="job-item-production-number">OP {{ service["production_order_number"] }}</span>
                     <strong>{{ item_lines[0] }}</strong>
                     {% if item_lines[1] %}
                       <span class="document-item-overflow">{{ item_lines[1] }}</span>

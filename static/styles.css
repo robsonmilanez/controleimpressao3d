@@ -1068,14 +1068,41 @@ input[type="range"]:focus {
 .job-customer-cell {
   display: grid;
   gap: 0.35rem;
-  justify-items: center;
+  justify-items: start;
+  text-align: left;
+}
+
+.job-item-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
 }
 
 .job-item-name-cell strong {
-  display: block;
+  display: inline;
   line-height: 1.25;
   white-space: normal;
   overflow-wrap: break-word;
+}
+
+.job-item-production-number {
+  display: inline-flex;
+  margin: 0 0 0.3rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.job-item-production-number-inline {
+  margin: 0.18rem 0 0;
+}
+
+.job-value-cell {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
 }
 
 .job-order-total-note {
