@@ -3,10 +3,10 @@
 {% block content %}
   <section class="page-hero">
     <p class="eyebrow">Consultas</p>
-    <h2>Ordem de produção #{{ "%04d"|format(job["id"]) }}</h2>
-    <p class="subtitle">Edite somente a parte operacional deste pedido: materiais, componentes, horas, custo e observações internas.</p>
+    <h2>Ordem de produção {{ selected_service["production_order_number"] if selected_service else "#%04d"|format(job["id"]) }}</h2>
+    <p class="subtitle">Edite somente a configuração operacional do item selecionado, sem misturar com os demais itens do pedido.</p>
     <div class="action-group hero-actions">
-      <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF da ordem</a>
+      <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}{% if selected_service %}#op-{{ selected_service['production_order_number'] }}{% endif %}">PDF da ordem</a>
       <a class="action-link" href="{{ url_for('edit_job', job_id=job['id']) }}">Abrir pedido comercial</a>
     </div>
     <p class="back-link-wrap">
@@ -27,7 +27,7 @@
         </div>
         <div>
           <span>Item</span>
-          <strong>{{ job["item_name"] }}</strong>
+          <strong>{{ selected_service["service_name"] if selected_service else job["item_name"] }}</strong>
         </div>
       </div>
 
@@ -83,14 +83,17 @@
           <tbody>
             {% if service_lines %}
               {% for service in service_lines %}
-                <tr id="op-{{ service['production_order_number'] }}">
-                  <td>{{ service["service_name"] }}</td>
+                <tr id="op-{{ service['production_order_number'] }}"{% if selected_service and service['service_line_number'] == selected_service['service_line_number'] %} class="is-selected-production-row"{% endif %}>
+                  <td>
+                    <a class="document-item-op" href="{{ url_for('edit_production_order', job_id=job['id'], op=service['production_order_number']) }}">OP {{ service["production_order_number"] }}</a><br>
+                    {{ service["service_name"] }}
+                  </td>
                   <td>{{ service["quantity"]|br_decimal }}</td>
                   <td>R$ {{ service["unit_price"]|br_money }}</td>
                   <td>R$ {{ service["addition_value"]|br_money }}</td>
                   <td>R$ {{ service["discount_value"]|br_money }}</td>
                   <td>R$ {{ service["total_price"]|br_money }}</td>
-                  <td>{{ service["notes"] or "-" }}</td>
+                  <td>{{ service["production_internal_notes"] or service["notes"] or "-" }}</td>
                 </tr>
               {% endfor %}
             {% else %}
@@ -132,11 +135,12 @@
       </section>
 
       <form method="post" class="form-grid job-form">
+        <input type="hidden" name="service_line_number" value="{{ selected_service_line_number }}">
         <section class="production-shell full">
           <div class="production-shell-header">
             <p class="eyebrow">Ordem de produção</p>
-            <h3>Execucao interna</h3>
-            <p>Atualize a produção sem mexer na estrutura comercial do pedido.</p>
+            <h3>Execucao interna de {{ selected_service["production_order_number"] if selected_service else "OP" }}</h3>
+            <p>Materiais, componentes, horas e observações salvos aqui valem somente para este item.</p>
           </div>
 
           <div class="job-topic-block production-topic-block full">
@@ -254,11 +258,13 @@
               <p>Resumo interno de custos, horas e observações operacionais desta ordem.</p>
             </div>
             <div class="production-costs-shell">
-              {% include "job_internal_cost_fields.html" %}
+              {% with production_values=selected_service %}
+                {% include "job_internal_cost_fields.html" %}
+              {% endwith %}
             </div>
             <label class="full">
               Obs. internas
-              <textarea name="internal_notes" rows="4">{{ job["internal_notes"] or job["notes"] or "" }}</textarea>
+              <textarea name="internal_notes" rows="4">{{ selected_service["production_internal_notes"] if selected_service else (job["internal_notes"] or job["notes"] or "") }}</textarea>
             </label>
           </div>
         </section>

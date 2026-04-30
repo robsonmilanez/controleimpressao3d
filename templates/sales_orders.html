@@ -157,7 +157,7 @@
                     {% endif %}
                     <td data-label="Item" class="job-item-name-cell">
                       <div class="job-item-layout">
-                        <a class="job-item-production-number" href="{{ url_for('edit_production_order', job_id=job['id']) }}#op-{{ item_line['production_order_number'] }}">OP {{ item_line['production_order_number'] }}</a>
+                        <a class="job-item-production-number" href="{{ url_for('edit_production_order', job_id=job['id'], op=item_line['production_order_number']) }}">OP {{ item_line['production_order_number'] }}</a>
                         <strong>{{ item_line['name'] }}</strong>
                       </div>
                     </td>

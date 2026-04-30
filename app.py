@@ -486,6 +486,7 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS job_materials (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             job_id INTEGER NOT NULL,
+            service_line_number INTEGER NOT NULL DEFAULT 1,
             material_id INTEGER NOT NULL,
             weight_grams REAL NOT NULL DEFAULT 0,
             print_hours REAL NOT NULL DEFAULT 0,
@@ -505,6 +506,7 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS job_components (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             job_id INTEGER NOT NULL,
+            service_line_number INTEGER NOT NULL DEFAULT 1,
             component_id INTEGER NOT NULL,
             quantity REAL NOT NULL DEFAULT 0,
             notes TEXT,
@@ -526,6 +528,13 @@ def init_db() -> None:
             total_price REAL NOT NULL DEFAULT 0,
             show_to_customer INTEGER NOT NULL DEFAULT 1,
             notes TEXT,
+            production_internal_notes TEXT,
+            production_labor_hours REAL NOT NULL DEFAULT 0,
+            production_labor_hourly_rate REAL NOT NULL DEFAULT 0,
+            production_design_hours REAL NOT NULL DEFAULT 0,
+            production_design_hourly_rate REAL NOT NULL DEFAULT 0,
+            production_extra_cost REAL NOT NULL DEFAULT 0,
+            production_margin_percent REAL,
             FOREIGN KEY(job_id) REFERENCES jobs(id),
             FOREIGN KEY(product_id) REFERENCES products(id)
         );
@@ -775,10 +784,23 @@ def init_db() -> None:
     ensure_column(
         db, "job_materials", "dryer_cost_per_hour", "REAL NOT NULL DEFAULT 0"
     )
+    ensure_column(db, "job_materials", "service_line_number", "INTEGER NOT NULL DEFAULT 1")
+    ensure_column(db, "job_components", "service_line_number", "INTEGER NOT NULL DEFAULT 1")
     ensure_column(db, "job_services", "addition_value", "REAL NOT NULL DEFAULT 0")
     ensure_column(db, "job_services", "discount_value", "REAL NOT NULL DEFAULT 0")
     ensure_column(db, "job_services", "product_id", "INTEGER")
     ensure_column(db, "job_services", "category", "TEXT")
+    ensure_column(db, "job_services", "production_internal_notes", "TEXT")
+    ensure_column(db, "job_services", "production_labor_hours", "REAL NOT NULL DEFAULT 0")
+    ensure_column(
+        db, "job_services", "production_labor_hourly_rate", "REAL NOT NULL DEFAULT 0"
+    )
+    ensure_column(db, "job_services", "production_design_hours", "REAL NOT NULL DEFAULT 0")
+    ensure_column(
+        db, "job_services", "production_design_hourly_rate", "REAL NOT NULL DEFAULT 0"
+    )
+    ensure_column(db, "job_services", "production_extra_cost", "REAL NOT NULL DEFAULT 0")
+    ensure_column(db, "job_services", "production_margin_percent", "REAL")
     ensure_column(db, "products", "sku", "TEXT")
     ensure_column(db, "products", "category", "TEXT")
     ensure_column(db, "products", "description", "TEXT")
@@ -1825,6 +1847,235 @@ def build_job_service_lines(db: sqlite3.Connection) -> list[dict[str, Any]]:
             }
         )
     return lines
+
+
+def build_production_order_number(job_id: int, service_line_number: int) -> str:
+    return f"{int(job_id):04d}-{int(service_line_number)}"
+
+
+def parse_service_line_number(job_id: int, raw_value: Any) -> int | None:
+    value = str(raw_value or "").strip()
+    if not value:
+        return None
+    if value.isdigit():
+        parsed = int(value)
+        return parsed if parsed > 0 else None
+    prefix = f"{int(job_id):04d}-"
+    if not value.startswith(prefix):
+        return None
+    suffix = value[len(prefix):].strip()
+    if not suffix.isdigit():
+        return None
+    parsed = int(suffix)
+    return parsed if parsed > 0 else None
+
+
+def resolve_selected_service_line_number(
+    job_id: int,
+    service_lines: list[dict[str, Any]],
+    raw_value: Any,
+) -> int:
+    if not service_lines:
+        return 1
+    parsed = parse_service_line_number(job_id, raw_value)
+    if parsed is None:
+        return 1
+    return parsed if 1 <= parsed <= len(service_lines) else 1
+
+
+def get_service_production_values(
+    service_line: dict[str, Any],
+    job: dict[str, Any],
+    service_count: int,
+) -> dict[str, Any]:
+    use_job_fallback = service_count == 1
+    return {
+        "production_internal_notes": (
+            str(service_line.get("production_internal_notes") or "").strip()
+            or (str(job.get("internal_notes") or job.get("notes") or "").strip() if use_job_fallback else "")
+        ),
+        "production_labor_hours": float(
+            service_line.get("production_labor_hours")
+            if service_line.get("production_labor_hours") is not None
+            else (job.get("labor_hours") or 0 if use_job_fallback else 0)
+        ),
+        "production_labor_hourly_rate": float(
+            service_line.get("production_labor_hourly_rate")
+            if service_line.get("production_labor_hourly_rate") is not None
+            else (job.get("labor_hourly_rate") or 0 if use_job_fallback else 0)
+        ),
+        "production_design_hours": float(
+            service_line.get("production_design_hours")
+            if service_line.get("production_design_hours") is not None
+            else (job.get("design_hours") or 0 if use_job_fallback else 0)
+        ),
+        "production_design_hourly_rate": float(
+            service_line.get("production_design_hourly_rate")
+            if service_line.get("production_design_hourly_rate") is not None
+            else (job.get("design_hourly_rate") or 0 if use_job_fallback else 0)
+        ),
+        "production_extra_cost": float(
+            service_line.get("production_extra_cost")
+            if service_line.get("production_extra_cost") is not None
+            else (job.get("extra_cost") or 0 if use_job_fallback else 0)
+        ),
+        "production_margin_percent": (
+            float(service_line.get("production_margin_percent"))
+            if service_line.get("production_margin_percent") is not None
+            else (
+                float(job.get("margin_percent"))
+                if use_job_fallback and job.get("margin_percent") is not None
+                else None
+            )
+        ),
+    }
+
+
+def build_default_production_lines_for_service(
+    db: sqlite3.Connection,
+    job: dict[str, Any],
+    service_line: dict[str, Any],
+    service_line_number: int,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    material_lines, component_lines, _ = apply_product_defaults_to_job_lines(
+        db,
+        job,
+        [service_line],
+        [],
+        [],
+    )
+    for line in material_lines:
+        line["service_line_number"] = service_line_number
+    for line in component_lines:
+        line["service_line_number"] = service_line_number
+    return material_lines, component_lines
+
+
+def refresh_job_production_totals(db: sqlite3.Connection, job_id: int) -> None:
+    detail = fetch_job_detail(db, job_id)
+    service_lines = detail["service_lines"]
+    all_material_lines = detail["all_material_lines"]
+    all_component_lines = detail["all_component_lines"]
+    grouped_materials: dict[int, list[dict[str, Any]]] = {}
+    grouped_components: dict[int, list[dict[str, Any]]] = {}
+    for line in all_material_lines:
+        grouped_materials.setdefault(int(line.get("service_line_number") or 1), []).append(line)
+    for line in all_component_lines:
+        grouped_components.setdefault(int(line.get("service_line_number") or 1), []).append(line)
+
+    total_weight = 0.0
+    total_print_hours = 0.0
+    total_dryer_hours = 0.0
+    total_energy_cost = 0.0
+    total_operating_cost = 0.0
+    total_dryer_cost = 0.0
+    total_cost = 0.0
+    total_labor_hours = 0.0
+    total_design_hours = 0.0
+    total_labor_cost = 0.0
+    total_design_cost = 0.0
+    total_extra_cost = 0.0
+    margin_values: list[float] = []
+    primary_material_id = None
+    primary_printer_id = None
+    primary_dryer_id = None
+
+    for service_line in service_lines:
+        line_number = int(service_line["service_line_number"])
+        material_lines = grouped_materials.get(line_number, [])
+        component_lines = grouped_components.get(line_number, [])
+        summary = summarize_cost_lines(
+            material_lines=material_lines,
+            component_lines=component_lines,
+            labor_hours=float(service_line["production_labor_hours"] or 0),
+            labor_hourly_rate=float(service_line["production_labor_hourly_rate"] or 0),
+            design_hours=float(service_line["production_design_hours"] or 0),
+            design_hourly_rate=float(service_line["production_design_hourly_rate"] or 0),
+            extra_cost=float(service_line["production_extra_cost"] or 0),
+            sale_total=float(service_line["total_price"] or 0),
+        )
+        total_weight += summary["total_weight_grams"]
+        total_print_hours += summary["total_print_hours"]
+        total_dryer_hours += summary["total_dryer_hours"]
+        total_energy_cost += summary["energy_cost"]
+        total_operating_cost += summary["operating_cost"]
+        total_dryer_cost += summary["dryer_cost"]
+        total_labor_hours += float(service_line["production_labor_hours"] or 0)
+        total_design_hours += float(service_line["production_design_hours"] or 0)
+        total_labor_cost += summary["labor_cost"]
+        total_design_cost += summary["design_cost"]
+        total_extra_cost += float(service_line["production_extra_cost"] or 0)
+        total_cost += summary["total_cost"]
+        if service_line["production_margin_percent"] is not None:
+            margin_values.append(float(service_line["production_margin_percent"]))
+        if primary_material_id is None and material_lines:
+            primary_material_id = material_lines[0]["material_id"]
+            primary_printer_id = material_lines[0]["printer_id"]
+            primary_dryer_id = material_lines[0]["filament_dryer_id"]
+
+    energy_rate = round(total_energy_cost / total_print_hours, 4) if total_print_hours else 0.0
+    operating_rate = (
+        round(total_operating_cost / total_print_hours, 4) if total_print_hours else 0.0
+    )
+    dryer_rate = round(total_dryer_cost / total_dryer_hours, 4) if total_dryer_hours else 0.0
+    average_margin = (
+        round(sum(margin_values) / len(margin_values), 2) if margin_values else None
+    )
+
+    db.execute(
+        """
+        UPDATE jobs
+        SET
+            material_id = COALESCE(?, material_id),
+            weight_grams = ?,
+            print_hours = ?,
+            energy_cost_per_hour = ?,
+            operating_cost_per_hour = ?,
+            extra_cost = ?,
+            margin_percent = ?,
+            total_cost = ?,
+            internal_notes = ?,
+            notes = ?,
+            printer_id = ?,
+            filament_dryer_id = ?,
+            dryer_hours = ?,
+            dryer_cost_per_hour = ?,
+            labor_hours = ?,
+            labor_hourly_rate = ?,
+            design_hours = ?,
+            design_hourly_rate = ?
+        WHERE id = ?
+        """,
+        (
+            primary_material_id,
+            round(total_weight, 2),
+            round(total_print_hours, 2),
+            energy_rate,
+            operating_rate,
+            round(total_extra_cost, 2),
+            average_margin,
+            round(total_cost, 2),
+            (
+                str(service_lines[0]["production_internal_notes"]).strip()
+                if len(service_lines) == 1 and service_lines
+                else detail["job"]["internal_notes"]
+            ),
+            (
+                str(service_lines[0]["production_internal_notes"]).strip()
+                if len(service_lines) == 1 and service_lines
+                else detail["job"]["notes"]
+            ),
+            primary_printer_id,
+            primary_dryer_id,
+            round(total_dryer_hours, 2),
+            dryer_rate,
+            round(total_labor_hours, 2),
+            round((total_labor_cost / total_labor_hours), 4) if total_labor_hours else 0.0,
+            round(total_design_hours, 2),
+            round((total_design_cost / total_design_hours), 4) if total_design_hours else 0.0,
+            job_id,
+        ),
+    )
 
 
 def find_product_by_name(
@@ -6621,7 +6872,13 @@ def edit_production_order(job_id: int) -> str:
     if request.method == "POST":
         try:
             save_job_production_data(db, job_id, detail)
-            return redirect(url_for("edit_production_order", job_id=job_id))
+            return redirect(
+                url_for(
+                    "edit_production_order",
+                    job_id=job_id,
+                    op=detail["selected_service"]["production_order_number"],
+                )
+            )
         except ValueError as error:
             return render_template(
                 "production_order_edit.html",
@@ -6841,16 +7098,19 @@ def jobs() -> str:
                 delete_error="",
             )
         try:
-            material_lines = build_job_material_lines(db)
-            component_lines = build_job_component_lines(db)
             service_lines = build_job_service_lines(db)
-            material_lines, component_lines, resolved_product = apply_product_defaults_to_job_lines(
-                db,
-                {},
-                service_lines,
-                material_lines,
-                component_lines,
-            )
+            resolved_product = resolve_job_product(db, {}, service_lines)
+            material_lines: list[dict[str, Any]] = []
+            component_lines: list[dict[str, Any]] = []
+            for index, service_line in enumerate(service_lines, start=1):
+                service_material_lines, service_component_lines = build_default_production_lines_for_service(
+                    db,
+                    {},
+                    service_line,
+                    index,
+                )
+                material_lines.extend(service_material_lines)
+                component_lines.extend(service_component_lines)
             requested_weight = sum(line["weight_grams"] for line in material_lines)
             material_stock_usage: dict[int, float] = {}
             component_stock_usage: dict[int, float] = {}
@@ -7055,6 +7315,7 @@ def jobs() -> str:
                     """
                     INSERT INTO job_materials (
                         job_id,
+                        service_line_number,
                         material_id,
                         weight_grams,
                         print_hours,
@@ -7066,10 +7327,11 @@ def jobs() -> str:
                         dryer_cost_per_hour,
                         notes
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         job_id,
+                        int(line.get("service_line_number") or 1),
                         line["material_id"],
                         line["weight_grams"],
                         line["print_hours"],
@@ -7086,11 +7348,12 @@ def jobs() -> str:
             for line in component_lines:
                 db.execute(
                     """
-                    INSERT INTO job_components (job_id, component_id, quantity, notes)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO job_components (job_id, service_line_number, component_id, quantity, notes)
+                    VALUES (?, ?, ?, ?, ?)
                     """,
                     (
                         job_id,
+                        int(line.get("service_line_number") or 1),
                         line["component_id"],
                         line["quantity"],
                         line["notes"],
@@ -7112,9 +7375,16 @@ def jobs() -> str:
                         discount_value,
                         total_price,
                         show_to_customer,
-                        notes
+                        notes,
+                        production_internal_notes,
+                        production_labor_hours,
+                        production_labor_hourly_rate,
+                        production_design_hours,
+                        production_design_hourly_rate,
+                        production_extra_cost,
+                        production_margin_percent
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         job_id,
@@ -7128,6 +7398,13 @@ def jobs() -> str:
                         line["discount_value"],
                         line["total_price"],
                         line["notes"],
+                        "",
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        None,
                     ),
                 )
 
@@ -7178,6 +7455,7 @@ def jobs() -> str:
                     )
             db.commit()
             save_job_photos(job_id)
+            refresh_job_production_totals(db, job_id)
             db.commit()
             return redirect(url_for("jobs"))
         except Exception as error:
@@ -7355,6 +7633,7 @@ def prepare_jobs_for_list(jobs: list[sqlite3.Row]) -> list[dict[str, Any]]:
                     "name": service_name,
                     "quantity": float(line["quantity"] or 0),
                     "total_price": float(line["total_price"] or 0),
+                    "service_line_number": index,
                     "production_order_number": f"{job_number}-{index}",
                 }
             )
@@ -7372,6 +7651,7 @@ def prepare_jobs_for_list(jobs: list[sqlite3.Row]) -> list[dict[str, Any]]:
                     "name": fallback_name,
                     "quantity": float(item.get("quantity") or 0),
                     "total_price": float(item.get("suggested_price") or 0),
+                    "service_line_number": 1,
                     "production_order_number": f"{job_number}-1",
                 }
             ]
@@ -7407,16 +7687,24 @@ def save_job_production_data(
     job_id: int,
     detail: dict[str, Any],
 ) -> None:
+    selected_service = detail["selected_service"]
+    if selected_service is None:
+        raise ValueError("Selecione um item do pedido para editar a ordem de produção.")
+    service_line_number = int(detail["selected_service_line_number"])
     material_lines = build_job_material_lines(db)
     component_lines = build_job_component_lines(db)
     material_lines, component_lines, _ = apply_product_defaults_to_job_lines(
         db,
         detail["job"],
-        detail["service_lines"],
+        [selected_service],
         material_lines,
         component_lines,
     )
-    requested_weight = sum(line["weight_grams"] for line in material_lines)
+    for line in material_lines:
+        line["service_line_number"] = service_line_number
+    for line in component_lines:
+        line["service_line_number"] = service_line_number
+
     extra_cost = parse_form_decimal(request.form.get("extra_cost"), "Custos extras")
     margin_percent = parse_form_number(request.form.get("margin_percent"), "Margem (%)")
     labor_hours = parse_form_number(request.form.get("labor_hours"), "Horas operacionais")
@@ -7429,89 +7717,46 @@ def save_job_production_data(
         request.form.get("design_hourly_rate"),
         "Valor design/h",
     )
-    sale_total = sum(float(line["total_price"] or 0) for line in detail["service_lines"])
-    cost_summary = summarize_cost_lines(
-        material_lines=material_lines,
-        component_lines=component_lines,
-        labor_hours=labor_hours,
-        labor_hourly_rate=labor_hourly_rate,
-        design_hours=design_hours,
-        design_hourly_rate=design_hourly_rate,
-        extra_cost=extra_cost,
-        sale_total=sale_total,
-    )
-    total_cost = cost_summary["total_cost"]
-    print_hours = cost_summary["total_print_hours"]
-    dryer_hours = cost_summary["total_dryer_hours"]
-    energy_cost_per_hour = (
-        round(cost_summary["energy_cost"] / print_hours, 4) if print_hours else 0.0
-    )
-    operating_cost_per_hour = (
-        round(cost_summary["operating_cost"] / print_hours, 4) if print_hours else 0.0
-    )
-    dryer_cost_per_hour = (
-        round(cost_summary["dryer_cost"] / dryer_hours, 4) if dryer_hours else 0.0
-    )
-    primary_material_id = (
-        material_lines[0]["material_id"]
-        if material_lines
-        else int(detail["job"]["material_id"])
-    )
 
     db.execute(
         """
-        UPDATE jobs
+        UPDATE job_services
         SET
-            material_id = ?,
-            weight_grams = ?,
-            print_hours = ?,
-            energy_cost_per_hour = ?,
-            operating_cost_per_hour = ?,
-            extra_cost = ?,
-            margin_percent = ?,
-            total_cost = ?,
-            internal_notes = ?,
-            notes = ?,
-            printer_id = ?,
-            filament_dryer_id = ?,
-            dryer_hours = ?,
-            dryer_cost_per_hour = ?,
-            labor_hours = ?,
-            labor_hourly_rate = ?,
-            design_hours = ?,
-            design_hourly_rate = ?
+            production_internal_notes = ?,
+            production_labor_hours = ?,
+            production_labor_hourly_rate = ?,
+            production_design_hours = ?,
+            production_design_hourly_rate = ?,
+            production_extra_cost = ?,
+            production_margin_percent = ?
         WHERE id = ?
         """,
         (
-            primary_material_id,
-            requested_weight,
-            print_hours,
-            energy_cost_per_hour,
-            operating_cost_per_hour,
-            extra_cost,
-            margin_percent,
-            total_cost,
             request.form.get("internal_notes", "").strip(),
-            request.form.get("internal_notes", "").strip(),
-            (material_lines[0]["printer_id"] if material_lines else None),
-            (material_lines[0]["filament_dryer_id"] if material_lines else None),
-            dryer_hours,
-            dryer_cost_per_hour,
             labor_hours,
             labor_hourly_rate,
             design_hours,
             design_hourly_rate,
-            job_id,
+            extra_cost,
+            margin_percent if margin_percent else None,
+            selected_service["id"],
         ),
     )
-    db.execute("DELETE FROM job_materials WHERE job_id = ?", (job_id,))
-    db.execute("DELETE FROM job_components WHERE job_id = ?", (job_id,))
+    db.execute(
+        "DELETE FROM job_materials WHERE job_id = ? AND service_line_number = ?",
+        (job_id, service_line_number),
+    )
+    db.execute(
+        "DELETE FROM job_components WHERE job_id = ? AND service_line_number = ?",
+        (job_id, service_line_number),
+    )
 
     for line in material_lines:
         db.execute(
             """
             INSERT INTO job_materials (
                 job_id,
+                service_line_number,
                 material_id,
                 weight_grams,
                 print_hours,
@@ -7523,10 +7768,11 @@ def save_job_production_data(
                 dryer_cost_per_hour,
                 notes
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 job_id,
+                service_line_number,
                 line["material_id"],
                 line["weight_grams"],
                 line["print_hours"],
@@ -7542,12 +7788,19 @@ def save_job_production_data(
     for line in component_lines:
         db.execute(
             """
-            INSERT INTO job_components (job_id, component_id, quantity, notes)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO job_components (job_id, service_line_number, component_id, quantity, notes)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (job_id, line["component_id"], line["quantity"], line["notes"]),
+            (
+                job_id,
+                service_line_number,
+                line["component_id"],
+                line["quantity"],
+                line["notes"],
+            ),
         )
 
+    refresh_job_production_totals(db, job_id)
     db.commit()
 
 
@@ -7577,48 +7830,18 @@ def save_job_commercial_data(
     )
     if not item_name:
         raise ValueError("Preencha cliente, status e descricao do item antes de salvar o pedido.")
-    material_lines = build_job_material_lines(db)
-    component_lines = build_job_component_lines(db)
-    material_lines, component_lines, resolved_product = apply_product_defaults_to_job_lines(
-        db,
-        detail["job"],
-        service_lines,
-        material_lines,
-        component_lines,
-    )
     customer_total = sum(line["total_price"] for line in service_lines)
-    requested_weight = sum(line["weight_grams"] for line in material_lines)
-    cost_summary = summarize_cost_lines(
-        material_lines=material_lines,
-        component_lines=component_lines,
-        labor_hours=float(detail["job"]["labor_hours"] or 0),
-        labor_hourly_rate=float(detail["job"]["labor_hourly_rate"] or 0),
-        design_hours=float(detail["job"]["design_hours"] or 0),
-        design_hourly_rate=float(detail["job"]["design_hourly_rate"] or 0),
-        extra_cost=float(detail["job"]["extra_cost"] or 0),
-        sale_total=customer_total,
-    )
-    print_hours = cost_summary["total_print_hours"]
-    dryer_hours = cost_summary["total_dryer_hours"]
-    energy_cost_per_hour = (
-        round(cost_summary["energy_cost"] / print_hours, 4) if print_hours else 0.0
-    )
-    operating_cost_per_hour = (
-        round(cost_summary["operating_cost"] / print_hours, 4) if print_hours else 0.0
-    )
-    dryer_cost_per_hour = (
-        round(cost_summary["dryer_cost"] / dryer_hours, 4) if dryer_hours else 0.0
-    )
-    primary_material_id = (
-        material_lines[0]["material_id"]
-        if material_lines
-        else int(detail["job"]["material_id"])
-    )
     suggested_price = (
         round(customer_total, 2)
         if customer_total > 0
         else float(detail["job"]["suggested_price"] or 0)
     )
+    resolved_product = resolve_job_product(db, detail["job"], service_lines)
+    existing_service_lines = {
+        int(line["service_line_number"]): line for line in detail["service_lines"]
+    }
+    previous_service_count = len(detail["service_lines"])
+    current_service_count = len(service_lines)
 
     db.execute(
         """
@@ -7630,12 +7853,6 @@ def save_job_commercial_data(
             product_id = ?,
             status = ?,
             created_at = ?,
-            material_id = ?,
-            weight_grams = ?,
-            print_hours = ?,
-            energy_cost_per_hour = ?,
-            operating_cost_per_hour = ?,
-            total_cost = ?,
             representative_id = ?,
             partner_store_id = ?,
             due_date = ?,
@@ -7645,11 +7862,7 @@ def save_job_commercial_data(
             customer_notes = ?,
             valid_until = ?,
             payment_terms = ?,
-            model_link = ?,
-            printer_id = ?,
-            filament_dryer_id = ?,
-            dryer_hours = ?,
-            dryer_cost_per_hour = ?
+            model_link = ?
         WHERE id = ?
         """,
         (
@@ -7664,12 +7877,6 @@ def save_job_commercial_data(
             status,
             request.form.get("created_at", "").strip()
             or str(detail["job"]["created_at"])[:10],
-            primary_material_id,
-            requested_weight,
-            print_hours,
-            energy_cost_per_hour,
-            operating_cost_per_hour,
-            cost_summary["total_cost"],
             (
                 int(request.form["representative_id"])
                 if request.form.get("representative_id")
@@ -7688,21 +7895,13 @@ def save_job_commercial_data(
             request.form.get("valid_until") or None,
             normalize_shortcut_value(request.form.get("payment_terms")),
             request.form.get("model_link", "").strip(),
-            (material_lines[0]["printer_id"] if material_lines else detail["job"]["printer_id"]),
-            (
-                material_lines[0]["filament_dryer_id"]
-                if material_lines
-                else detail["job"]["filament_dryer_id"]
-            ),
-            dryer_hours,
-            dryer_cost_per_hour,
             job_id,
         ),
     )
     db.execute("DELETE FROM job_services WHERE job_id = ?", (job_id,))
-    db.execute("DELETE FROM job_materials WHERE job_id = ?", (job_id,))
-    db.execute("DELETE FROM job_components WHERE job_id = ?", (job_id,))
-    for line in service_lines:
+    for index, line in enumerate(service_lines, start=1):
+        existing_line = existing_service_lines.get(index)
+        production_values = get_service_production_values(existing_line or {}, detail["job"], 0)
         db.execute(
             """
             INSERT INTO job_services (
@@ -7717,9 +7916,16 @@ def save_job_commercial_data(
                 discount_value,
                 total_price,
                 show_to_customer,
-                notes
+                notes,
+                production_internal_notes,
+                production_labor_hours,
+                production_labor_hourly_rate,
+                production_design_hours,
+                production_design_hourly_rate,
+                production_extra_cost,
+                production_margin_percent
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 job_id,
@@ -7733,48 +7939,100 @@ def save_job_commercial_data(
                 line["discount_value"],
                 line["total_price"],
                 line["notes"],
+                production_values["production_internal_notes"],
+                production_values["production_labor_hours"],
+                production_values["production_labor_hourly_rate"],
+                production_values["production_design_hours"],
+                production_values["production_design_hourly_rate"],
+                production_values["production_extra_cost"],
+                production_values["production_margin_percent"],
             ),
         )
-    for line in material_lines:
-        db.execute(
-            """
-            INSERT INTO job_materials (
-                job_id,
-                material_id,
-                weight_grams,
-                print_hours,
-                printer_id,
-                energy_cost_per_hour,
-                operating_cost_per_hour,
-                filament_dryer_id,
-                dryer_hours,
-                dryer_cost_per_hour,
-                notes
+
+    db.execute(
+        "DELETE FROM job_materials WHERE job_id = ? AND service_line_number > ?",
+        (job_id, current_service_count),
+    )
+    db.execute(
+        "DELETE FROM job_components WHERE job_id = ? AND service_line_number > ?",
+        (job_id, current_service_count),
+    )
+
+    existing_material_indexes = {
+        int(row["service_line_number"] or 1)
+        for row in db.execute(
+            "SELECT DISTINCT service_line_number FROM job_materials WHERE job_id = ?",
+            (job_id,),
+        ).fetchall()
+    }
+    existing_component_indexes = {
+        int(row["service_line_number"] or 1)
+        for row in db.execute(
+            "SELECT DISTINCT service_line_number FROM job_components WHERE job_id = ?",
+            (job_id,),
+        ).fetchall()
+    }
+
+    for index, line in enumerate(service_lines, start=1):
+        if index <= previous_service_count and (
+            index in existing_material_indexes or index in existing_component_indexes
+        ):
+            continue
+        default_material_lines, default_component_lines = build_default_production_lines_for_service(
+            db,
+            detail["job"],
+            line,
+            index,
+        )
+        for material_line in default_material_lines:
+            db.execute(
+                """
+                INSERT INTO job_materials (
+                    job_id,
+                    service_line_number,
+                    material_id,
+                    weight_grams,
+                    print_hours,
+                    printer_id,
+                    energy_cost_per_hour,
+                    operating_cost_per_hour,
+                    filament_dryer_id,
+                    dryer_hours,
+                    dryer_cost_per_hour,
+                    notes
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    job_id,
+                    index,
+                    material_line["material_id"],
+                    material_line["weight_grams"],
+                    material_line["print_hours"],
+                    material_line["printer_id"],
+                    material_line["energy_cost_per_hour"],
+                    material_line["operating_cost_per_hour"],
+                    material_line["filament_dryer_id"],
+                    material_line["dryer_hours"],
+                    material_line["dryer_cost_per_hour"],
+                    material_line["notes"],
+                ),
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                job_id,
-                line["material_id"],
-                line["weight_grams"],
-                line["print_hours"],
-                line["printer_id"],
-                line["energy_cost_per_hour"],
-                line["operating_cost_per_hour"],
-                line["filament_dryer_id"],
-                line["dryer_hours"],
-                line["dryer_cost_per_hour"],
-                line["notes"],
-            ),
-        )
-    for line in component_lines:
-        db.execute(
-            """
-            INSERT INTO job_components (job_id, component_id, quantity, notes)
-            VALUES (?, ?, ?, ?)
-            """,
-            (job_id, line["component_id"], line["quantity"], line["notes"]),
-        )
+        for component_line in default_component_lines:
+            db.execute(
+                """
+                INSERT INTO job_components (job_id, service_line_number, component_id, quantity, notes)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    job_id,
+                    index,
+                    component_line["component_id"],
+                    component_line["quantity"],
+                    component_line["notes"],
+                ),
+            )
+    refresh_job_production_totals(db, job_id)
     db.commit()
 
 
@@ -8200,7 +8458,7 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         LEFT JOIN printers ON printers.id = job_materials.printer_id
         LEFT JOIN filament_dryers ON filament_dryers.id = job_materials.filament_dryer_id
         WHERE job_materials.job_id = ?
-        ORDER BY job_materials.id ASC
+        ORDER BY job_materials.service_line_number ASC, job_materials.id ASC
         """,
         (job_id,),
     ).fetchall()
@@ -8218,7 +8476,7 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         FROM job_components
         JOIN components ON components.id = job_components.component_id
         WHERE job_components.job_id = ?
-        ORDER BY job_components.id ASC
+        ORDER BY job_components.service_line_number ASC, job_components.id ASC
         """,
         (job_id,),
     ).fetchall()
@@ -8232,23 +8490,19 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         (job_id,),
     ).fetchall()
     numbered_service_lines: list[dict[str, Any]] = []
-    job_number = f"{int(job['id']):04d}"
+    service_count = len(service_lines)
     for index, line in enumerate(service_lines, start=1):
-        numbered_service_lines.append(
-            {
-                **dict(line),
-                "production_order_number": f"{job_number}-{index}",
-            }
-        )
+        service_line = {
+            **dict(line),
+            "service_line_number": index,
+            "production_order_number": build_production_order_number(job["id"], index),
+        }
+        service_line.update(get_service_production_values(service_line, job, service_count))
+        numbered_service_lines.append(service_line)
     service_lines = numbered_service_lines
     resolved_product = resolve_job_product(db, job, service_lines)
-    material_lines, component_lines, _ = apply_product_defaults_to_job_lines(
-        db,
-        job,
-        service_lines,
-        [dict(line) for line in material_lines],
-        [dict(line) for line in component_lines],
-    )
+    material_lines = [{**dict(line), "service_line_number": int(line["service_line_number"] or 1)} for line in material_lines]
+    component_lines = [{**dict(line), "service_line_number": int(line["service_line_number"] or 1)} for line in component_lines]
     photo_lines = db.execute(
         """
         SELECT *
@@ -8258,6 +8512,20 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         """,
         (job_id,),
     ).fetchall()
+    selected_service_line_number = resolve_selected_service_line_number(
+        job["id"],
+        service_lines,
+        request.values.get("service_line_number") or request.args.get("op"),
+    )
+    selected_service = next(
+        (
+            line
+            for line in service_lines
+            if int(line["service_line_number"]) == selected_service_line_number
+        ),
+        service_lines[0] if service_lines else None,
+    )
+
     normalized_material_lines = []
     for index, line in enumerate(material_lines):
         printer_energy_rate = float(line["energy_cost_per_hour"] or 0)
@@ -8307,6 +8575,7 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         normalized_material_lines.append(
             {
                 **dict(line),
+                "service_line_number": int(line.get("service_line_number") or 1),
                 "print_hours": line_print_hours,
                 "energy_cost_per_hour": printer_energy_rate,
                 "operating_cost_per_hour": printer_operating_rate,
@@ -8325,7 +8594,31 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             }
         )
 
-    normalized_component_lines = [dict(line) for line in component_lines]
+    normalized_component_lines = [
+        {**dict(line), "service_line_number": int(line.get("service_line_number") or 1)}
+        for line in component_lines
+    ]
+
+    selected_material_lines = [
+        line
+        for line in normalized_material_lines
+        if int(line["service_line_number"]) == selected_service_line_number
+    ]
+    selected_component_lines = [
+        line
+        for line in normalized_component_lines
+        if int(line["service_line_number"]) == selected_service_line_number
+    ]
+    if selected_service and not selected_material_lines and not selected_component_lines:
+        default_material_lines, default_component_lines = build_default_production_lines_for_service(
+            db,
+            job,
+            selected_service,
+            selected_service_line_number,
+        )
+        selected_material_lines = default_material_lines
+        selected_component_lines = default_component_lines
+
     cost_summary = summarize_cost_lines(
         material_lines=normalized_material_lines,
         component_lines=normalized_component_lines,
@@ -8417,13 +8710,28 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
     cost_summary["profit"] = round(
         cost_summary["suggested_price"] - cost_summary["total_cost"], 2
     )
+    selected_cost_summary = summarize_cost_lines(
+        material_lines=selected_material_lines,
+        component_lines=selected_component_lines,
+        labor_hours=float(selected_service["production_labor_hours"] or 0) if selected_service else 0.0,
+        labor_hourly_rate=float(selected_service["production_labor_hourly_rate"] or 0) if selected_service else 0.0,
+        design_hours=float(selected_service["production_design_hours"] or 0) if selected_service else 0.0,
+        design_hourly_rate=float(selected_service["production_design_hourly_rate"] or 0) if selected_service else 0.0,
+        extra_cost=float(selected_service["production_extra_cost"] or 0) if selected_service else 0.0,
+        sale_total=float(selected_service["total_price"] or 0) if selected_service else 0.0,
+    )
     return {
         "job": job,
-        "material_lines": normalized_material_lines,
-        "component_lines": normalized_component_lines,
+        "material_lines": selected_material_lines,
+        "component_lines": selected_component_lines,
+        "all_material_lines": normalized_material_lines,
+        "all_component_lines": normalized_component_lines,
         "service_lines": service_lines,
+        "selected_service": selected_service,
+        "selected_service_line_number": selected_service_line_number,
         "photo_lines": photo_lines,
         "cost_summary": cost_summary,
+        "selected_cost_summary": selected_cost_summary,
         "resolved_product": resolved_product,
     }
 

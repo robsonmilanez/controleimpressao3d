@@ -1,3 +1,4 @@
+{% set production_context = production_values if production_values is defined and production_values else job %}
 <div class="internal-cost-grid full">
   <div class="internal-cost-heading">
     <span>Categoria</span>
@@ -82,11 +83,11 @@
     <strong>Trabalho manual</strong>
     <label>
       Horas
-      <input type="number" name="labor_hours" min="0" step="0.01" value="{{ job['labor_hours'] if job is defined else 0 }}" required>
+      <input type="number" name="labor_hours" min="0" step="0.01" value="{{ production_context['production_labor_hours'] if production_values is defined else (job['labor_hours'] if job is defined else 0) }}" required>
     </label>
     <label>
       R$/h
-      <input type="number" name="labor_hourly_rate" min="0" step="0.01" value="{{ job['labor_hourly_rate'] if job is defined else 0 }}" required>
+      <input type="number" name="labor_hourly_rate" min="0" step="0.01" value="{{ production_context['production_labor_hourly_rate'] if production_values is defined else (job['labor_hourly_rate'] if job is defined else 0) }}" required>
     </label>
     <output class="internal-labor-total">R$ 0,00</output>
   </div>
@@ -95,11 +96,11 @@
     <strong>Design/modelagem</strong>
     <label>
       Horas
-      <input type="number" name="design_hours" min="0" step="0.01" value="{{ job['design_hours'] if job is defined else 0 }}" required>
+      <input type="number" name="design_hours" min="0" step="0.01" value="{{ production_context['production_design_hours'] if production_values is defined else (job['design_hours'] if job is defined else 0) }}" required>
     </label>
     <label>
       R$/h
-      <input type="number" name="design_hourly_rate" min="0" step="0.01" value="{{ job['design_hourly_rate'] if job is defined else 0 }}" required>
+      <input type="number" name="design_hourly_rate" min="0" step="0.01" value="{{ production_context['production_design_hourly_rate'] if production_values is defined else (job['design_hourly_rate'] if job is defined else 0) }}" required>
     </label>
     <output class="internal-design-total">R$ 0,00</output>
   </div>
@@ -110,7 +111,7 @@
     <span>-</span>
     <label>
       Total
-      <input type="number" name="extra_cost" min="0" step="0.01" value="{{ job['extra_cost'] if job is defined else 0 }}" required>
+      <input type="number" name="extra_cost" min="0" step="0.01" value="{{ production_context['production_extra_cost'] if production_values is defined else (job['extra_cost'] if job is defined else 0) }}" required>
     </label>
   </div>
 
@@ -133,7 +134,7 @@
     <span>-</span>
     <label>
       %
-      <input type="number" name="margin_percent" min="0" max="99" step="0.01" value="{{ job['margin_percent'] if job is defined and job['margin_percent'] is not none else '' }}" placeholder="Opcional">
+      <input type="number" name="margin_percent" min="0" max="99" step="0.01" value="{{ production_context['production_margin_percent'] if production_values is defined and production_context['production_margin_percent'] is not none else (job['margin_percent'] if job is defined and job['margin_percent'] is not none else '') }}" placeholder="Opcional">
     </label>
     <span>Usada no preço sugerido</span>
   </div>

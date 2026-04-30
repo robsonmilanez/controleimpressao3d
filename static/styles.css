@@ -3020,6 +3020,10 @@ th {
   text-decoration: none;
 }
 
+.is-selected-production-row td {
+  background: rgba(47, 109, 240, 0.08);
+}
+
 .document-item-description {
   min-width: 0;
 }
@@ -4281,72 +4285,98 @@ th {
     margin-top: 0.5rem;
   }
 
-  .customer-document-page .document-table,
-  .customer-document-page .document-table thead,
-  .customer-document-page .document-table tbody,
-  .customer-document-page .document-table tr,
-  .customer-document-page .document-table th,
-  .customer-document-page .document-table td {
-    display: block;
-    min-width: 0;
+  .customer-document-page .document-header > div > p:last-child {
+    display: none;
+  }
+
+  .customer-document-page .customer-document-table {
+    table-layout: fixed;
+  }
+
+  .customer-document-page .customer-document-table .customer-col-item {
+    width: 56%;
+  }
+
+  .customer-document-page .customer-document-table .customer-col-qty {
+    width: 7%;
+  }
+
+  .customer-document-page .customer-document-table .customer-col-unit {
+    width: 11%;
+  }
+
+  .customer-document-page .customer-document-table .customer-col-add,
+  .customer-document-page .customer-document-table .customer-col-discount {
+    width: 9%;
+  }
+
+  .customer-document-page .customer-document-table .customer-col-total {
+    width: 8%;
+  }
+
+  .customer-document-page .document-table {
+    display: table;
     width: 100%;
   }
 
   .customer-document-page .document-table thead {
-    display: none;
+    display: table-header-group;
+  }
+
+  .customer-document-page .document-table tbody {
+    display: table-row-group;
   }
 
   .customer-document-page .document-table tr {
-    padding: 0.62rem 0.1rem;
+    display: table-row;
+  }
+
+  .customer-document-page .document-table th,
+  .customer-document-page .document-table td {
+    display: table-cell;
+    width: auto;
+    min-width: 0;
+    padding: 0.32rem 0.1rem;
     border-bottom: 1px solid #d4d9df;
+    vertical-align: top;
+  }
+
+  .customer-document-page .document-table th::before,
+  .customer-document-page .document-table td::before {
+    content: none;
+  }
+
+  .customer-document-page .document-table th {
+    font-size: 0.62rem;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    text-align: right;
+  }
+
+  .customer-document-page .document-table th:first-child,
+  .customer-document-page .document-table td:first-child {
+    text-align: left;
   }
 
   .customer-document-page .document-table td {
-    display: grid;
-    grid-template-columns: 5.1rem minmax(0, 1fr);
-    gap: 0.38rem;
-    padding: 0.16rem 0;
-    border-bottom: 0;
+    font-size: 0.72rem;
+    line-height: 1.18;
     font-weight: 700;
   }
 
-  .customer-document-page .document-table td::before {
-    content: attr(data-label);
-    color: #68717d;
-    font-size: 0.58rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .customer-document-page .document-table td:first-child {
-    grid-template-columns: 1fr;
-    gap: 0.3rem;
-    padding-bottom: 0.38rem;
-    margin-bottom: 0.22rem;
-    border-bottom: 1px solid #e3e7ec;
-  }
-
-  .customer-document-page .document-table td:first-child::before {
-    font-size: 0.56rem;
-  }
-
-  .customer-document-page .document-table td:first-child > * {
-    grid-column: 1 / -1;
-  }
-
   .customer-document-page .document-table .document-item-cell {
-    grid-template-columns: 58px minmax(0, 1fr);
-    gap: 0.18rem 0.55rem;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 0.14rem 0.38rem;
   }
 
   .customer-document-page .document-table .document-item-op {
-    font-size: 0.68rem;
+    font-size: 0.62rem;
   }
 
   .customer-document-page .document-table .document-item-description strong,
   .customer-document-page .document-table .document-item-overflow {
-    font-size: 0.92rem;
-    line-height: 1.22;
+    font-size: 0.72rem;
+    line-height: 1.18;
   }
 
   .customer-document-page .document-table td:nth-child(2),
@@ -4354,14 +4384,12 @@ th {
   .customer-document-page .document-table td:nth-child(4),
   .customer-document-page .document-table td:nth-child(5),
   .customer-document-page .document-table td:nth-child(6) {
-    align-items: center;
+    text-align: right;
+    white-space: nowrap;
   }
 
   .customer-document-page .document-table td:nth-child(6) {
-    padding-top: 0.28rem;
-    margin-top: 0.14rem;
-    border-top: 1px dashed #d9dee5;
-    font-size: 0.9rem;
+    font-size: 0.75rem;
   }
 
   .customer-notes-list p {
