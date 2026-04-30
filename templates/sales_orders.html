@@ -125,7 +125,6 @@
                     </div>
                   </div>
                 </th>
-                <th>Histórico</th>
               </tr>
             </thead>
             <tbody>
@@ -138,50 +137,42 @@
                       <td data-label="Ações" rowspan="{{ item_count }}">
                         <div class="table-action-group">
                           <a class="action-link" href="{{ url_for('edit_job', job_id=job['id'], return_to=current_return_to) }}">Editar</a>
-                          <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">PDF</a>
                           <a class="action-link" href="{{ job['whatsapp_customer_url'] }}" target="_blank" rel="noopener noreferrer">Whats Pedido</a>
-                          <a class="action-link" href="{{ url_for('edit_production_order', job_id=job['id']) }}">Abrir OP</a>
                           <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF OP</a>
                           <a class="action-link" href="{{ job['whatsapp_production_url'] }}" target="_blank" rel="noopener noreferrer">Whats OP</a>
                         </div>
                       </td>
                       <td data-label="Pedido" rowspan="{{ item_count }}">
-                        <a class="action-link" href="{{ url_for('edit_job', job_id=job['id'], return_to=current_return_to) }}">#{{ "%04d"|format(job["id"]) }}</a>
+                        <a class="action-link" href="{{ url_for('job_customer_document', job_id=job['id']) }}">#{{ "%04d"|format(job["id"]) }}</a>
                       </td>
                       <td data-label="Cliente" rowspan="{{ item_count }}">
                         <div class="job-customer-cell">
-                          <strong>{{ job["customer_display"] }}</strong>
+                          {% if job["customer_history_url"] %}
+                            <a class="action-link customer-history-link" href="{{ job['customer_history_url'] }}"><strong>{{ job["customer_display"] }}</strong></a>
+                          {% else %}
+                            <strong>{{ job["customer_display"] }}</strong>
+                          {% endif %}
                         </div>
                       </td>
                     {% endif %}
                     <td data-label="Item" class="job-item-name-cell">
-                      <div class="job-item-heading">
+                      <div class="job-item-layout">
+                        <span class="job-item-production-number">OP {{ item_line['production_order_number'] }}</span>
                         <strong>{{ item_line['name'] }}</strong>
-                        <span class="job-item-production-number job-item-production-number-inline">OP {{ item_line['production_order_number'] }}</span>
+                        <a class="action-link job-item-op-link" href="{{ url_for('job_production_document', job_id=job['id']) }}#op-{{ item_line['production_order_number'] }}">Abrir OP</a>
                       </div>
                     </td>
                     <td data-label="Qtde">{{ item_line['quantity']|br_decimal }} un</td>
                     <td data-label="Status">{{ job["status"] }}</td>
                     <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
-                    {% if loop.first %}
-                      <td data-label="Valor" rowspan="{{ item_count }}">
-                        <div class="job-value-cell">
-                          {% for value_line in item_lines %}
-                            <span>R$ {{ value_line['total_price']|br_money }}</span>
-                          {% endfor %}
+                    <td data-label="Valor">
+                      <div class="job-value-cell">
+                        <span>R$ {{ item_line['total_price']|br_money }}</span>
+                        {% if loop.last %}
                           <span class="job-order-total-note">Total do pedido: R$ {{ job["suggested_price"]|br_money }}</span>
-                        </div>
-                      </td>
-                    {% endif %}
-                    {% if loop.first %}
-                      <td data-label="Histórico" rowspan="{{ item_count }}">
-                        {% if job["customer_history_url"] %}
-                          <a class="action-link" href="{{ job['customer_history_url'] }}">Histórico do cliente</a>
-                        {% else %}
-                          -
                         {% endif %}
-                      </td>
-                    {% endif %}
+                      </div>
+                    </td>
                   </tr>
                 {% endfor %}
               {% endfor %}

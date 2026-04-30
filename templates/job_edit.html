@@ -176,6 +176,13 @@
                 Total
                 <input type="text" class="service-line-total" value="R$ {{ (service['total_price'] if service else 0)|br_money }}" readonly>
               </label>
+              <div class="service-op-field">
+                {% if service and service['production_order_number'] %}
+                  <a class="secondary-button service-op-link" href="{{ url_for('job_production_document', job_id=job['id']) }}#op-{{ service['production_order_number'] }}">Abrir OP do item</a>
+                {% else %}
+                  <span class="secondary-button service-op-link is-disabled">Abrir OP do item</span>
+                {% endif %}
+              </div>
               <div class="service-remove-field">
                 <button type="button" class="secondary-button remove-row-button">Excluir item</button>
               </div>

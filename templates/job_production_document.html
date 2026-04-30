@@ -83,7 +83,7 @@
           </thead>
           <tbody>
             {% for service in service_lines %}
-              <tr>
+              <tr id="op-{{ service['production_order_number'] }}">
                 <td>
                   <strong>OP {{ service["production_order_number"] }}</strong><br>
                   {{ service["service_name"] }}

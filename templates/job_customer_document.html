@@ -83,11 +83,15 @@
                 {% set item_lines = service["service_name"]|split_item_description %}
                 <tr>
                   <td data-label="Item">
-                    <span class="job-item-production-number">OP {{ service["production_order_number"] }}</span>
-                    <strong>{{ item_lines[0] }}</strong>
-                    {% if item_lines[1] %}
-                      <span class="document-item-overflow">{{ item_lines[1] }}</span>
-                    {% endif %}
+                    <div class="document-item-cell">
+                      <span class="document-item-op">OP {{ service["production_order_number"] }}</span>
+                      <div class="document-item-description">
+                        <strong>{{ item_lines[0] }}</strong>
+                        {% if item_lines[1] %}
+                          <span class="document-item-overflow">{{ item_lines[1] }}</span>
+                        {% endif %}
+                      </div>
+                    </div>
                   </td>
                   <td data-label="Qtd.">{{ service["quantity"]|br_decimal }}</td>
                   <td data-label="Valor unit.">R$ {{ service["unit_price"]|br_money }}</td>

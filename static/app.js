@@ -2188,6 +2188,13 @@ function setupJobInlineTotals() {
 
 function setupJobCollections() {
   const resetCollectionRowFields = (row, collectionName) => {
+    if (collectionName === "services") {
+      const opField = row.querySelector(".service-op-field");
+      if (opField) {
+        opField.innerHTML =
+          '<span class="secondary-button service-op-link is-disabled">Abrir OP do item</span>';
+      }
+    }
     row.querySelectorAll("input, select, textarea").forEach((field) => {
       if (field.tagName === "SELECT") {
         field.selectedIndex = 0;

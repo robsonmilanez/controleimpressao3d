@@ -895,6 +895,7 @@ input[type="range"]:focus {
     minmax(620px, 4fr)
     minmax(170px, 1.2fr)
     repeat(4, minmax(132px, 0.8fr))
+    minmax(136px, 0.9fr)
     minmax(118px, 0.78fr);
   gap: 0.65rem;
   padding: 0.85rem;
@@ -934,8 +935,20 @@ input[type="range"]:focus {
 }
 
 .job-form-compact .service-value-field,
-.job-form-compact .service-total-field {
+.job-form-compact .service-total-field,
+.job-form-compact .service-op-field {
   width: 100%;
+}
+
+.job-form-compact .service-op-link {
+  width: 100%;
+  min-height: 48px;
+  justify-content: center;
+}
+
+.job-form-compact .service-op-link.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .job-form-compact .service-remove-field {
@@ -958,7 +971,7 @@ input[type="range"]:focus {
 
 .table-action-group {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.24rem;
   align-items: stretch;
 }
@@ -986,7 +999,7 @@ input[type="range"]:focus {
 
 .jobs-list-table th:nth-child(1),
 .jobs-list-table td:nth-child(1) {
-  width: 18rem;
+  width: 12.5rem;
 }
 
 .jobs-list-table th:nth-child(2),
@@ -996,12 +1009,12 @@ input[type="range"]:focus {
 
 .jobs-list-table th:nth-child(3),
 .jobs-list-table td:nth-child(3) {
-  width: 20rem;
+  width: 15rem;
 }
 
 .jobs-list-table th:nth-child(4),
 .jobs-list-table td:nth-child(4) {
-  width: 34rem;
+  width: 40rem;
 }
 
 .jobs-list-table th:nth-child(5),
@@ -1072,15 +1085,20 @@ input[type="range"]:focus {
   text-align: left;
 }
 
-.job-item-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.45rem;
+.customer-history-link {
+  justify-self: start;
+}
+
+.job-item-layout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.35rem 0.6rem;
+  align-items: start;
 }
 
 .job-item-name-cell strong {
-  display: inline;
+  display: block;
+  grid-column: 2;
   line-height: 1.25;
   white-space: normal;
   overflow-wrap: break-word;
@@ -1088,15 +1106,21 @@ input[type="range"]:focus {
 
 .job-item-production-number {
   display: inline-flex;
-  margin: 0 0 0.3rem;
+  grid-column: 1;
+  margin: 0.12rem 0 0;
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
-.job-item-production-number-inline {
-  margin: 0.18rem 0 0;
+.job-item-op-link {
+  grid-column: 3;
+  align-self: start;
+  min-height: 28px;
+  padding-inline: 0.55rem;
+  white-space: nowrap;
 }
 
 .job-value-cell {
@@ -1111,6 +1135,7 @@ input[type="range"]:focus {
   font-size: 0.78rem;
   line-height: 1.2;
   white-space: normal;
+  text-align: center;
 }
 
 .material-row {
@@ -2946,24 +2971,24 @@ th {
 }
 
 .customer-document-page .customer-document-table .customer-col-item {
-  width: 45%;
+  width: 56%;
 }
 
 .customer-document-page .customer-document-table .customer-col-qty {
-  width: 5%;
+  width: 4%;
 }
 
 .customer-document-page .customer-document-table .customer-col-unit {
-  width: 11%;
+  width: 9%;
 }
 
 .customer-document-page .customer-document-table .customer-col-add,
 .customer-document-page .customer-document-table .customer-col-discount {
-  width: 10%;
+  width: 8%;
 }
 
 .customer-document-page .customer-document-table .customer-col-total {
-  width: 19%;
+  width: 15%;
 }
 
 .customer-document-page .customer-document-table th,
@@ -2979,6 +3004,28 @@ th {
 
 .customer-document-page .customer-document-table td:first-child {
   white-space: normal;
+}
+
+.document-item-cell {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 0.2rem 0.45rem;
+  align-items: start;
+}
+
+.document-item-op {
+  color: #68717d;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.document-item-description {
+  min-width: 0;
+}
+
+.document-item-description strong {
+  display: block;
 }
 
 .customer-document-page .customer-document-table td:nth-child(6) {
@@ -4122,6 +4169,7 @@ th {
       minmax(420px, 3fr)
       minmax(96px, 0.58fr)
       repeat(4, minmax(112px, 0.76fr))
+      minmax(120px, 0.82fr)
       minmax(108px, 0.72fr);
     align-items: end;
   }

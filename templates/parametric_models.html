@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+{% block title %}Modelos Paramétricos{% endblock %}
+{% block content %}
+  <section class="page-hero">
+    <p class="eyebrow">Modelagem paramétrica</p>
+    <h2>Vasos e luminárias com cálculo técnico e OpenSCAD</h2>
+    <p class="subtitle">
+      Ajuste proporções, espessuras e vazados para gerar uma base real de fabricação em impressão 3D.
+    </p>
+  </section>
+
+  <section class="parametric-switch">
+    <a href="{{ url_for('parametric_models', kind='vaso') }}" class="parametric-kind-link {% if kind == 'vaso' %}is-active{% endif %}">
+      <strong>Vaso</strong>
+      <span>Boca, base, fundo e textura</span>
+    </a>
+    <a href="{{ url_for('parametric_models', kind='luminaria') }}" class="parametric-kind-link {% if kind == 'luminaria' %}is-active{% endif %}">
+      <strong>Luminária</strong>
+      <span>Cúpula, padrão de luz, base e encaixe</span>
+    </a>
+  </section>
+
+  <section class="parametric-mode-banner {% if kind == 'luminaria' %}is-lamp{% else %}is-vase{% endif %}">
+    <p class="eyebrow">Modo atual</p>
+    <h3>{% if kind == "vaso" %}Você está configurando um vaso{% else %}Você está configurando uma luminária{% endif %}</h3>
+    <p>
+      {% if kind == "vaso" %}
+        Neste modo aparecem apenas campos de vaso. Para ver a base com encaixe, mude para <strong>Luminária</strong> acima.
+      {% else %}
+        Neste modo a tela inclui a seção <strong>Base e encaixe</strong>, com altura da base, diâmetro, folga, profundidade de engate, trava e furo do soquete.
+      {% endif %}
+    </p>
+  </section>
+
+  <section class="preset-strip">
+    {% for preset_key, preset in presets.items() %}
+      {% if preset["kind"] == kind %}
+        <a
+          href="{{ url_for('parametric_models', kind=kind, preset=preset_key) }}"
+          class="preset-card {% if active_preset_key == preset_key %}is-active{% endif %}"
+        >
+          <strong>{{ preset["label"] }}</strong>
+          <span>{{ preset["description"] }}</span>
+        </a>
+      {% endif %}
+    {% endfor %}
+  </section>
+
+  <section class="panel-grid">
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Entrada</p>
+          <h2>{% if kind == "vaso" %}Parâmetros do vaso{% else %}Parâmetros da luminária{% endif %}</h2>
+        </div>
+        <span class="panel-badge">Projeto editável</span>
+      </div>
+
+      {% if error %}
+        <p class="error">{{ error }}</p>
+      {% endif %}
+
+      <div class="parametric-help-grid">
+        {% if kind == "vaso" %}
+          <article class="metric-card">
+            <span>Proporção</span>
+            <strong>Boca, base e altura</strong>
+            <span>Define a silhueta principal e a estabilidade do vaso.</span>
+          </article>
+          <article class="metric-card">
+            <span>Estrutura</span>
+            <strong>Parede, fundo e torção</strong>
+            <span>Controla rigidez, peso, presença visual e tempo de impressão.</span>
+          </article>
+        {% else %}
+          <article class="metric-card">
+            <span>Luz</span>
+            <strong>Rasgos e margens</strong>
+            <span>Controla vazamento de luz, sombras e resistência da cúpula.</span>
+          </article>
+          <article class="metric-card">
+            <span>Montagem</span>
+            <strong>Base, folga e trava</strong>
+            <span>Define como a luminária encaixa sem se soltar durante o uso.</span>
+          </article>
+        {% endif %}
+      </div>
+
+      <form method="post" class="form-grid parametric-form" data-parametric-form data-kind="{{ kind }}">
+        <input type="hidden" name="kind" value="{{ kind }}">
+        {% if active_preset_key %}
+          <input type="hidden" name="preset" value="{{ active_preset_key }}">
+        {% endif %}
+
+        <div class="form-section full">
+          <h3>Base geométrica</h3>
+          <p>{% if kind == "vaso" %}Esses campos definem a forma principal da peça e sua proporção geral.{% else %}Esses campos definem o corpo principal da cúpula e a leitura geral da peça.{% endif %}</p>
+        </div>
+
+        {% if kind == "vaso" %}
+          <label>
+            Perfil
+            <select name="profile_style" data-preview-field="profile_style">
+              {% for option in vase_profile_options %}
+                <option value="{{ option }}" {% if form_data['profile_style'] == option %}selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        {% else %}
+          <label>
+            Padrão principal
+            <select name="pattern_style" data-preview-field="pattern_style">
+              {% for option in lamp_pattern_options %}
+                <option value="{{ option }}" {% if form_data['pattern_style'] == option %}selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        {% endif %}
+
+        <label>
+          Textura
+          <select name="texture_style" data-preview-field="texture_style">
+            {% for option in texture_options %}
+              <option value="{{ option }}" {% if form_data['texture_style'] == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>
+          Altura (mm)
+          <input type="number" name="height_mm" min="1" step="0.1" value="{{ form_data['height_mm'] }}" required data-preview-field="height_mm">
+          <input type="range" min="80" max="420" step="1" value="{{ form_data['height_mm'] }}" data-range-for="height_mm">
+        </label>
+
+        <label>
+          Densidade do material (g/cm³)
+          <input type="number" name="density_g_cm3" min="0.1" step="0.01" value="{{ form_data['density_g_cm3'] }}" required>
+        </label>
+
+        <label>
+          Vazão de máquina (mm³/h)
+          <input type="number" name="output_mm3_per_hour" min="1" step="1" value="{{ form_data['output_mm3_per_hour'] }}" required>
+        </label>
+
+        <label>
+          Espessura de parede (mm)
+          <input type="number" name="wall_thickness_mm" min="0.8" step="0.1" value="{{ form_data['wall_thickness_mm'] }}" required data-preview-field="wall_thickness_mm">
+          <input type="range" min="1" max="6" step="0.1" value="{{ form_data['wall_thickness_mm'] }}" data-range-for="wall_thickness_mm">
+        </label>
+
+        {% if kind == "vaso" %}
+          <label>
+            Diâmetro superior (mm)
+            <input type="number" name="top_diameter_mm" min="1" step="0.1" value="{{ form_data['top_diameter_mm'] }}" required data-preview-field="top_diameter_mm">
+            <input type="range" min="60" max="320" step="1" value="{{ form_data['top_diameter_mm'] }}" data-range-for="top_diameter_mm">
+          </label>
+
+          <label>
+            Diâmetro da base (mm)
+            <input type="number" name="base_diameter_mm" min="1" step="0.1" value="{{ form_data['base_diameter_mm'] }}" required data-preview-field="base_diameter_mm">
+            <input type="range" min="40" max="260" step="1" value="{{ form_data['base_diameter_mm'] }}" data-range-for="base_diameter_mm">
+          </label>
+
+          <div class="form-section full">
+            <h3>Estrutura e acabamento</h3>
+            <p>Use para ajustar resistência, centro de gravidade e efeito escultural.</p>
+          </div>
+
+          <label>
+            Espessura do fundo (mm)
+            <input type="number" name="bottom_thickness_mm" min="0.8" step="0.1" value="{{ form_data['bottom_thickness_mm'] }}" required data-preview-field="bottom_thickness_mm">
+          </label>
+
+          <label>
+            Torção (graus)
+            <input type="number" name="twist_degrees" step="1" value="{{ form_data['twist_degrees'] }}" required data-preview-field="twist_degrees">
+            <input type="range" min="0" max="60" step="1" value="{{ form_data['twist_degrees'] }}" data-range-for="twist_degrees">
+          </label>
+
+          <div class="form-section full">
+            <h3>Textura e ritmo</h3>
+            <p>Esses campos servem para criar canelados, relevo e linguagem mais orgânica ou arquitetônica.</p>
+          </div>
+
+          <label>
+            Profundidade do canelado (mm)
+            <input type="number" name="rib_depth_mm" min="0" step="0.1" value="{{ form_data['rib_depth_mm'] }}" data-preview-field="rib_depth_mm">
+            <input type="range" min="0" max="8" step="0.1" value="{{ form_data['rib_depth_mm'] }}" data-range-for="rib_depth_mm">
+          </label>
+
+          <label>
+            Espessura do canelado (mm)
+            <input type="number" name="rib_width_mm" min="0" step="0.1" value="{{ form_data['rib_width_mm'] }}" data-preview-field="rib_width_mm">
+            <input type="range" min="0" max="24" step="0.1" value="{{ form_data['rib_width_mm'] }}" data-range-for="rib_width_mm">
+          </label>
+
+          <label>
+            Espaçamento do canelado (mm)
+            <input type="number" name="rib_spacing_mm" min="1" step="0.1" value="{{ form_data['rib_spacing_mm'] }}" data-preview-field="rib_spacing_mm">
+            <input type="range" min="2" max="30" step="0.1" value="{{ form_data['rib_spacing_mm'] }}" data-range-for="rib_spacing_mm">
+          </label>
+
+          <label>
+            Amplitude do perfil (mm)
+            <input type="number" name="wave_amplitude_mm" min="0" step="0.1" value="{{ form_data['wave_amplitude_mm'] }}" data-preview-field="wave_amplitude_mm">
+            <input type="range" min="0" max="30" step="0.1" value="{{ form_data['wave_amplitude_mm'] }}" data-range-for="wave_amplitude_mm">
+          </label>
+        {% else %}
+          <label>
+            Diâmetro externo (mm)
+            <input type="number" name="outer_diameter_mm" min="1" step="0.1" value="{{ form_data['outer_diameter_mm'] }}" required data-preview-field="outer_diameter_mm">
+            <input type="range" min="80" max="320" step="1" value="{{ form_data['outer_diameter_mm'] }}" data-range-for="outer_diameter_mm">
+          </label>
+
+          <div class="form-section full">
+            <h3>Padrão de luz</h3>
+            <p>Esses campos controlam o recorte luminoso e a rigidez lateral da cúpula.</p>
+          </div>
+
+          <label>
+            Quantidade de rasgos
+            <input type="number" name="slot_count" min="1" step="1" value="{{ form_data['slot_count'] }}" required data-preview-field="slot_count">
+          </label>
+
+          <label>
+            Largura do rasgo (mm)
+            <input type="number" name="slot_width_mm" min="1" step="0.1" value="{{ form_data['slot_width_mm'] }}" required data-preview-field="slot_width_mm">
+          </label>
+
+          <label>
+            Altura do rasgo (mm)
+            <input type="number" name="slot_height_mm" min="1" step="0.1" value="{{ form_data['slot_height_mm'] }}" required data-preview-field="slot_height_mm">
+          </label>
+
+          <label>
+            Margem superior (mm)
+            <input type="number" name="top_margin_mm" min="0" step="0.1" value="{{ form_data['top_margin_mm'] }}" required data-preview-field="top_margin_mm">
+          </label>
+
+          <label>
+            Margem inferior (mm)
+            <input type="number" name="bottom_margin_mm" min="0" step="0.1" value="{{ form_data['bottom_margin_mm'] }}" required data-preview-field="bottom_margin_mm">
+          </label>
+
+          <div class="form-section full">
+            <h3>Textura e identidade</h3>
+            <p>Use esta seção para dar assinatura visual à peça com relevo, canelado e símbolo frontal.</p>
+          </div>
+
+          <label>
+            Profundidade do canelado (mm)
+            <input type="number" name="rib_depth_mm" min="0" step="0.1" value="{{ form_data['rib_depth_mm'] }}" data-preview-field="rib_depth_mm">
+            <input type="range" min="0" max="8" step="0.1" value="{{ form_data['rib_depth_mm'] }}" data-range-for="rib_depth_mm">
+          </label>
+
+          <label>
+            Espessura do canelado (mm)
+            <input type="number" name="rib_width_mm" min="0" step="0.1" value="{{ form_data['rib_width_mm'] }}" data-preview-field="rib_width_mm">
+            <input type="range" min="0" max="18" step="0.1" value="{{ form_data['rib_width_mm'] }}" data-range-for="rib_width_mm">
+          </label>
+
+          <label>
+            Espaçamento do canelado (mm)
+            <input type="number" name="rib_spacing_mm" min="1" step="0.1" value="{{ form_data['rib_spacing_mm'] }}" data-preview-field="rib_spacing_mm">
+            <input type="range" min="2" max="24" step="0.1" value="{{ form_data['rib_spacing_mm'] }}" data-range-for="rib_spacing_mm">
+          </label>
+
+          <label>
+            Símbolo frontal
+            <select name="symbol_style" data-preview-field="symbol_style">
+              {% for option in symbol_options %}
+                <option value="{{ option }}" {% if form_data['symbol_style'] == option %}selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <label>
+            Escala do símbolo (%)
+            <input type="number" name="symbol_scale_percent" min="10" step="1" value="{{ form_data['symbol_scale_percent'] }}" data-preview-field="symbol_scale_percent">
+          </label>
+
+          <div class="form-section full">
+            <h3>Base e encaixe</h3>
+            <p>Use esta seção para projetar a união entre cúpula e base sem soltura durante o uso.</p>
+          </div>
+
+          <div class="parametric-section-highlight full">
+            <strong>Configuração da base da luminária</strong>
+            <span>É aqui que você ajusta a base e o engate mecânico para a cúpula não se desprender.</span>
+          </div>
+
+          <label>
+            Altura da base (mm)
+            <input type="number" name="base_height_mm" min="1" step="0.1" value="{{ form_data['base_height_mm'] }}" required data-preview-field="base_height_mm">
+          </label>
+
+          <label>
+            Diâmetro externo da base (mm)
+            <input type="number" name="base_outer_diameter_mm" min="1" step="0.1" value="{{ form_data['base_outer_diameter_mm'] }}" required data-preview-field="base_outer_diameter_mm">
+          </label>
+
+          <label>
+            Folga de montagem (mm)
+            <input type="number" name="fit_clearance_mm" min="0.1" step="0.01" value="{{ form_data['fit_clearance_mm'] }}" required data-preview-field="fit_clearance_mm">
+          </label>
+
+          <label>
+            Profundidade de engate (mm)
+            <input type="number" name="fit_overlap_mm" min="1" step="0.1" value="{{ form_data['fit_overlap_mm'] }}" required data-preview-field="fit_overlap_mm">
+          </label>
+
+          <label>
+            Trava anti-soltura (mm)
+            <input type="number" name="lock_lip_mm" min="0.2" step="0.1" value="{{ form_data['lock_lip_mm'] }}" required data-preview-field="lock_lip_mm">
+          </label>
+
+          <label>
+            Furo do soquete/cabo (mm)
+            <input type="number" name="socket_hole_diameter_mm" min="1" step="0.1" value="{{ form_data['socket_hole_diameter_mm'] }}" required data-preview-field="socket_hole_diameter_mm">
+          </label>
+        {% endif %}
+
+        <div class="button-row full">
+          <button type="submit">Gerar modelo</button>
+          {% if active_preset_key %}
+            <a class="action-link" href="{{ url_for('parametric_models', kind=kind, preset=active_preset_key) }}">Limpar resultado</a>
+          {% else %}
+            <a class="action-link" href="{{ url_for('parametric_models', kind=kind) }}">Limpar resultado</a>
+          {% endif %}
+        </div>
+      </form>
+    </article>
+
+    <article class="panel result-panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Saída</p>
+          <h2>{% if result %}{{ result["title"] }}{% else %}Resumo técnico{% endif %}</h2>
+          <p class="subtitle result-subtitle">
+            {% if result %}
+              {{ result["subtitle"] }}
+            {% else %}
+              Gere um preset ou ajuste as medidas para ver a estimativa de material, tempo e o código paramétrico.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div
+        class="parametric-preview-card accent-panel"
+        data-parametric-preview
+        data-kind="{{ kind }}"
+      >
+        <div class="panel-header">
+          <div>
+            <h3>Preview técnico ao vivo</h3>
+            <p class="subtitle result-subtitle">A leitura abaixo responde enquanto você altera as medidas no formulário.</p>
+          </div>
+          <span class="panel-badge">Prévia 2D</span>
+        </div>
+        <div class="parametric-preview-stage">
+          <div class="parametric-preview-split">
+            <div class="parametric-preview-pane">
+              <svg viewBox="0 0 320 320" aria-label="Pré-visualização paramétrica">
+                <rect x="0" y="0" width="320" height="320" rx="28" class="preview-bg"></rect>
+                <g data-preview-scene></g>
+              </svg>
+            </div>
+            <div class="parametric-preview-pane preview-3d-pane">
+              <canvas
+                width="320"
+                height="320"
+                aria-label="Preview 3D"
+                data-preview-3d
+              ></canvas>
+              <div class="preview-3d-hint">Arraste para girar</div>
+            </div>
+          </div>
+        </div>
+        <dl class="result-list parametric-inline-metrics">
+          <div>
+            <dt>Leitura atual</dt>
+            <dd data-preview-status>{% if kind == "vaso" %}Perfil com boca aberta e base estável{% else %}Cúpula com base de encaixe central{% endif %}</dd>
+          </div>
+          <div>
+            <dt>{% if kind == "vaso" %}Relação base/boca{% else %}Folga calculada{% endif %}</dt>
+            <dd data-preview-ratio>--</dd>
+          </div>
+          <div>
+            <dt>Linguagem</dt>
+            <dd data-preview-style>--</dd>
+          </div>
+        </dl>
+      </div>
+
+      {% if result %}
+        <dl class="result-list">
+          {% for item in result["metrics"] %}
+            <div>
+              <dt>{{ item["label"] }}</dt>
+              <dd>{{ item["value"] }}</dd>
+            </div>
+          {% endfor %}
+        </dl>
+
+        <div class="parametric-notes">
+          <h3>Leitura de fabricação</h3>
+          <ul class="check-list">
+            {% for note in result["notes"] %}
+              <li>{{ note }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="parametric-code-block">
+          <div class="panel-header">
+            <h3>OpenSCAD base</h3>
+            <span class="panel-badge">Copiar e exportar STL</span>
+          </div>
+          <pre><code>{{ result["scad_code"] }}</code></pre>
+        </div>
+      {% else %}
+        <p class="empty">Nenhum modelo calculado ainda.</p>
+      {% endif %}
+
+      <div class="parametric-notes">
+        <h3>O que cada grupo faz</h3>
+        <ul class="check-list">
+          {% if kind == "vaso" %}
+            <li><strong>Altura, boca e base:</strong> definem presença visual, volume interno e estabilidade.</li>
+            <li><strong>Parede e fundo:</strong> controlam peso, resistência e sensação de solidez.</li>
+            <li><strong>Torção:</strong> altera a leitura escultórica e pode aumentar o tempo de impressão.</li>
+            <li><strong>Perfil, canelado e amplitude:</strong> mudam a linguagem formal do vaso, do clássico ao orgânico.</li>
+            <li><strong>Densidade e vazão:</strong> servem para estimar peso em gramas e horas de máquina.</li>
+          {% else %}
+            <li><strong>Diâmetro, altura e parede:</strong> definem o corpo principal da cúpula.</li>
+            <li><strong>Rasgos e margens:</strong> controlam o desenho da luz e a resistência lateral.</li>
+            <li><strong>Padrão, textura e símbolo:</strong> definem identidade visual, ritmo e ponto focal da luminária.</li>
+            <li><strong>Base, folga e engate:</strong> definem como a cúpula monta na base sem ficar frouxa.</li>
+            <li><strong>Trava e furo central:</strong> ajudam a evitar desprendimento e acomodam soquete ou cabo.</li>
+          {% endif %}
+        </ul>
+      </div>
+    </article>
+  </section>
+{% endblock %}
