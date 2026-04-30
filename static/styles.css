@@ -4297,15 +4297,15 @@ th {
   }
 
   .customer-document-page .document-table tr {
-    padding: 0.45rem 0;
+    padding: 0.62rem 0.1rem;
     border-bottom: 1px solid #d4d9df;
   }
 
   .customer-document-page .document-table td {
     display: grid;
-    grid-template-columns: 6.5rem minmax(0, 1fr);
-    gap: 0.45rem;
-    padding: 0.18rem 0;
+    grid-template-columns: 5.1rem minmax(0, 1fr);
+    gap: 0.38rem;
+    padding: 0.16rem 0;
     border-bottom: 0;
     font-weight: 700;
   }
@@ -4313,9 +4313,59 @@ th {
   .customer-document-page .document-table td::before {
     content: attr(data-label);
     color: #68717d;
-    font-size: 0.62rem;
+    font-size: 0.58rem;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
+  }
+
+  .customer-document-page .document-table td:first-child {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+    padding-bottom: 0.38rem;
+    margin-bottom: 0.22rem;
+    border-bottom: 1px solid #e3e7ec;
+  }
+
+  .customer-document-page .document-table td:first-child::before {
+    font-size: 0.56rem;
+  }
+
+  .customer-document-page .document-table td:first-child > * {
+    grid-column: 1 / -1;
+  }
+
+  .customer-document-page .document-table .document-item-cell {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 0.18rem 0.55rem;
+  }
+
+  .customer-document-page .document-table .document-item-op {
+    font-size: 0.68rem;
+  }
+
+  .customer-document-page .document-table .document-item-description strong,
+  .customer-document-page .document-table .document-item-overflow {
+    font-size: 0.92rem;
+    line-height: 1.22;
+  }
+
+  .customer-document-page .document-table td:nth-child(2),
+  .customer-document-page .document-table td:nth-child(3),
+  .customer-document-page .document-table td:nth-child(4),
+  .customer-document-page .document-table td:nth-child(5),
+  .customer-document-page .document-table td:nth-child(6) {
+    align-items: center;
+  }
+
+  .customer-document-page .document-table td:nth-child(6) {
+    padding-top: 0.28rem;
+    margin-top: 0.14rem;
+    border-top: 1px dashed #d9dee5;
+    font-size: 0.9rem;
+  }
+
+  .customer-notes-list p {
+    overflow-wrap: anywhere;
   }
 
   .document-total {
