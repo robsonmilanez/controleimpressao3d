@@ -4285,166 +4285,20 @@ th {
     margin-top: 0.5rem;
   }
 
+  .customer-document-page {
+    min-width: 820px;
+  }
+
   .customer-document-page .document-header > div > p:last-child {
-    display: none;
-  }
-
-  .customer-document-page .document-header {
-    gap: 0.45rem;
-  }
-
-  .customer-document-page .document-header h1 {
-    font-size: 1.05rem;
-    line-height: 1.08;
-  }
-
-  .customer-document-page .document-header dl {
-    gap: 0.28rem;
-  }
-
-  .customer-document-page .document-header dt {
-    font-size: 0.58rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .customer-document-page .document-header dd {
-    font-size: 0.72rem;
-    font-weight: 700;
+    display: block;
   }
 
   .customer-document-page .document-grid {
-    grid-template-columns: 1fr;
-    gap: 0.38rem;
-  }
-
-  .customer-document-page .document-grid article {
-    padding: 0.48rem;
-  }
-
-  .customer-document-page .document-grid h2,
-  .customer-document-page .document-section h2 {
-    margin-bottom: 0.36rem;
-    font-size: 0.74rem;
-  }
-
-  .customer-document-page .document-grid p,
-  .customer-document-page .document-section p,
-  .customer-document-page .document-total p {
-    font-size: 0.8rem;
-    line-height: 1.28;
-  }
-
-  .customer-document-page .customer-document-table,
-  .customer-document-page .customer-document-table thead,
-  .customer-document-page .customer-document-table tbody,
-  .customer-document-page .customer-document-table tr,
-  .customer-document-page .customer-document-table th,
-  .customer-document-page .customer-document-table td {
-    display: block;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .customer-document-page .customer-document-table colgroup,
-  .customer-document-page .customer-document-table thead {
-    display: none;
-  }
-
-  .customer-document-page .customer-document-table tbody {
-    display: grid;
-    gap: 0.55rem;
-  }
-
-  .customer-document-page .customer-document-table tr {
-    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.4rem 0.6rem;
-    padding: 0.6rem;
-    border: 1px solid #dde3ea;
-    border-radius: 10px;
-    background: #fafbfd;
   }
 
-  .customer-document-page .customer-document-table td {
-    padding: 0;
-    border: 0;
-    font-size: 0.8rem;
-    font-weight: 700;
-    line-height: 1.25;
-  }
-
-  .customer-document-page .customer-document-table td::before {
-    content: attr(data-label);
-    display: block;
-    margin-bottom: 0.12rem;
-    color: #7a8592;
-    font-size: 0.56rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .customer-document-page .customer-document-table td:first-child {
-    grid-column: 1 / -1;
-    padding-bottom: 0.46rem;
-    border-bottom: 1px solid #e2e7ed;
-  }
-
-  .customer-document-page .customer-document-table td:first-child::before {
-    margin-bottom: 0.28rem;
-  }
-
-  .customer-document-page .customer-document-table .document-item-cell {
-    grid-template-columns: 1fr;
-    gap: 0.18rem;
-  }
-
-  .customer-document-page .customer-document-table .document-item-op {
-    display: inline-flex;
-    align-items: center;
-    width: fit-content;
-    padding: 0.12rem 0.38rem;
-    border-radius: 999px;
-    background: #eef3f8;
-    color: #53606d;
-    font-size: 0.62rem;
-    letter-spacing: 0.03em;
-    text-decoration: none;
-  }
-
-  .customer-document-page .customer-document-table .document-item-description strong,
-  .customer-document-page .customer-document-table .document-item-overflow {
-    font-size: 0.86rem;
-    line-height: 1.24;
-  }
-
-  .customer-document-page .customer-document-table td:nth-child(2),
-  .customer-document-page .customer-document-table td:nth-child(3),
-  .customer-document-page .customer-document-table td:nth-child(4),
-  .customer-document-page .customer-document-table td:nth-child(5) {
-    text-align: left;
-  }
-
-  .customer-document-page .customer-document-table td:nth-child(6) {
-    grid-column: 1 / -1;
-    margin-top: 0.05rem;
-    padding-top: 0.42rem;
-    border-top: 1px dashed #d6dde5;
-    text-align: right;
-    font-size: 0.94rem;
-  }
-
-  .customer-document-page .document-total {
-    width: 100%;
-  }
-
-  .customer-document-page .document-total div {
-    align-items: baseline;
-  }
-
-  .customer-document-page .document-total strong {
-    font-size: 1.06rem;
+  .customer-document-page .customer-document-table {
+    min-width: 760px;
   }
 
   .customer-notes-list p {
