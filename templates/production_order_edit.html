@@ -83,7 +83,7 @@
           <tbody>
             {% if service_lines %}
               {% for service in service_lines %}
-                <tr>
+                <tr id="op-{{ service['production_order_number'] }}">
                   <td>{{ service["service_name"] }}</td>
                   <td>{{ service["quantity"]|br_decimal }}</td>
                   <td>R$ {{ service["unit_price"]|br_money }}</td>
