@@ -159,7 +159,6 @@
                       <div class="job-item-layout">
                         <span class="job-item-production-number">OP {{ item_line['production_order_number'] }}</span>
                         <strong>{{ item_line['name'] }}</strong>
-                        <a class="action-link job-item-op-link" href="{{ url_for('job_production_document', job_id=job['id']) }}#op-{{ item_line['production_order_number'] }}">Abrir OP</a>
                       </div>
                     </td>
                     <td data-label="Qtde">{{ item_line['quantity']|br_decimal }} un</td>
@@ -169,7 +168,7 @@
                       <div class="job-value-cell">
                         <span>R$ {{ item_line['total_price']|br_money }}</span>
                         {% if loop.last %}
-                          <span class="job-order-total-note">Total do pedido: R$ {{ job["suggested_price"]|br_money }}</span>
+                          <span class="job-order-total-note">Total do pedido - R$ {{ job["suggested_price"]|br_money }}</span>
                         {% endif %}
                       </div>
                     </td>

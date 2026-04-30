@@ -999,47 +999,42 @@ input[type="range"]:focus {
 
 .jobs-list-table th:nth-child(1),
 .jobs-list-table td:nth-child(1) {
-  width: 12.5rem;
+  width: 11.5rem;
 }
 
 .jobs-list-table th:nth-child(2),
 .jobs-list-table td:nth-child(2) {
-  width: 6.5rem;
+  width: 6rem;
 }
 
 .jobs-list-table th:nth-child(3),
 .jobs-list-table td:nth-child(3) {
-  width: 15rem;
+  width: 13.5rem;
 }
 
 .jobs-list-table th:nth-child(4),
 .jobs-list-table td:nth-child(4) {
-  width: 40rem;
+  width: 46rem;
 }
 
 .jobs-list-table th:nth-child(5),
 .jobs-list-table td:nth-child(5) {
-  width: 7rem;
+  width: 6rem;
 }
 
 .jobs-list-table th:nth-child(6),
 .jobs-list-table td:nth-child(6) {
-  width: 8rem;
+  width: 7rem;
 }
 
 .jobs-list-table th:nth-child(7),
 .jobs-list-table td:nth-child(7) {
-  width: 6rem;
+  width: 5.5rem;
 }
 
 .jobs-list-table th:nth-child(8),
 .jobs-list-table td:nth-child(8) {
-  width: 7rem;
-}
-
-.jobs-list-table th:nth-child(9),
-.jobs-list-table td:nth-child(9) {
-  width: 8rem;
+  width: 8.5rem;
 }
 
 .jobs-list-table td[data-label="Cliente"],
@@ -1091,8 +1086,8 @@ input[type="range"]:focus {
 
 .job-item-layout {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 0.35rem 0.6rem;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 0.25rem 0.65rem;
   align-items: start;
 }
 
@@ -1115,18 +1110,10 @@ input[type="range"]:focus {
   white-space: nowrap;
 }
 
-.job-item-op-link {
-  grid-column: 3;
-  align-self: start;
-  min-height: 28px;
-  padding-inline: 0.55rem;
-  white-space: nowrap;
-}
-
 .job-value-cell {
   display: grid;
-  gap: 0.45rem;
-  justify-items: center;
+  gap: 0.2rem;
+  justify-items: end;
 }
 
 .job-order-total-note {
@@ -1134,8 +1121,8 @@ input[type="range"]:focus {
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.2;
-  white-space: normal;
-  text-align: center;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .material-row {
@@ -2971,7 +2958,7 @@ th {
 }
 
 .customer-document-page .customer-document-table .customer-col-item {
-  width: 56%;
+  width: 60%;
 }
 
 .customer-document-page .customer-document-table .customer-col-qty {
@@ -2979,27 +2966,27 @@ th {
 }
 
 .customer-document-page .customer-document-table .customer-col-unit {
-  width: 9%;
+  width: 8%;
 }
 
 .customer-document-page .customer-document-table .customer-col-add,
 .customer-document-page .customer-document-table .customer-col-discount {
-  width: 8%;
+  width: 7%;
 }
 
 .customer-document-page .customer-document-table .customer-col-total {
-  width: 15%;
+  width: 14%;
 }
 
 .customer-document-page .customer-document-table th,
 .customer-document-page .customer-document-table td {
-  padding: 0.38rem 0.18rem;
+  padding: 0.34rem 0.14rem;
   font-size: 0.78rem;
 }
 
 .customer-document-page .customer-document-table th {
   font-size: 0.72rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.03em;
 }
 
 .customer-document-page .customer-document-table td:first-child {
@@ -3008,8 +2995,8 @@ th {
 
 .document-item-cell {
   display: grid;
-  grid-template-columns: 78px minmax(0, 1fr);
-  gap: 0.2rem 0.45rem;
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: 0.18rem 0.42rem;
   align-items: start;
 }
 
