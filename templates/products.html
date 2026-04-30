@@ -55,7 +55,7 @@
           <table class="responsive-table">
             <thead>
               <tr>
-                <th>Editar</th>
+                <th>Acoes</th>
                 <th>
                   <div class="table-header-filter">
                     <span class="sortable-header">
@@ -139,8 +139,11 @@
             <tbody>
               {% for item in products %}
                 <tr>
-                  <td data-label="Editar">
-                    <a class="action-link" href="{{ url_for('edit_product', product_id=item['id']) }}">Editar</a>
+                  <td data-label="Acoes">
+                    <div class="action-group">
+                      <a class="action-link" href="{{ url_for('edit_product', product_id=item['id']) }}">Editar</a>
+                      <a class="action-link" href="{{ url_for('product_purchase_document', product_id=item['id']) }}">PDF</a>
+                    </div>
                   </td>
                   <td data-label="Codigo">{{ item["sku"] or "-" }}</td>
                   <td data-label="Produto">

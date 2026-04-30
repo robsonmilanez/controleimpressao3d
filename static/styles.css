@@ -894,7 +894,8 @@ input[type="range"]:focus {
     minmax(78px, 0.52fr)
     minmax(620px, 4fr)
     minmax(170px, 1.2fr)
-    repeat(4, minmax(132px, 0.8fr));
+    repeat(4, minmax(132px, 0.8fr))
+    minmax(118px, 0.78fr);
   gap: 0.65rem;
   padding: 0.85rem;
   border-radius: 14px;
@@ -935,6 +936,16 @@ input[type="range"]:focus {
 .job-form-compact .service-value-field,
 .job-form-compact .service-total-field {
   width: 100%;
+}
+
+.job-form-compact .service-remove-field {
+  width: 100%;
+}
+
+.job-form-compact .service-remove-field .remove-row-button {
+  width: 100%;
+  min-height: 48px;
+  justify-content: center;
 }
 
 .job-form-compact .service-line-total {
@@ -4083,7 +4094,8 @@ th {
       minmax(78px, 0.52fr)
       minmax(420px, 3fr)
       minmax(96px, 0.58fr)
-      repeat(4, minmax(112px, 0.76fr));
+      repeat(4, minmax(112px, 0.76fr))
+      minmax(108px, 0.72fr);
     align-items: end;
   }
 

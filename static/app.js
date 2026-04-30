@@ -1868,6 +1868,9 @@ function setupJobInlineTotals() {
             itemNameField?.value ||
             selectedProductOption?.textContent?.trim() ||
             "";
+          if (itemNameField) {
+            itemNameField.value = resolvedItemName;
+          }
           if (serviceNameSync) {
             serviceNameSync.value = resolvedItemName;
           }
@@ -2184,6 +2187,76 @@ function setupJobInlineTotals() {
 }
 
 function setupJobCollections() {
+  const resetCollectionRowFields = (row, collectionName) => {
+    row.querySelectorAll("input, select, textarea").forEach((field) => {
+      if (field.tagName === "SELECT") {
+        field.selectedIndex = 0;
+        return;
+      }
+      if (field.name === "service_name") {
+        field.value = "";
+        return;
+      }
+      if (field.name === "product_id") {
+        field.selectedIndex = 0;
+        return;
+      }
+      if (field.name === "service_category") {
+        field.value = "";
+        return;
+      }
+      if (
+        field.name === "service_quantity" ||
+        field.name === "component_quantity"
+      ) {
+        field.value = collectionName === "services" ? "1" : "0";
+        return;
+      }
+      if (field.name === "product_material_part_name") {
+        field.value = "";
+        return;
+      }
+      if (field.name === "quantity" && collectionName === "services") {
+        field.value = "1";
+        return;
+      }
+      if (
+        field.name === "service_hours" ||
+        field.name === "service_unit_price" ||
+        field.classList.contains("service-category-display") ||
+        field.type === "number"
+      ) {
+        field.value = field.classList.contains("service-category-display") ? "" : "0";
+        return;
+      }
+      field.value = "";
+    });
+  };
+
+  const bindRemoveButton = (row, collection, collectionName) => {
+    const removeButton = row.querySelector(".remove-row-button");
+    if (!removeButton || removeButton.dataset.removeReady === "1") {
+      return;
+    }
+    removeButton.dataset.removeReady = "1";
+    removeButton.addEventListener("click", () => {
+      const rows = collection.querySelectorAll(".collection-row");
+      if (rows.length <= 1) {
+        resetCollectionRowFields(row, collectionName);
+      } else {
+        row.remove();
+      }
+      collection.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+
+  document.querySelectorAll("[data-collection]").forEach((collection) => {
+    const collectionName = collection.dataset.collection;
+    collection.querySelectorAll(".collection-row").forEach((row) => {
+      bindRemoveButton(row, collection, collectionName);
+    });
+  });
+
   const buttons = Array.from(document.querySelectorAll("[data-add-row]"));
   buttons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -2208,59 +2281,8 @@ function setupJobCollections() {
         select.removeAttribute("data-select-shortcut-ready");
         wrapper.replaceWith(select);
       });
-      row.querySelectorAll("input, select, textarea").forEach((field) => {
-        if (field.tagName === "SELECT") {
-          field.selectedIndex = 0;
-          return;
-        }
-        if (field.name === "service_name") {
-          field.value = "";
-          return;
-        }
-        if (field.name === "product_id") {
-          field.selectedIndex = 0;
-          return;
-        }
-        if (field.name === "service_category") {
-          field.value = "";
-          return;
-        }
-        if (
-          field.name === "service_quantity" ||
-          field.name === "component_quantity"
-        ) {
-          field.value = collectionName === "services" ? "1" : "0";
-          return;
-        }
-        if (field.name === "product_material_part_name") {
-          field.value = "";
-          return;
-        }
-        if (field.name === "quantity" && collectionName === "services") {
-          field.value = "1";
-          return;
-        }
-        if (
-          field.name === "service_hours" ||
-          field.name === "service_unit_price" ||
-          field.classList.contains("service-category-display") ||
-          field.type === "number"
-        ) {
-          field.value = field.classList.contains("service-category-display") ? "" : "0";
-          return;
-        }
-        field.value = "";
-      });
-
-      const removeButton = document.createElement("button");
-      removeButton.type = "button";
-      removeButton.className = "secondary-button remove-row-button";
-      removeButton.textContent = "Remover linha";
-      removeButton.addEventListener("click", () => {
-        row.remove();
-        collection.dispatchEvent(new Event("input", { bubbles: true }));
-      });
-      row.appendChild(removeButton);
+      resetCollectionRowFields(row, collectionName);
+      bindRemoveButton(row, collection, collectionName);
       collection.appendChild(row);
       setupSelectShortcuts(row);
       setupSearchableSelects(row);

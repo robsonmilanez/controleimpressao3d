@@ -11,7 +11,7 @@
       <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">PDF da ordem</a>
     </div>
     <p class="back-link-wrap">
-      <a class="back-link" href="{{ url_for('jobs') }}">‹ Voltar para pedidos/vendas</a>
+      <a class="back-link" href="{{ return_to or url_for('jobs') }}">‹ Voltar para pedidos/vendas</a>
     </p>
   </section>
 
@@ -28,6 +28,7 @@
         <p class="error">{{ error }}</p>
       {% endif %}
       <form method="post" class="form-grid job-form job-form-compact jobs-form-aligned" enctype="multipart/form-data">
+        <input type="hidden" name="return_to" value="{{ return_to or '' }}">
         <div class="job-topic-block commercial-topic-block full">
         <div class="form-section full">
           <h3>Dados comerciais</h3>
@@ -175,6 +176,9 @@
                 Total
                 <input type="text" class="service-line-total" value="R$ {{ (service['total_price'] if service else 0)|br_money }}" readonly>
               </label>
+              <div class="service-remove-field">
+                <button type="button" class="secondary-button remove-row-button">Excluir item</button>
+              </div>
               <input type="hidden" name="service_hours" value="{{ service['hours'] if service else 0 }}">
             </div>
           {% endfor %}

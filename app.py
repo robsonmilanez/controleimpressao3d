@@ -6348,7 +6348,10 @@ def sales_orders_query() -> str:
         "suggested_price",
     }
     effective_sort_key = sort_key if sort_key in valid_sort_keys else "created_at"
-    jobs = fetch_jobs(db, sort_key=effective_sort_key, sort_direction=sort_direction)
+    jobs = prepare_query_jobs(
+        db,
+        fetch_jobs(db, sort_key=effective_sort_key, sort_direction=sort_direction),
+    )
     filters = {
         "created_at": request.args.get("created_at", "").strip(),
         "job_number": request.args.get("job_number", "").strip(),
@@ -6362,7 +6365,7 @@ def sales_orders_query() -> str:
     def normalize(value: Any) -> str:
         return str(value or "").strip().lower()
 
-    def job_matches(job: sqlite3.Row) -> bool:
+    def job_matches(job: dict[str, Any]) -> bool:
         if filters["created_at"]:
             created_at_br = br_date(job["created_at"])
             if filters["created_at"] not in {created_at_br, str(job["created_at"] or "")[:10]}:
@@ -6389,7 +6392,7 @@ def sales_orders_query() -> str:
             return False
         return True
 
-    filtered_jobs = prepare_query_jobs(db, [job for job in jobs if job_matches(job)])
+    filtered_jobs = [job for job in jobs if job_matches(job)]
     return render_template(
         "sales_orders.html",
         jobs=filtered_jobs,
@@ -6571,15 +6574,17 @@ def production_orders() -> str:
         sort_direction = "desc"
     valid_sort_keys = {"id", "customer_display", "item_name", "status", "printer_name"}
     effective_sort_key = sort_key if sort_key in valid_sort_keys else "id"
-    jobs = fetch_jobs(db, sort_key=effective_sort_key, sort_direction=sort_direction)
+    jobs = prepare_query_jobs(
+        db,
+        fetch_jobs(db, sort_key=effective_sort_key, sort_direction=sort_direction),
+    )
     filtered_jobs, job_filters = filter_records_by_keys(
         jobs,
         ["id", "customer_display", "item_name", "status", "printer_name"],
     )
-    prepared_jobs = prepare_query_jobs(db, filtered_jobs)
     return render_template(
         "production_orders.html",
-        jobs=prepared_jobs,
+        jobs=filtered_jobs,
         sort_key=effective_sort_key,
         sort_direction=sort_direction,
         sort_urls=build_sort_urls(
@@ -7544,9 +7549,8 @@ def save_job_commercial_data(
     detail: dict[str, Any],
 ) -> None:
     customer_id = parse_integerish(request.form.get("customer_id"))
-    item_name = request.form.get("item_name", "").strip()
     status = request.form.get("status", "").strip()
-    if not customer_id or not item_name or not status:
+    if not customer_id or not status:
         raise ValueError("Campos comerciais obrigatorios ausentes.")
     customer = db.execute(
         "SELECT * FROM customers WHERE id = ?",
@@ -7555,6 +7559,16 @@ def save_job_commercial_data(
     if customer is None:
         raise ValueError("Cliente invalido para atualizacao comercial.")
     service_lines = build_job_service_lines(db)
+    item_name = next(
+        (
+            str(line.get("service_name") or "").strip()
+            for line in service_lines
+            if str(line.get("service_name") or "").strip()
+        ),
+        request.form.get("item_name", "").strip(),
+    )
+    if not item_name:
+        raise ValueError("Preencha cliente, status e descricao do item antes de salvar o pedido.")
     material_lines = build_job_material_lines(db)
     component_lines = build_job_component_lines(db)
     material_lines, component_lines, resolved_product = apply_product_defaults_to_job_lines(
@@ -7759,6 +7773,7 @@ def save_job_commercial_data(
 @app.route("/jobs/<int:job_id>/edit", methods=["GET", "POST"])
 def edit_job(job_id: int) -> str:
     db = get_db()
+    return_to = request.values.get("return_to", "").strip()
     references = fetch_reference_data(db)
     materials_list = db.execute(
         """
@@ -7794,9 +7809,10 @@ def edit_job(job_id: int) -> str:
                     printers=references["printers"],
                     filament_dryers=references["filament_dryers"],
                     today_date=date.today().isoformat(),
+                    return_to=return_to,
                     error=str(error),
                 )
-            return redirect(url_for("edit_job", job_id=job_id))
+            return redirect(return_to or url_for("jobs"))
 
         customer_id = parse_integerish(request.form.get("customer_id"))
         item_name = request.form.get("item_name", "").strip()
@@ -7817,6 +7833,7 @@ def edit_job(job_id: int) -> str:
                 printers=references["printers"],
                 filament_dryers=references["filament_dryers"],
                 today_date=date.today().isoformat(),
+                return_to=return_to,
                 error="Preencha cliente, status e descrição do item antes de salvar o pedido.",
             )
 
@@ -7840,6 +7857,7 @@ def edit_job(job_id: int) -> str:
                 printers=references["printers"],
                 filament_dryers=references["filament_dryers"],
                 today_date=date.today().isoformat(),
+                return_to=return_to,
                 error="Selecione um cliente valido antes de salvar o pedido.",
             )
         try:
@@ -8074,7 +8092,7 @@ def edit_job(job_id: int) -> str:
                 )
             save_job_photos(job_id)
             db.commit()
-            return redirect(url_for("jobs"))
+            return redirect(return_to or url_for("jobs"))
         except ValueError as error:
             db.rollback()
             return render_template(
@@ -8092,6 +8110,7 @@ def edit_job(job_id: int) -> str:
                 printers=references["printers"],
                 filament_dryers=references["filament_dryers"],
                 today_date=date.today().isoformat(),
+                return_to=return_to,
                 error=str(error),
             )
 
@@ -8110,6 +8129,7 @@ def edit_job(job_id: int) -> str:
         printers=references["printers"],
         filament_dryers=references["filament_dryers"],
         today_date=date.today().isoformat(),
+        return_to=return_to,
     )
 
 
