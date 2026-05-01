@@ -3414,6 +3414,7 @@ def summarize_cost_lines(
         "suggested_price": round(sale_total, 2),
         "profit": round(sale_total - total_cost, 2),
         "total_weight": round(total_weight, 2),
+        "total_weight_grams": round(total_weight, 2),
         "total_print_hours": round(total_print_hours, 2),
         "total_dryer_hours": round(total_dryer_hours, 2),
         "component_count": round(component_count, 2),
