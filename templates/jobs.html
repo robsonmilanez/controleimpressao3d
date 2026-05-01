@@ -40,10 +40,12 @@
             </label>
             <label>
               Status
-              <select name="status">
+              <select name="status" data-new-url="{{ url_for('registry_page', section='order-statuses', return_to=url_for('jobs')) }}">
+                <option value="">Nenhum</option>
                 {% for status in statuses %}
-                  <option>{{ status }}</option>
+                  <option value="{{ status['name'] }}" {% if request.args.get('selected_order_status') == status['name'] %}selected{% endif %}>{{ status["name"] }}</option>
                 {% endfor %}
+                <option value="__new__">+ Novo status</option>
               </select>
             </label>
           </div>

@@ -37,11 +37,12 @@ PRODUCT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 BOOTSTRAP_CORE_TABLES = ("customers", "jobs", "materials", "products", "printers")
 
-JOB_STATUSES = [
+ORDER_STATUS_DEFAULTS = [
     "Orcamento",
     "Aguardando aprovacao",
     "Aprovado",
     "Producao",
+    "Producao para estoque",
     "Pos-processo",
     "Pronto para entrega",
     "Entregue",
@@ -334,6 +335,12 @@ def init_db() -> None:
         );
 
         CREATE TABLE IF NOT EXISTS sales_channels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            notes TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS order_statuses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             notes TEXT
@@ -837,6 +844,7 @@ def init_db() -> None:
     ensure_column(db, "jobs", "created_at", "TEXT")
     ensure_column(db, "payment_terms", "notes", "TEXT")
     ensure_column(db, "sales_channels", "notes", "TEXT")
+    ensure_column(db, "order_statuses", "notes", "TEXT")
     db.execute(
         "UPDATE jobs SET created_at = ? WHERE created_at IS NULL OR created_at = ''",
         (date.today().isoformat(),),
@@ -870,6 +878,7 @@ def init_db() -> None:
     )
     seed_payment_terms(db)
     seed_sales_channels(db)
+    seed_order_statuses(db)
     seed_material_types(db)
     refresh_zero_component_unit_costs(db)
 
@@ -923,6 +932,20 @@ def seed_sales_channels(db: sqlite3.Connection) -> None:
             )
             """,
             (channel, channel),
+        )
+
+
+def seed_order_statuses(db: sqlite3.Connection) -> None:
+    for status in ORDER_STATUS_DEFAULTS:
+        db.execute(
+            """
+            INSERT INTO order_statuses (name)
+            SELECT ?
+            WHERE NOT EXISTS (
+                SELECT 1 FROM order_statuses WHERE LOWER(name) = LOWER(?)
+            )
+            """,
+            (status, status),
         )
 
 
@@ -3489,6 +3512,9 @@ def fetch_reference_data(db: sqlite3.Connection) -> dict[str, list[sqlite3.Row]]
         "sales_channels": db.execute(
             "SELECT * FROM sales_channels ORDER BY name ASC"
         ).fetchall(),
+        "order_statuses": db.execute(
+            "SELECT * FROM order_statuses ORDER BY name ASC"
+        ).fetchall(),
         "material_types": db.execute(
             "SELECT * FROM material_types ORDER BY name ASC"
         ).fetchall(),
@@ -3600,6 +3626,12 @@ def build_registry_menu(
                     "label": "Canais de venda",
                     "count": len(references["sales_channels"]),
                     "href": url_for("registry_page", section="sales-channels"),
+                },
+                {
+                    "icon": "◔",
+                    "label": "Status do pedido",
+                    "count": len(references["order_statuses"]),
+                    "href": url_for("registry_page", section="order-statuses"),
                 },
             ],
         },
@@ -3720,6 +3752,17 @@ def handle_registry_submission(db: sqlite3.Connection, section: str) -> int | No
         cursor = db.execute(
             """
             INSERT INTO sales_channels (name, notes)
+            VALUES (?, ?)
+            """,
+            (
+                request.form["name"].strip(),
+                request.form["notes"].strip(),
+            ),
+        )
+    elif section == "order-statuses":
+        cursor = db.execute(
+            """
+            INSERT INTO order_statuses (name, notes)
             VALUES (?, ?)
             """,
             (
@@ -4426,6 +4469,31 @@ def get_registry_page_context(
                 for row in references["sales_channels"]
             ],
         },
+        "order-statuses": {
+            "eyebrow": "Cadastros",
+            "title": "Cadastro de status do pedido",
+            "description": "Padronize os status usados em pedidos, vendas e produção para poder ampliar a lista quando quiser.",
+            "panel_kicker": "Comercial",
+            "panel_title": "Status do pedido",
+            "panel_badge": f"{len(references['order_statuses'])} cadastrados",
+            "submit_label": "Salvar status",
+            "fields": [
+                {"name": "name", "label": "Status do pedido", "type": "text", "required": True, "placeholder": "Orcamento, Producao, Producao para estoque..."},
+                {"name": "notes", "label": "Observações", "type": "textarea", "full": True},
+            ],
+            "columns": [
+                {"key": "name", "label": "Status"},
+                {"key": "notes", "label": "Observações"},
+            ],
+            "records": [
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "notes": row["notes"] or "-",
+                }
+                for row in references["order_statuses"]
+            ],
+        },
         "material-types": {
             "eyebrow": "Cadastros",
             "title": "Cadastro de tipos de filamento",
@@ -4682,6 +4750,7 @@ SIMPLE_REGISTRY_TABLES = {
     "partner-stores": "partner_stores",
     "payment-terms": "payment_terms",
     "sales-channels": "sales_channels",
+    "order-statuses": "order_statuses",
     "material-types": "material_types",
 }
 
@@ -4839,6 +4908,19 @@ def handle_registry_update(
         db.execute(
             """
             UPDATE sales_channels
+            SET name = ?, notes = ?
+            WHERE id = ?
+            """,
+            (
+                request.form["name"].strip(),
+                request.form["notes"].strip(),
+                record_id,
+            ),
+        )
+    elif section == "order-statuses":
+        db.execute(
+            """
+            UPDATE order_statuses
             SET name = ?, notes = ?
             WHERE id = ?
             """,
@@ -5146,6 +5228,12 @@ def registry_page(section: str) -> str:
                         append_query_value(
                             return_to, "selected_sale_channel", created_name
                         )
+                    )
+            if section == "order-statuses":
+                created_name = request.form.get("name", "").strip()
+                if created_name:
+                    return redirect(
+                        append_query_value(return_to, "selected_order_status", created_name)
                     )
             if section == "material-types":
                 created_name = request.form.get("name", "").strip()
@@ -7048,7 +7136,7 @@ def jobs() -> str:
     if request.method == "POST":
         customer_id = parse_integerish(request.form.get("customer_id"))
         item_name = request.form.get("item_name", "").strip()
-        status = request.form.get("status", "").strip()
+        status = normalize_shortcut_value(request.form.get("status"))
         if not customer_id or not item_name or not status:
             jobs_list = fetch_jobs(db)
             return render_template(
@@ -7057,7 +7145,7 @@ def jobs() -> str:
                 materials=materials_list,
                 components=references["components"],
                 products=references["products"],
-                statuses=JOB_STATUSES,
+                statuses=references["order_statuses"],
                 error="Preencha cliente, status e descrição do item antes de salvar o pedido.",
                 customers=references["customers"],
                 representatives=references["representatives"],
@@ -7083,7 +7171,7 @@ def jobs() -> str:
                 materials=materials_list,
                 components=references["components"],
                 products=references["products"],
-                statuses=JOB_STATUSES,
+                statuses=references["order_statuses"],
                 error="Selecione um cliente valido antes de salvar o pedido.",
                 customers=references["customers"],
                 representatives=references["representatives"],
@@ -7148,7 +7236,7 @@ def jobs() -> str:
                     materials=materials_list,
                     components=references["components"],
                     products=references["products"],
-                    statuses=JOB_STATUSES,
+                    statuses=references["order_statuses"],
                     error="Estoque insuficiente para esse pedido.",
                     customers=references["customers"],
                     representatives=references["representatives"],
@@ -7481,7 +7569,7 @@ def jobs() -> str:
                 materials=materials_list,
                 components=references["components"],
                 products=references["products"],
-                statuses=JOB_STATUSES,
+                statuses=references["order_statuses"],
                 error=f"Erro ao salvar pedido: {error}",
                 customers=references["customers"],
                 representatives=references["representatives"],
@@ -7521,7 +7609,7 @@ def jobs() -> str:
         materials=materials_list,
         components=references["components"],
         products=references["products"],
-        statuses=JOB_STATUSES,
+        statuses=references["order_statuses"],
         error=None,
         customers=references["customers"],
         representatives=references["representatives"],
@@ -7810,7 +7898,7 @@ def save_job_commercial_data(
     detail: dict[str, Any],
 ) -> None:
     customer_id = parse_integerish(request.form.get("customer_id"))
-    status = request.form.get("status", "").strip()
+    status = normalize_shortcut_value(request.form.get("status"))
     if not customer_id or not status:
         raise ValueError("Campos comerciais obrigatorios ausentes.")
     customer = db.execute(
@@ -8066,7 +8154,7 @@ def edit_job(job_id: int) -> str:
                     materials=materials_list,
                     components=references["components"],
                     products=references["products"],
-                    statuses=JOB_STATUSES,
+                    statuses=references["order_statuses"],
                     customers=references["customers"],
                     representatives=references["representatives"],
                     partner_stores=references["partner_stores"],
@@ -8082,7 +8170,7 @@ def edit_job(job_id: int) -> str:
 
         customer_id = parse_integerish(request.form.get("customer_id"))
         item_name = request.form.get("item_name", "").strip()
-        status = request.form.get("status", "").strip()
+        status = normalize_shortcut_value(request.form.get("status"))
         if not customer_id or not item_name or not status:
             return render_template(
                 "job_edit.html",
@@ -8090,7 +8178,7 @@ def edit_job(job_id: int) -> str:
                 materials=materials_list,
                 components=references["components"],
                 products=references["products"],
-                statuses=JOB_STATUSES,
+                statuses=references["order_statuses"],
                 customers=references["customers"],
                 representatives=references["representatives"],
                 partner_stores=references["partner_stores"],
@@ -8114,7 +8202,7 @@ def edit_job(job_id: int) -> str:
                 materials=materials_list,
                 components=references["components"],
                 products=references["products"],
-                statuses=JOB_STATUSES,
+                statuses=references["order_statuses"],
                 customers=references["customers"],
                 representatives=references["representatives"],
                 partner_stores=references["partner_stores"],
@@ -8367,7 +8455,7 @@ def edit_job(job_id: int) -> str:
                 materials=materials_list,
                 components=references["components"],
                 products=references["products"],
-                statuses=JOB_STATUSES,
+                statuses=references["order_statuses"],
                 customers=references["customers"],
                 representatives=references["representatives"],
                 partner_stores=references["partner_stores"],
@@ -8386,7 +8474,7 @@ def edit_job(job_id: int) -> str:
         materials=materials_list,
         components=references["components"],
         products=references["products"],
-        statuses=JOB_STATUSES,
+        statuses=references["order_statuses"],
         customers=references["customers"],
         representatives=references["representatives"],
         partner_stores=references["partner_stores"],

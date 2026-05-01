@@ -45,10 +45,20 @@
           </label>
           <label>
             Status
-            <select name="status">
+            <select name="status" data-new-url="{{ url_for('registry_page', section='order-statuses', return_to=url_for('edit_job', job_id=job['id'])) }}">
+              {% set selected_order_status = request.args.get('selected_order_status', job['status']) %}
+              <option value="">Nenhum</option>
+              {% set order_status_ref = namespace(found=false) %}
               {% for status in statuses %}
-                <option {% if status == job["status"] %}selected{% endif %}>{{ status }}</option>
+                {% if status['name'] == selected_order_status %}
+                  {% set order_status_ref.found = true %}
+                {% endif %}
+                <option value="{{ status['name'] }}" {% if status['name'] == selected_order_status %}selected{% endif %}>{{ status["name"] }}</option>
               {% endfor %}
+              {% if selected_order_status and not order_status_ref.found %}
+                <option value="{{ selected_order_status }}" selected>{{ selected_order_status }}</option>
+              {% endif %}
+              <option value="__new__">+ Novo status</option>
             </select>
           </label>
         </div>
