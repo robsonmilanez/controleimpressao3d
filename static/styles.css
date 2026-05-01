@@ -2708,6 +2708,15 @@ th {
   border: 1px solid rgba(255, 69, 58, 0.18);
 }
 
+.warning {
+  margin: 0 0 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: 16px;
+  background: rgba(255, 159, 10, 0.14);
+  color: #ffd39a;
+  border: 1px solid rgba(255, 159, 10, 0.22);
+}
+
 .top-space {
   margin-top: 1.15rem;
 }

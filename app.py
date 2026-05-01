@@ -7204,16 +7204,9 @@ def jobs() -> str:
                 if line["component_id"] == component_id
             )
 
+            stock_warning = ""
             if status != "Orcamento" and (insufficient_material or insufficient_component):
-                return render_template(
-                    "jobs.html",
-                    **build_jobs_list_template_context(
-                        db,
-                        materials_list=materials_list,
-                        references=references,
-                        error=build_job_stock_error_message(material_lines, component_lines),
-                    ),
-                )
+                stock_warning = build_job_stock_error_message(material_lines, component_lines)
 
             extra_cost = parse_form_decimal(request.form.get("extra_cost"), "Custos extras")
             margin_percent = parse_form_number(request.form.get("margin_percent"), "Margem (%)")
@@ -7509,7 +7502,10 @@ def jobs() -> str:
             save_job_photos(job_id)
             refresh_job_production_totals(db, job_id)
             db.commit()
-            return redirect(url_for("jobs"))
+            redirect_url = url_for("jobs")
+            if stock_warning:
+                redirect_url = append_query_value(redirect_url, "warning", stock_warning)
+            return redirect(redirect_url)
         except Exception as error:
             db.rollback()
             app.logger.exception("Erro ao salvar pedido")
@@ -7550,32 +7546,17 @@ def jobs() -> str:
     )
     return render_template(
         "jobs.html",
-        jobs=prepared_jobs,
-        materials=materials_list,
-        components=references["components"],
-        products=references["products"],
-        statuses=references["order_statuses"],
-        error=None,
-        customers=references["customers"],
-        representatives=references["representatives"],
-        partner_stores=references["partner_stores"],
-        payment_terms=references["payment_terms"],
-        sales_channels=references["sales_channels"],
-        printers=references["printers"],
-        filament_dryers=references["filament_dryers"],
-        next_job_number=get_next_job_number(db),
-        today_date=date.today().isoformat(),
-        valid_until_date=(date.today() + timedelta(days=5)).isoformat(),
-        delete_error=request.args.get("delete_error", "").strip(),
-        sort_key=sort_key,
-        sort_direction=sort_direction,
-        filters=job_filters,
-        sort_urls=build_sort_urls(
-            endpoint="jobs",
-            column_keys=["id", "customer_display", "item_name", "quantity", "status", "due_date", "suggested_price"],
-            current_sort_key=sort_key,
-            current_sort_direction=sort_direction,
-            extra_params={f"filter_{key}": value for key, value in job_filters.items() if value},
+        **build_jobs_list_template_context(
+            db,
+            materials_list=materials_list,
+            references=references,
+            error=None,
+            warning=request.args.get("warning", "").strip(),
+            delete_error=request.args.get("delete_error", "").strip(),
+            sort_key=sort_key,
+            sort_direction=sort_direction,
+            filters=job_filters,
+            jobs_override=prepared_jobs,
         ),
     )
 
@@ -7778,6 +7759,7 @@ def build_jobs_list_template_context(
     materials_list: list[sqlite3.Row],
     references: dict[str, list[sqlite3.Row]],
     error: str | None,
+    warning: str = "",
     delete_error: str = "",
     sort_key: str = "created_at",
     sort_direction: str = "desc",
@@ -7808,6 +7790,7 @@ def build_jobs_list_template_context(
         "products": references["products"],
         "statuses": references["order_statuses"],
         "error": error,
+        "warning": warning,
         "customers": references["customers"],
         "representatives": references["representatives"],
         "partner_stores": references["partner_stores"],

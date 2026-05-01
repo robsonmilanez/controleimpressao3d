@@ -21,6 +21,9 @@
       {% if error %}
         <p class="error">{{ error }}</p>
       {% endif %}
+      {% if warning %}
+        <p class="warning">{{ warning }}</p>
+      {% endif %}
       {% if materials and customers %}
         <form method="post" class="form-grid job-form job-form-compact jobs-form-aligned" enctype="multipart/form-data">
           <div class="job-topic-block commercial-topic-block full">
