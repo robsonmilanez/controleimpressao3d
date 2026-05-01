@@ -163,7 +163,7 @@
                     </td>
                     <td data-label="Qtde">{{ item_line['quantity']|br_decimal }} un</td>
                     <td data-label="Status">{{ job["status"] }}</td>
-                    <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
+                    <td data-label="Prazo">{{ job["due_date"]|br_date }}</td>
                     <td data-label="Valor">
                       <div class="job-value-cell">
                         <span>R$ {{ item_line['total_price']|br_money }}</span>

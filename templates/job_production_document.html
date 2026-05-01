@@ -40,11 +40,11 @@
         </article>
         <article>
           <span>Prazo</span>
-          <strong>{{ job["due_date"] or "-" }}</strong>
+          <strong>{{ job["due_date"]|br_date }}</strong>
         </article>
         <article>
           <span>Validade do orçamento</span>
-          <strong>{{ job["valid_until"] or "-" }}</strong>
+          <strong>{{ job["valid_until"]|br_date }}</strong>
         </article>
         <article>
           <span>Condicoes de pagamento</span>

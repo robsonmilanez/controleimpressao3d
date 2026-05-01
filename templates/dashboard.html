@@ -124,7 +124,7 @@
             <li>
               <strong>{{ job["item_name"] }}</strong>
               <span>{{ job["customer_display"] }} · {{ job["status"] }}</span>
-              <span>Prazo {{ job["due_date"] }}</span>
+              <span>Prazo {{ job["due_date"]|br_date }}</span>
             </li>
           {% endfor %}
         </ul>

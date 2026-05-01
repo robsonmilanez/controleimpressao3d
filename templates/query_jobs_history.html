@@ -62,7 +62,7 @@
                   </td>
                   <td data-label="Qtde">{{ job["quantity"] }}</td>
                   <td data-label="Status">{{ job["status"] }}</td>
-                  <td data-label="Prazo">{{ job["due_date"] or "-" }}</td>
+                  <td data-label="Prazo">{{ job["due_date"]|br_date }}</td>
                   <td data-label="Valor">R$ {{ job["suggested_price"]|br_money }}</td>
                 </tr>
               {% endfor %}

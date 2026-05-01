@@ -27,11 +27,11 @@
         <dl>
           <div>
             <dt>Emissao</dt>
-            <dd>{{ job["created_at"][:10] }}</dd>
+            <dd>{{ job["created_at"]|br_date }}</dd>
           </div>
           <div>
             <dt>Validade</dt>
-            <dd>{{ job["valid_until"] or "-" }}</dd>
+            <dd>{{ job["valid_until"]|br_date }}</dd>
           </div>
           <div>
             <dt>Status</dt>
@@ -50,9 +50,9 @@
         </article>
         <article>
           <h2>Dados do pedido</h2>
-          <p><strong>Emissao:</strong> {{ job["created_at"][:10] }}</p>
-          <p><strong>Validade:</strong> {{ job["valid_until"] or "-" }}</p>
-          <p><strong>Prazo:</strong> {{ job["due_date"] or "-" }}</p>
+          <p><strong>Emissao:</strong> {{ job["created_at"]|br_date }}</p>
+          <p><strong>Validade:</strong> {{ job["valid_until"]|br_date }}</p>
+          <p><strong>Prazo:</strong> {{ job["due_date"]|br_date }}</p>
           <p><strong>Status:</strong> {{ job["status"] }}</p>
         </article>
       </section>
