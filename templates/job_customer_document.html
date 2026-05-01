@@ -22,7 +22,6 @@
         <div>
           <p class="eyebrow">Documento do cliente</p>
           <h1>{{ "Orcamento" if job["status"] == "Orcamento" else "Pedido" }} #{{ "%04d"|format(job["id"]) }}</h1>
-          <p>{{ job["item_name"] }}</p>
         </div>
         <dl>
           <div>

@@ -4293,12 +4293,8 @@ th {
     width: 900px;
     min-width: 900px;
     margin: 0;
-    transform: scale(0.42);
+    transform: scale(0.46);
     transform-origin: top left;
-  }
-
-  .customer-document-page .document-header > div > p:last-child {
-    display: block;
   }
 
   .customer-notes-list p {
