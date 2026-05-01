@@ -4285,20 +4285,20 @@ th {
     margin-top: 0.5rem;
   }
 
+  .print-body {
+    overflow-x: auto;
+  }
+
   .customer-document-page {
-    min-width: 820px;
+    width: 900px;
+    min-width: 900px;
+    margin: 0;
+    transform: scale(0.38);
+    transform-origin: top left;
   }
 
   .customer-document-page .document-header > div > p:last-child {
     display: block;
-  }
-
-  .customer-document-page .document-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .customer-document-page .customer-document-table {
-    min-width: 760px;
   }
 
   .customer-notes-list p {
