@@ -7211,7 +7211,7 @@ def jobs() -> str:
                         db,
                         materials_list=materials_list,
                         references=references,
-                        error="Estoque insuficiente para esse pedido.",
+                        error=build_job_stock_error_message(material_lines, component_lines),
                     ),
                 )
 
@@ -7713,6 +7713,63 @@ def prepare_jobs_for_list(jobs: list[sqlite3.Row]) -> list[dict[str, Any]]:
         )
         prepared_jobs.append(item)
     return prepared_jobs
+
+
+def build_job_stock_error_message(
+    material_lines: list[dict[str, Any]],
+    component_lines: list[dict[str, Any]],
+) -> str:
+    shortages: list[str] = []
+
+    material_usage: dict[int, float] = {}
+    material_meta: dict[int, dict[str, Any]] = {}
+    for line in material_lines:
+        material_id = int(line["material_id"])
+        material_usage[material_id] = material_usage.get(material_id, 0.0) + float(
+            line["weight_grams"] or 0
+        )
+        material_meta[material_id] = line
+    for material_id, required in material_usage.items():
+        line = material_meta[material_id]
+        available = float(line["material"]["stock_grams"] or 0)
+        if required > available:
+            material = line["material"]
+            material_parts = [
+                str(material["material_type"] or "").strip(),
+                str(material["color"] or "").strip(),
+                str(material["manufacturer_name"] or "").strip(),
+            ]
+            material_label = " / ".join(part for part in material_parts if part) or str(
+                line.get("material_name") or material.get("name") or f"Material {material_id}"
+            )
+            shortages.append(
+                f"Filamento {material_label}: precisa {br_decimal(required)} g e tem {br_decimal(available)} g."
+            )
+
+    component_usage: dict[int, float] = {}
+    component_meta: dict[int, dict[str, Any]] = {}
+    for line in component_lines:
+        component_id = int(line["component_id"])
+        component_usage[component_id] = component_usage.get(component_id, 0.0) + float(
+            line["quantity"] or 0
+        )
+        component_meta[component_id] = line
+    for component_id, required in component_usage.items():
+        line = component_meta[component_id]
+        available = float(line["component"]["stock_quantity"] or 0)
+        if required > available:
+            component = line["component"]
+            unit_measure = str(line.get("unit_measure") or component.get("unit_measure") or "un").strip()
+            component_label = str(
+                line.get("component_name") or component.get("name") or f"Componente {component_id}"
+            ).strip()
+            shortages.append(
+                f"Componente {component_label}: precisa {br_decimal(required)} {unit_measure} e tem {br_decimal(available)} {unit_measure}."
+            )
+
+    if not shortages:
+        return "Estoque insuficiente para esse pedido."
+    return "Estoque insuficiente para esse pedido. " + " ".join(shortages)
 
 
 def build_jobs_list_template_context(
