@@ -218,7 +218,7 @@
 </label>
 <label class="full">
   Fotos do produto
-  <input type="file" name="product_photos" accept="image/*" multiple>
+  <input type="file" name="product_photos" class="product-photo-input" accept="image/*" multiple>
 </label>
 {% if product_photo_lines is defined and product_photo_lines %}
   <div class="full product-photo-preview-grid">
@@ -226,7 +226,9 @@
     <div class="product-photo-preview-list">
       {% for photo in product_photo_lines %}
         <div class="product-photo-card">
-          <img src="{{ url_for('uploaded_product_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or product['name'] }}">
+          <a class="product-photo-preview-link" href="{{ url_for('uploaded_product_file', filename=photo['file_path']) }}" target="_blank" rel="noopener noreferrer">
+            <img src="{{ url_for('uploaded_product_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or product['name'] }}">
+          </a>
           {% if product and photo['id'] %}
             <button
               type="submit"

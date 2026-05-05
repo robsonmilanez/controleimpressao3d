@@ -3431,6 +3431,47 @@ function setupHistoryBackLinks() {
   });
 }
 
+function setupProductPhotoPreviews() {
+  const inputs = Array.from(document.querySelectorAll(".product-photo-input"));
+  inputs.forEach((input) => {
+    if (input.dataset.photoPreviewReady === "1") {
+      return;
+    }
+    input.dataset.photoPreviewReady = "1";
+    let objectUrls = [];
+    const preview = document.createElement("div");
+    preview.className = "selected-product-photo-preview";
+    preview.hidden = true;
+    input.insertAdjacentElement("afterend", preview);
+
+    input.addEventListener("change", () => {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      objectUrls = [];
+      preview.innerHTML = "";
+      const files = Array.from(input.files || []).filter((file) =>
+        file.type.startsWith("image/")
+      );
+      preview.hidden = files.length === 0;
+      files.forEach((file) => {
+        const url = URL.createObjectURL(file);
+        objectUrls.push(url);
+        const link = document.createElement("a");
+        link.className = "product-photo-preview-link";
+        link.href = url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+
+        const image = document.createElement("img");
+        image.src = url;
+        image.alt = file.name || "Foto do produto";
+
+        link.appendChild(image);
+        preview.appendChild(link);
+      });
+    });
+  });
+}
+
 setupSupplierShortcut();
 setupSelectShortcuts();
 setupSearchableSelects();
@@ -3458,4 +3499,5 @@ setupAutoFilterForms();
 setupHeaderFilterPopovers();
 setupMaterialsCatalogAnchor();
 setupHistoryBackLinks();
+setupProductPhotoPreviews();
 setupServiceWorker();

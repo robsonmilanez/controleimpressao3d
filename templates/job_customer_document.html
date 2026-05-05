@@ -146,7 +146,7 @@
           <h2>Fotos do produto</h2>
           <div class="document-photos">
             {% for photo in photo_lines %}
-              <img src="{{ url_for('uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
+              <img src="{{ url_for('uploaded_product_file' if photo.get('source') == 'product' else 'uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
             {% endfor %}
           </div>
         </section>

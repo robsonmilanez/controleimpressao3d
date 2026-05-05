@@ -202,7 +202,7 @@
         </div>
         <label class="full">
           Link do modelo/arquivo
-          <input type="url" name="model_link" value="{{ job['model_link'] or '' }}" placeholder="https://...">
+          <input type="text" name="model_link" value="{{ job['model_link'] or '' }}" placeholder="https://...">
         </label>
         <label class="full">
           Adicionar fotos do produto
@@ -211,13 +211,19 @@
         {% if photo_lines %}
           <div class="photo-strip full">
             {% for photo in photo_lines %}
-              <img src="{{ url_for('uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
+              <a class="product-photo-preview-link" href="{{ url_for('uploaded_product_file' if photo.get('source') == 'product' else 'uploaded_job_file', filename=photo['file_path']) }}" target="_blank" rel="noopener noreferrer">
+                <img src="{{ url_for('uploaded_product_file' if photo.get('source') == 'product' else 'uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
+              </a>
             {% endfor %}
           </div>
         {% endif %}
         <label class="full">
           Obs. do cliente
           <textarea name="customer_notes" rows="3">{{ job["customer_notes"] or "" }}</textarea>
+        </label>
+        <label class="full">
+          Observações internas
+          <textarea name="internal_notes" rows="3">{{ job["internal_notes"] or job["notes"] or "" }}</textarea>
         </label>
         </div>
         <div class="button-row full job-actions-row">

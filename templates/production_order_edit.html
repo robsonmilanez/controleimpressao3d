@@ -123,7 +123,7 @@
           <h2>Fotos do produto</h2>
           <div class="document-photos">
             {% for photo in photo_lines %}
-              <img src="{{ url_for('uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
+              <img src="{{ url_for('uploaded_product_file' if photo.get('source') == 'product' else 'uploaded_job_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or 'Foto do produto' }}">
             {% endfor %}
           </div>
         </section>
@@ -132,6 +132,11 @@
       <section class="document-section production-context-section">
         <h2>Observações do cliente</h2>
         <p>{{ job["customer_notes"] or "-" }}</p>
+      </section>
+
+      <section class="document-section production-context-section">
+        <h2>Observações internas</h2>
+        <p>{{ selected_service["production_internal_notes"] or job["internal_notes"] or job["notes"] or "-" }}</p>
       </section>
 
       <form method="post" class="form-grid job-form">
@@ -171,7 +176,7 @@
                     <input type="number" name="print_hours" class="mirror-print-hours" min="0" step="0.01" value="{{ material_line['print_hours'] if material_line else job['print_hours'] }}" required>
                   </label>
                   <label>
-                    Impressora
+                    Impressora para cálculo
                     <select name="printer_id">
                       <option value="">Nenhum</option>
                       {% for printer in printers %}
@@ -189,7 +194,7 @@
                     </select>
                   </label>
                   <label>
-                    Secador
+                    Secador para cálculo
                     <select name="filament_dryer_id">
                       <option value="">Nenhum</option>
                       {% for dryer in filament_dryers %}

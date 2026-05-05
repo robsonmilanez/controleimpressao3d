@@ -2189,6 +2189,9 @@ def build_job_lines_from_product(
         else None
     )
     energy_cost_per_hour, operating_cost_per_hour = get_printer_cost_rates(printer)
+    if not printer:
+        energy_cost_per_hour = float(product["energy_cost_per_hour"] or 0)
+        operating_cost_per_hour = float(product["printer_wear_cost_per_hour"] or 0)
     dryer_cost_per_hour = float(dryer["hourly_cost"] or 0) if dryer else 0.0
 
     material_lines: list[dict[str, Any]] = []
@@ -7994,6 +7997,7 @@ def save_job_commercial_data(
             sale_channel = ?,
             suggested_price = ?,
             customer_notes = ?,
+            internal_notes = ?,
             valid_until = ?,
             payment_terms = ?,
             model_link = ?
@@ -8026,6 +8030,7 @@ def save_job_commercial_data(
             request.form.get("sale_channel", "").strip(),
             suggested_price,
             request.form.get("customer_notes", "").strip(),
+            request.form.get("internal_notes", "").strip(),
             request.form.get("valid_until") or None,
             normalize_shortcut_value(request.form.get("payment_terms")),
             request.form.get("model_link", "").strip(),
@@ -8635,6 +8640,60 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         numbered_service_lines.append(service_line)
     service_lines = numbered_service_lines
     resolved_product = resolve_job_product(db, job, service_lines)
+    if resolved_product is not None:
+        if not str(job.get("model_link") or "").strip():
+            job["model_link"] = resolved_product["model_link"] or ""
+        if float(job.get("labor_hours") or 0) <= 0:
+            job["labor_hours"] = float(resolved_product["labor_hours"] or 0)
+        if float(job.get("labor_hourly_rate") or 0) <= 0:
+            job["labor_hourly_rate"] = float(
+                resolved_product["labor_hourly_rate"]
+                or resolved_product["operating_cost_per_hour"]
+                or 0
+            )
+        if float(job.get("design_hours") or 0) <= 0:
+            job["design_hours"] = float(resolved_product["design_hours"] or 0)
+        if float(job.get("design_hourly_rate") or 0) <= 0:
+            job["design_hourly_rate"] = float(
+                resolved_product["design_hourly_rate"] or 0
+            )
+        if float(job.get("extra_cost") or 0) <= 0:
+            job["extra_cost"] = float(resolved_product["extra_cost"] or 0)
+        if job.get("margin_percent") is None or float(job.get("margin_percent") or 0) <= 0:
+            job["margin_percent"] = float(resolved_product["margin_percent"] or 0)
+        for service_line in service_lines:
+            line_product_id = parse_integerish(service_line.get("product_id"))
+            if line_product_id and line_product_id != int(resolved_product["id"]):
+                continue
+            if float(service_line.get("production_labor_hours") or 0) <= 0:
+                service_line["production_labor_hours"] = float(
+                    resolved_product["labor_hours"] or 0
+                )
+            if float(service_line.get("production_labor_hourly_rate") or 0) <= 0:
+                service_line["production_labor_hourly_rate"] = float(
+                    resolved_product["labor_hourly_rate"]
+                    or resolved_product["operating_cost_per_hour"]
+                    or 0
+                )
+            if float(service_line.get("production_design_hours") or 0) <= 0:
+                service_line["production_design_hours"] = float(
+                    resolved_product["design_hours"] or 0
+                )
+            if float(service_line.get("production_design_hourly_rate") or 0) <= 0:
+                service_line["production_design_hourly_rate"] = float(
+                    resolved_product["design_hourly_rate"] or 0
+                )
+            if float(service_line.get("production_extra_cost") or 0) <= 0:
+                service_line["production_extra_cost"] = float(
+                    resolved_product["extra_cost"] or 0
+                )
+            if (
+                service_line.get("production_margin_percent") is None
+                or float(service_line.get("production_margin_percent") or 0) <= 0
+            ):
+                service_line["production_margin_percent"] = float(
+                    resolved_product["margin_percent"] or 0
+                )
     material_lines = [{**dict(line), "service_line_number": int(line["service_line_number"] or 1)} for line in material_lines]
     component_lines = [{**dict(line), "service_line_number": int(line["service_line_number"] or 1)} for line in component_lines]
     photo_lines = db.execute(
@@ -8646,6 +8705,12 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         """,
         (job_id,),
     ).fetchall()
+    photo_lines = [dict(line) for line in photo_lines]
+    if not photo_lines and resolved_product is not None:
+        photo_lines = [
+            {**line, "source": "product"}
+            for line in fetch_product_photos(db, resolved_product)
+        ]
     selected_service_line_number = resolve_selected_service_line_number(
         job["id"],
         service_lines,
@@ -8687,6 +8752,12 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
                 printer_energy_rate = float(job["energy_cost_per_hour"] or 0)
             if printer_operating_rate <= 0:
                 printer_operating_rate = float(job["operating_cost_per_hour"] or 0)
+        if resolved_product is not None and printer_energy_rate <= 0:
+            printer_energy_rate = float(resolved_product["energy_cost_per_hour"] or 0)
+        if resolved_product is not None and printer_operating_rate <= 0:
+            printer_operating_rate = float(
+                resolved_product["printer_wear_cost_per_hour"] or 0
+            )
 
         line_print_hours = float(line["print_hours"] or 0)
         if line_print_hours <= 0 and len(material_lines) == 1:

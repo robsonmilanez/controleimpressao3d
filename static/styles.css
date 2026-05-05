@@ -1541,7 +1541,8 @@ input[type="range"]:focus {
 .photo-strip img {
   width: 128px;
   height: 96px;
-  object-fit: cover;
+  object-fit: contain;
+  background: #111318;
   border-radius: 8px;
   border: 1px solid var(--line);
 }
@@ -3335,8 +3336,32 @@ th {
 .product-photo-preview-list img {
   width: 118px;
   height: 88px;
-  border-radius: 14px;
-  object-fit: cover;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #111318;
+  border: 1px solid var(--line);
+}
+
+.product-photo-preview-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.selected-product-photo-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.65rem;
+}
+
+.selected-product-photo-preview img {
+  width: 118px;
+  height: 88px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #111318;
   border: 1px solid var(--line);
 }
 
