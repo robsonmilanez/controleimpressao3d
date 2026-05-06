@@ -8010,7 +8010,7 @@ def save_job_production_data(
             design_hours,
             design_hourly_rate,
             extra_cost,
-            margin_percent if margin_percent else None,
+            margin_percent,
             selected_service["id"],
         ),
     )
@@ -8794,8 +8794,6 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             )
         if float(job.get("extra_cost") or 0) <= 0:
             job["extra_cost"] = float(resolved_product["extra_cost"] or 0)
-        if job.get("margin_percent") is None or float(job.get("margin_percent") or 0) <= 0:
-            job["margin_percent"] = float(resolved_product["margin_percent"] or 0)
         for service_line in service_lines:
             line_product_id = parse_integerish(service_line.get("product_id"))
             if line_product_id and line_product_id != int(resolved_product["id"]):
@@ -8821,13 +8819,6 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             if float(service_line.get("production_extra_cost") or 0) <= 0:
                 service_line["production_extra_cost"] = float(
                     resolved_product["extra_cost"] or 0
-                )
-            if (
-                service_line.get("production_margin_percent") is None
-                or float(service_line.get("production_margin_percent") or 0) <= 0
-            ):
-                service_line["production_margin_percent"] = float(
-                    resolved_product["margin_percent"] or 0
                 )
     material_lines = [{**dict(line), "service_line_number": int(line["service_line_number"] or 1)} for line in material_lines]
     component_lines = [{**dict(line), "service_line_number": int(line["service_line_number"] or 1)} for line in component_lines]
