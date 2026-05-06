@@ -2288,6 +2288,141 @@ def apply_product_defaults_to_job_lines(
     return material_lines, component_lines, product
 
 
+def apply_saved_equipment_to_product_material_line(
+    db: sqlite3.Connection,
+    product_line: dict[str, Any],
+    saved_line: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not saved_line:
+        return product_line
+
+    line = {**product_line}
+    printer_id = parse_integerish(saved_line.get("printer_id"))
+    dryer_id = parse_integerish(saved_line.get("filament_dryer_id"))
+
+    if printer_id:
+        printer = db.execute("SELECT * FROM printers WHERE id = ?", (printer_id,)).fetchone()
+        energy_cost_per_hour, operating_cost_per_hour = get_printer_cost_rates(printer)
+        line.update(
+            {
+                "printer_id": printer_id,
+                "printer_name": printer["name"] if printer else None,
+                "printer_model": printer["model"] if printer else None,
+                "printer_energy_watts": printer["energy_watts"] if printer else 0,
+                "printer_kwh_cost": printer["kwh_cost"] if printer else 0,
+                "printer_hourly_cost": printer["hourly_cost"] if printer else 0,
+                "printer_label": (
+                    f"{printer['name']} - {printer['model']}"
+                    if printer and printer["model"]
+                    else (printer["name"] if printer else "")
+                ),
+                "energy_cost_per_hour": energy_cost_per_hour,
+                "operating_cost_per_hour": operating_cost_per_hour,
+            }
+        )
+
+    if dryer_id:
+        dryer = db.execute("SELECT * FROM filament_dryers WHERE id = ?", (dryer_id,)).fetchone()
+        line.update(
+            {
+                "filament_dryer_id": dryer_id,
+                "dryer_brand": dryer["brand"] if dryer else None,
+                "dryer_model": dryer["model"] if dryer else None,
+                "dryer_label": f"{dryer['brand']} {dryer['model']}".strip()
+                if dryer
+                else "",
+                "dryer_hours": float(product_line.get("print_hours") or 0),
+                "dryer_cost_per_hour": float(dryer["hourly_cost"] or 0)
+                if dryer
+                else 0.0,
+            }
+        )
+
+    return line
+
+
+def find_matching_saved_material_line(
+    product_line: dict[str, Any],
+    saved_lines: list[dict[str, Any]],
+    used_indexes: set[int],
+    fallback_index: int,
+) -> dict[str, Any] | None:
+    product_material_id = parse_integerish(product_line.get("material_id"))
+    for index, saved_line in enumerate(saved_lines):
+        if index in used_indexes:
+            continue
+        if parse_integerish(saved_line.get("material_id")) == product_material_id:
+            used_indexes.add(index)
+            return saved_line
+    if fallback_index < len(saved_lines) and fallback_index not in used_indexes:
+        used_indexes.add(fallback_index)
+        return saved_lines[fallback_index]
+    return None
+
+
+def build_current_product_production_lines(
+    db: sqlite3.Connection,
+    job: sqlite3.Row | dict[str, Any],
+    service_lines: list[dict[str, Any]],
+    saved_material_lines: list[dict[str, Any]],
+    saved_component_lines: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    current_material_lines: list[dict[str, Any]] = []
+    current_component_lines: list[dict[str, Any]] = []
+
+    saved_materials_by_service: dict[int, list[dict[str, Any]]] = {}
+    saved_components_by_service: dict[int, list[dict[str, Any]]] = {}
+    for line in saved_material_lines:
+        saved_materials_by_service.setdefault(
+            int(line.get("service_line_number") or 1), []
+        ).append(line)
+    for line in saved_component_lines:
+        saved_components_by_service.setdefault(
+            int(line.get("service_line_number") or 1), []
+        ).append(line)
+
+    for service_line in service_lines:
+        service_line_number = int(service_line.get("service_line_number") or 1)
+        product = resolve_job_product(db, {}, [service_line])
+        if product is None:
+            current_material_lines.extend(
+                saved_materials_by_service.get(service_line_number, [])
+            )
+            current_component_lines.extend(
+                saved_components_by_service.get(service_line_number, [])
+            )
+            continue
+
+        product_material_lines, product_component_lines = build_job_lines_from_product(
+            db,
+            product,
+            job,
+        )
+        saved_service_materials = saved_materials_by_service.get(service_line_number, [])
+        used_saved_material_indexes: set[int] = set()
+
+        for index, product_line in enumerate(product_material_lines):
+            saved_line = find_matching_saved_material_line(
+                product_line,
+                saved_service_materials,
+                used_saved_material_indexes,
+                index,
+            )
+            line = apply_saved_equipment_to_product_material_line(
+                db,
+                product_line,
+                saved_line,
+            )
+            line["service_line_number"] = service_line_number
+            current_material_lines.append(line)
+
+        for product_line in product_component_lines:
+            line = {**product_line, "service_line_number": service_line_number}
+            current_component_lines.append(line)
+
+    return current_material_lines, current_component_lines
+
+
 def get_next_job_number(db: sqlite3.Connection) -> int:
     row = db.execute("SELECT IFNULL(MAX(id), 0) + 1 AS next_id FROM jobs").fetchone()
     return int(row["next_id"])
@@ -8723,6 +8858,13 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             if int(line["service_line_number"]) == selected_service_line_number
         ),
         service_lines[0] if service_lines else None,
+    )
+    material_lines, component_lines = build_current_product_production_lines(
+        db,
+        job,
+        service_lines,
+        material_lines,
+        component_lines,
     )
 
     normalized_material_lines = []
