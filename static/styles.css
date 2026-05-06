@@ -250,7 +250,7 @@ input[type="range"]:focus {
 
 .panel {
   padding: 1.35rem;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .panel-compact {
@@ -2318,6 +2318,8 @@ button:hover {
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  padding-bottom: 0.35rem;
 }
 
 table {
@@ -3556,6 +3558,14 @@ th {
 }
 
 @media (max-width: 900px) {
+  .panel {
+    overflow: visible;
+  }
+
+  .table-wrap {
+    overflow-x: visible;
+  }
+
   .jobs-page-hero {
     margin-bottom: 0.55rem;
   }
