@@ -3137,10 +3137,22 @@ th {
 }
 
 .production-document-page .document-section h3 {
-  margin-top: 0.34rem;
+  margin: 0.5rem 0 0.16rem;
+  padding-top: 0.18rem;
+  border-top: 1px solid var(--line);
   font-size: 0.62rem;
   letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.production-document-page .document-section h2 + h3 {
+  margin-top: 0.18rem;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.production-document-page .document-summary-topic td {
+  padding-top: 0.34rem;
 }
 
 .production-document-page .document-section,
@@ -3929,6 +3941,13 @@ th {
     display: block;
   }
 
+  .jobs-list-table th,
+  .jobs-list-table td {
+    width: auto !important;
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .jobs-list-table tr {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3997,6 +4016,16 @@ th {
   .jobs-list-table .job-line-value,
   .jobs-list-table .job-line-total-summary {
     text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .job-value-cell,
+  .job-order-total-note {
+    justify-items: start;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .jobs-list-table td[data-label="Excluir"] .danger-button {

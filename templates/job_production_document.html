@@ -213,7 +213,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
+            <tr class="document-summary-topic">
               <td>Energia</td>
               <td>{{ production_cost_summary["total_print_hours"]|br_decimal }} h</td>
               <td>Tempo de impressão x energia/h</td>
@@ -227,7 +227,7 @@
                 <td>R$ {{ detail["total"]|br_money }}</td>
               </tr>
             {% endfor %}
-            <tr>
+            <tr class="document-summary-topic">
               <td>Depreciação de equipamentos</td>
               <td>{{ (production_cost_summary["total_print_hours"] + production_cost_summary["total_dryer_hours"])|br_decimal }} h</td>
               <td>Tempo de uso x custo/h do equipamento</td>
@@ -241,43 +241,43 @@
                 <td>R$ {{ detail["total"]|br_money }}</td>
               </tr>
             {% endfor %}
-            <tr>
+            <tr class="document-summary-topic">
               <td>Trabalho manual</td>
               <td>{{ selected_service["production_labor_hours"]|br_decimal if selected_service else job["labor_hours"]|br_decimal }} h</td>
               <td>R$ {{ selected_service["production_labor_hourly_rate"]|br_money if selected_service else job["labor_hourly_rate"]|br_money }}/h</td>
               <td>R$ {{ production_cost_summary["labor_cost"]|br_money }}</td>
             </tr>
-            <tr>
+            <tr class="document-summary-topic">
               <td>Design/modelagem</td>
               <td>{{ selected_service["production_design_hours"]|br_decimal if selected_service else job["design_hours"]|br_decimal }} h</td>
               <td>R$ {{ selected_service["production_design_hourly_rate"]|br_money if selected_service else job["design_hourly_rate"]|br_money }}/h</td>
               <td>R$ {{ production_cost_summary["design_cost"]|br_money }}</td>
             </tr>
-            <tr>
+            <tr class="document-summary-topic">
               <td>Custos extras</td>
               <td>-</td>
               <td>-</td>
               <td>R$ {{ production_cost_summary["extra_cost"]|br_money }}</td>
             </tr>
-            <tr>
+            <tr class="document-summary-topic">
               <td><strong>Custo total</strong></td>
               <td>-</td>
               <td>-</td>
               <td><strong>R$ {{ production_cost_summary["total_cost"]|br_money }}</strong></td>
             </tr>
-            <tr>
+            <tr class="document-summary-topic">
               <td><strong>Valor sugerido para venda</strong></td>
               <td>Margem desejada: {{ production_margin_percent|br_decimal }}%</td>
               <td>Custo / (1 - margem)</td>
               <td><strong>R$ {{ production_cost_summary["margin_suggested_price"]|br_money }}</strong></td>
             </tr>
-            <tr>
+            <tr class="document-summary-topic">
               <td><strong>Preço vendido</strong></td>
               <td>Objeto do pedido</td>
               <td>-</td>
               <td><strong>R$ {{ production_cost_summary["suggested_price"]|br_money }}</strong></td>
             </tr>
-            <tr>
+            <tr class="document-summary-topic">
               <td><strong>Lucro estimado</strong></td>
               <td>-</td>
               <td>-</td>

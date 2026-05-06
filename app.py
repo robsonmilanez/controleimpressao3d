@@ -3424,9 +3424,9 @@ def summarize_cost_lines(
     sale_total: float,
 ) -> dict[str, Any]:
     material_breakdown = []
-    energy_breakdown = []
-    operating_breakdown = []
-    dryer_breakdown = []
+    energy_totals_by_equipment: dict[str, dict[str, float | str]] = {}
+    operating_totals_by_equipment: dict[str, dict[str, float | str]] = {}
+    dryer_totals_by_equipment: dict[str, dict[str, float | str]] = {}
     component_breakdown = []
 
     material_cost = 0.0
@@ -3482,31 +3482,65 @@ def summarize_cost_lines(
         )
 
         printer_label = line.get("printer_label") or "Sem impressora"
-        energy_breakdown.append(
+        energy_summary = energy_totals_by_equipment.setdefault(
+            printer_label,
             {
                 "label": printer_label,
-                "base": f"{br_decimal(line_print_hours)} h",
-                "rate": f"{br_decimal(line_print_hours)} h x R$ {br_money(line_energy_rate)}/h",
-                "total": line_energy_total,
-            }
+                "hours": 0.0,
+                "rate": line_energy_rate,
+                "total": 0.0,
+            },
         )
-        operating_breakdown.append(
+        energy_summary["hours"] = float(energy_summary["hours"]) + line_print_hours
+        energy_summary["total"] = float(energy_summary["total"]) + line_energy_total
+
+        operating_summary = operating_totals_by_equipment.setdefault(
+            printer_label,
             {
                 "label": printer_label,
-                "base": f"{br_decimal(line_print_hours)} h",
-                "rate": f"{br_decimal(line_print_hours)} h x R$ {br_money(line_operating_rate)}/h",
-                "total": line_operating_total,
-            }
+                "hours": 0.0,
+                "rate": line_operating_rate,
+                "total": 0.0,
+            },
         )
+        operating_summary["hours"] = float(operating_summary["hours"]) + line_print_hours
+        operating_summary["total"] = float(operating_summary["total"]) + line_operating_total
         if line_dryer_hours > 0 or line.get("dryer_label"):
-            dryer_detail = {
-                "label": line.get("dryer_label") or "Sem secador",
-                "base": f"{br_decimal(line_dryer_hours)} h",
-                "rate": f"{br_decimal(line_dryer_hours)} h x R$ {br_money(line_dryer_rate)}/h",
-                "total": line_dryer_total,
-            }
-            dryer_breakdown.append(dryer_detail)
-            operating_breakdown.append(dryer_detail)
+            dryer_label = line.get("dryer_label") or "Sem secador"
+            dryer_summary = dryer_totals_by_equipment.setdefault(
+                dryer_label,
+                {
+                    "label": dryer_label,
+                    "hours": 0.0,
+                    "rate": line_dryer_rate,
+                    "total": 0.0,
+                },
+            )
+            dryer_summary["hours"] = float(dryer_summary["hours"]) + line_dryer_hours
+            dryer_summary["total"] = float(dryer_summary["total"]) + line_dryer_total
+
+    def format_equipment_breakdown(
+        equipment_totals: dict[str, dict[str, float | str]]
+    ) -> list[dict[str, Any]]:
+        details = []
+        for detail in equipment_totals.values():
+            hours = float(detail["hours"])
+            rate = float(detail["rate"])
+            details.append(
+                {
+                    "label": detail["label"],
+                    "base": f"{br_decimal(hours)} h",
+                    "rate": f"{br_decimal(hours)} h x R$ {br_money(rate)}/h",
+                    "total": round(float(detail["total"]), 2),
+                }
+            )
+        return details
+
+    energy_breakdown = format_equipment_breakdown(energy_totals_by_equipment)
+    dryer_breakdown = format_equipment_breakdown(dryer_totals_by_equipment)
+    operating_breakdown = format_equipment_breakdown(
+        operating_totals_by_equipment
+    ) + dryer_breakdown
 
     component_cost = 0.0
     component_count = 0.0

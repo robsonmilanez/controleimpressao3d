@@ -1793,7 +1793,7 @@ function setupJobInlineTotals() {
 
   forms.forEach((form) => {
     const applySelectedProductMetadata = (select, options = {}) => {
-      const { overwriteModelLink = false } = options;
+      const { overwriteModelLink = false, overwriteUnitPrice = false } = options;
       if (!select) {
         return;
       }
@@ -1815,7 +1815,11 @@ function setupJobInlineTotals() {
         if (categorySync) {
           categorySync.value = selectedOption.dataset.category || "";
         }
-        if (unitPriceField) {
+        if (
+          unitPriceField &&
+          (overwriteUnitPrice ||
+            (!row?.dataset.existingService && !parseNumber(unitPriceField.value)))
+        ) {
           unitPriceField.value = String(
             Math.max(Number(selectedOption.dataset.salePrice) || 0, 0).toFixed(2)
           );
@@ -2172,7 +2176,10 @@ function setupJobInlineTotals() {
 
     form.addEventListener("change", (event) => {
       if (event.target.matches(".product-picker")) {
-        applySelectedProductMetadata(event.target, { overwriteModelLink: true });
+        applySelectedProductMetadata(event.target, {
+          overwriteModelLink: true,
+          overwriteUnitPrice: true,
+        });
       }
       if (
         event.target.matches("[name='material_id']") ||
