@@ -139,7 +139,7 @@
         <p>{{ selected_service["production_internal_notes"] or job["internal_notes"] or job["notes"] or "-" }}</p>
       </section>
 
-      <form method="post" class="form-grid job-form">
+      <form method="post" class="form-grid job-form" data-sale-total="{{ selected_service['total_price'] if selected_service else job['suggested_price'] }}">
         <input type="hidden" name="service_line_number" value="{{ selected_service_line_number }}">
         <section class="production-shell full">
           <div class="production-shell-header">

@@ -2,8 +2,8 @@
 <div class="internal-cost-grid full">
   <div class="internal-cost-heading">
     <span>Categoria</span>
-    <span>Base</span>
-    <span>Taxa / valor</span>
+    <span>Tempo / base</span>
+    <span>Calculo</span>
     <span>Total</span>
   </div>
 
@@ -33,7 +33,7 @@
 
   <div class="internal-cost-group">
     <div class="internal-cost-row">
-      <strong>Energia</strong>
+      <strong>Energia das impressoras</strong>
       <output class="internal-print-hours-total">0,00 h</output>
       <label class="internal-readonly-rate">
         R$/h medio
@@ -49,7 +49,7 @@
 
   <div class="internal-cost-group">
     <div class="internal-cost-row">
-      <strong>Custo operacional</strong>
+      <strong>Depreciação de equipamentos</strong>
       <output class="internal-operating-hours-total">0,00 h</output>
       <label class="internal-readonly-rate">
         R$/h medio
@@ -122,13 +122,6 @@
     <output class="internal-total-cost">R$ 0,00</output>
   </div>
 
-  <div class="internal-cost-row internal-cost-row-strong">
-    <strong>Preco vendido/sugerido</strong>
-    <span>Objeto do pedido</span>
-    <span>Conforme itens vendidos</span>
-    <output class="internal-sale-total">R$ 0,00</output>
-  </div>
-
   <div class="internal-cost-row">
     <strong>Margem desejada</strong>
     <span>-</span>
@@ -137,6 +130,20 @@
       <input type="number" name="margin_percent" min="0" max="99" step="0.01" value="{{ production_context['production_margin_percent'] if production_values is defined and production_context['production_margin_percent'] is not none else (job['margin_percent'] if job is defined and job['margin_percent'] is not none else '') }}" placeholder="Opcional">
     </label>
     <span>Usada no preço sugerido</span>
+  </div>
+
+  <div class="internal-cost-row internal-cost-row-strong">
+    <strong>Valor sugerido para venda</strong>
+    <span>Margem aplicada ao custo</span>
+    <span>Custo / (1 - margem)</span>
+    <output class="internal-suggested-price-total">R$ 0,00</output>
+  </div>
+
+  <div class="internal-cost-row internal-cost-row-strong">
+    <strong>Preço vendido</strong>
+    <span>Objeto do pedido</span>
+    <span>Valor salvo no pedido</span>
+    <output class="internal-sale-total">R$ 0,00</output>
   </div>
 
   <div class="internal-cost-row internal-cost-row-strong">

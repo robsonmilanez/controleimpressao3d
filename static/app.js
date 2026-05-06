@@ -1983,20 +1983,20 @@ function setupJobInlineTotals() {
           totals.energyBreakdown.push({
             label: rowCosts.printerLabel,
             base: `${rowCosts.printHours.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h`,
-            rate: `R$ ${rowCosts.energyRate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/h`,
+            rate: `${rowCosts.printHours.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h x R$ ${rowCosts.energyRate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/h`,
             total: rowCosts.energyTotal,
           });
           totals.operatingBreakdown.push({
             label: rowCosts.printerLabel,
             base: `${rowCosts.printHours.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h`,
-            rate: `R$ ${rowCosts.operatingRate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/h`,
+            rate: `${rowCosts.printHours.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h x R$ ${rowCosts.operatingRate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/h`,
             total: rowCosts.operatingTotal,
           });
           if (rowCosts.dryerLabel || rowCosts.dryerTotal > 0) {
             totals.dryerBreakdown.push({
               label: rowCosts.dryerLabel || "Sem secador",
               base: `${rowCosts.dryerHours.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h`,
-              rate: `R$ ${rowCosts.dryerRate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/h`,
+              rate: `${rowCosts.dryerHours.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h x R$ ${rowCosts.dryerRate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/h`,
               total: rowCosts.dryerTotal,
             });
           }
@@ -2069,9 +2069,11 @@ function setupJobInlineTotals() {
     const updateInternalCostTotals = () => {
       const materialTotals = getMaterialTotals();
       const componentTotals = getComponentTotals();
-      const saleTotal = Array.from(
+      const calculatedSaleTotal = Array.from(
         form.querySelectorAll("[data-collection='services'] .collection-row")
       ).reduce((total, row) => total + getServiceTotal(row), 0);
+      const fallbackSaleTotal = parseNumber(form.dataset.saleTotal);
+      const saleTotal = calculatedSaleTotal > 0 ? calculatedSaleTotal : fallbackSaleTotal;
       const energyTotal = materialTotals.energy;
       const operatingTotal = materialTotals.operating;
       const dryerTotal = materialTotals.dryer;
@@ -2091,6 +2093,11 @@ function setupJobInlineTotals() {
         laborTotal +
         designTotal +
         extraCost;
+      const marginPercent = parseNumber(form.querySelector("[name='margin_percent']")?.value);
+      const suggestedPrice =
+        marginPercent > 0 && marginPercent < 100
+          ? totalCost / (1 - marginPercent / 100)
+          : totalCost;
 
       setText(".internal-material-weight-total", `${materialTotals.weight.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} g`);
       setText(".internal-material-cost-total", currency(materialTotals.cost));
@@ -2135,6 +2142,7 @@ function setupJobInlineTotals() {
       setText(".internal-labor-total", currency(laborTotal));
       setText(".internal-design-total", currency(designTotal));
       setText(".internal-total-cost", currency(totalCost));
+      setText(".internal-suggested-price-total", currency(suggestedPrice));
       setText(".internal-sale-total", currency(saleTotal));
       setText(".internal-profit-total", currency(saleTotal - totalCost));
       renderBreakdown(".internal-material-details", materialTotals.materialBreakdown);
@@ -2334,7 +2342,7 @@ function setupJobProfitWarning() {
         return total + quantity * unitCost;
       }, 0);
 
-      const serviceTotal = Array.from(
+      const calculatedServiceTotal = Array.from(
         form.querySelectorAll("[data-collection='services'] .collection-row")
       ).reduce((total, row) => {
         const quantity = parseNumber(row.querySelector("[name='service_quantity']")?.value) || 1;
@@ -2343,6 +2351,9 @@ function setupJobProfitWarning() {
         const discounts = parseNumber(row.querySelector("[name='service_discounts']")?.value);
         return total + (quantity * unitPrice) + additions - discounts;
       }, 0);
+      const fallbackServiceTotal = parseNumber(form.dataset.saleTotal);
+      const serviceTotal =
+        calculatedServiceTotal > 0 ? calculatedServiceTotal : fallbackServiceTotal;
 
       const printHours = parseNumber(form.querySelector("[name='print_hours']")?.value);
       const energyCost = printHours * parseNumber(

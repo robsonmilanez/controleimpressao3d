@@ -3351,7 +3351,7 @@ def summarize_cost_lines(
             {
                 "label": printer_label,
                 "base": f"{br_decimal(line_print_hours)} h",
-                "rate": f"R$ {br_money(line_energy_rate)}/h",
+                "rate": f"{br_decimal(line_print_hours)} h x R$ {br_money(line_energy_rate)}/h",
                 "total": line_energy_total,
             }
         )
@@ -3359,7 +3359,7 @@ def summarize_cost_lines(
             {
                 "label": printer_label,
                 "base": f"{br_decimal(line_print_hours)} h",
-                "rate": f"R$ {br_money(line_operating_rate)}/h",
+                "rate": f"{br_decimal(line_print_hours)} h x R$ {br_money(line_operating_rate)}/h",
                 "total": line_operating_total,
             }
         )
@@ -3368,7 +3368,7 @@ def summarize_cost_lines(
                 {
                     "label": line.get("dryer_label") or "Sem secador",
                     "base": f"{br_decimal(line_dryer_hours)} h",
-                    "rate": f"R$ {br_money(line_dryer_rate)}/h",
+                    "rate": f"{br_decimal(line_dryer_hours)} h x R$ {br_money(line_dryer_rate)}/h",
                     "total": line_dryer_total,
                 }
             )
@@ -8859,7 +8859,7 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             {
                 "label": printer_label,
                 "base": f"{br_decimal(job['print_hours'])} h",
-                "rate": f"R$ {br_money(job['energy_cost_per_hour'])}/h",
+                "rate": f"{br_decimal(job['print_hours'])} h x R$ {br_money(job['energy_cost_per_hour'])}/h",
                 "total": fallback_energy,
             }
         ]
@@ -8867,7 +8867,7 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             {
                 "label": printer_label,
                 "base": f"{br_decimal(job['print_hours'])} h",
-                "rate": f"R$ {br_money(job['operating_cost_per_hour'])}/h",
+                "rate": f"{br_decimal(job['print_hours'])} h x R$ {br_money(job['operating_cost_per_hour'])}/h",
                 "total": fallback_operating,
             }
         ]
@@ -8896,7 +8896,7 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             {
                 "label": dryer_label,
                 "base": f"{br_decimal(fallback_dryer_hours)} h",
-                "rate": f"R$ {br_money(job['dryer_cost_per_hour'])}/h",
+                "rate": f"{br_decimal(fallback_dryer_hours)} h x R$ {br_money(job['dryer_cost_per_hour'])}/h",
                 "total": fallback_dryer,
             }
         ]
@@ -8912,6 +8912,10 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         2,
     )
     cost_summary["suggested_price"] = float(job["suggested_price"] or 0)
+    cost_summary["margin_suggested_price"] = calculate_price_with_margin(
+        cost_summary["total_cost"],
+        float(job["margin_percent"] or 0),
+    )
     cost_summary["profit"] = round(
         cost_summary["suggested_price"] - cost_summary["total_cost"], 2
     )
@@ -8924,6 +8928,15 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         design_hourly_rate=float(selected_service["production_design_hourly_rate"] or 0) if selected_service else 0.0,
         extra_cost=float(selected_service["production_extra_cost"] or 0) if selected_service else 0.0,
         sale_total=float(selected_service["total_price"] or 0) if selected_service else 0.0,
+    )
+    selected_margin_percent = (
+        float(selected_service["production_margin_percent"])
+        if selected_service and selected_service["production_margin_percent"] is not None
+        else float(job["margin_percent"] or 0)
+    )
+    selected_cost_summary["margin_suggested_price"] = calculate_price_with_margin(
+        selected_cost_summary["total_cost"],
+        selected_margin_percent,
     )
     return {
         "job": job,

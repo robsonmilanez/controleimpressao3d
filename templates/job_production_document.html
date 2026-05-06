@@ -232,7 +232,7 @@
             <tr>
               <td>Energia</td>
               <td>{{ production_cost_summary["total_print_hours"]|br_decimal }} h</td>
-              <td>Conforme impressoras</td>
+              <td>Tempo de impressão x energia/h</td>
               <td>R$ {{ production_cost_summary["energy_cost"]|br_money }}</td>
             </tr>
             {% for detail in production_cost_summary["breakdowns"]["energy"] %}
@@ -244,9 +244,9 @@
               </tr>
             {% endfor %}
             <tr>
-              <td>Custo operacional</td>
+              <td>Depreciação de equipamentos</td>
               <td>{{ production_cost_summary["total_print_hours"]|br_decimal }} h</td>
-              <td>Conforme impressoras</td>
+              <td>Tempo de impressão x depreciação/h</td>
               <td>R$ {{ production_cost_summary["operating_cost"]|br_money }}</td>
             </tr>
             {% for detail in production_cost_summary["breakdowns"]["operating"] %}
@@ -260,7 +260,7 @@
             <tr>
               <td>Secagem do filamento</td>
               <td>{{ production_cost_summary["total_dryer_hours"]|br_decimal }} h</td>
-              <td>Conforme secadores</td>
+              <td>Tempo de secagem x custo/h</td>
               <td>R$ {{ production_cost_summary["dryer_cost"]|br_money }}</td>
             </tr>
             {% for detail in production_cost_summary["breakdowns"]["dryers"] %}
@@ -296,8 +296,14 @@
               <td><strong>R$ {{ production_cost_summary["total_cost"]|br_money }}</strong></td>
             </tr>
             <tr>
-              <td><strong>Preco vendido/sugerido</strong></td>
+              <td><strong>Valor sugerido para venda</strong></td>
               <td>Margem desejada: {{ production_margin_percent|br_decimal }}%</td>
+              <td>Custo / (1 - margem)</td>
+              <td><strong>R$ {{ production_cost_summary["margin_suggested_price"]|br_money }}</strong></td>
+            </tr>
+            <tr>
+              <td><strong>Preço vendido</strong></td>
+              <td>Objeto do pedido</td>
               <td>-</td>
               <td><strong>R$ {{ production_cost_summary["suggested_price"]|br_money }}</strong></td>
             </tr>
