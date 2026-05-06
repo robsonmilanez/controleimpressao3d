@@ -1047,6 +1047,12 @@ def calculate_price_with_margin(total_cost: float, margin_percent: float) -> flo
     return round(suggested_price, 2)
 
 
+def calculate_margin_percent_from_sale(total_cost: float, sale_total: float) -> float:
+    if sale_total <= 0:
+        return 0.0
+    return round(max(((sale_total - total_cost) / sale_total) * 100, 0), 2)
+
+
 def frustum_volume_mm3(height_mm: float, radius_bottom_mm: float, radius_top_mm: float) -> float:
     return (math.pi * height_mm / 3.0) * (
         radius_bottom_mm**2 + (radius_bottom_mm * radius_top_mm) + radius_top_mm**2
@@ -1742,7 +1748,7 @@ def build_job_material_lines(db: sqlite3.Connection) -> list[dict[str, Any]]:
                 "SELECT * FROM filament_dryers WHERE id = ?",
                 (dryer_id,),
             ).fetchone()
-            dryer_cost_per_hour = float(dryer["hourly_cost"] or 0) if dryer else 0.0
+            _, dryer_cost_per_hour = get_dryer_cost_rates(dryer)
             dryer_hours = print_hours
         lines.append(
             {
@@ -1766,6 +1772,7 @@ def build_job_material_lines(db: sqlite3.Connection) -> list[dict[str, Any]]:
                 ),
                 "dryer_hours": dryer_hours,
                 "dryer_cost_per_hour": dryer_cost_per_hour,
+                "dryer_energy_cost_per_hour": get_dryer_cost_rates(dryer)[0],
                 "notes": notes[index].strip() if index < len(notes) else "",
             }
         )
@@ -2192,7 +2199,7 @@ def build_job_lines_from_product(
     if not printer:
         energy_cost_per_hour = float(product["energy_cost_per_hour"] or 0)
         operating_cost_per_hour = float(product["printer_wear_cost_per_hour"] or 0)
-    dryer_cost_per_hour = float(dryer["hourly_cost"] or 0) if dryer else 0.0
+    dryer_energy_cost_per_hour, dryer_cost_per_hour = get_dryer_cost_rates(dryer)
 
     material_lines: list[dict[str, Any]] = []
     for entry in parse_product_material_lines(
@@ -2233,11 +2240,15 @@ def build_job_lines_from_product(
                 "filament_dryer_id": dryer_id,
                 "dryer_brand": dryer["brand"] if dryer else None,
                 "dryer_model": dryer["model"] if dryer else None,
+                "dryer_power_watts": dryer["power_watts"] if dryer else 0,
+                "dryer_kwh_cost": dryer["kwh_cost"] if dryer else 0,
+                "dryer_hourly_cost": dryer["hourly_cost"] if dryer else 0,
                 "dryer_label": (
                     f"{dryer['brand']} {dryer['model']}".strip() if dryer else ""
                 ),
                 "dryer_hours": print_hours if dryer else 0.0,
                 "dryer_cost_per_hour": dryer_cost_per_hour,
+                "dryer_energy_cost_per_hour": dryer_energy_cost_per_hour,
                 "notes": str(entry.get("part_name") or entry.get("label") or "").strip(),
             }
         )
@@ -2323,18 +2334,21 @@ def apply_saved_equipment_to_product_material_line(
 
     if dryer_id:
         dryer = db.execute("SELECT * FROM filament_dryers WHERE id = ?", (dryer_id,)).fetchone()
+        dryer_energy_cost_per_hour, dryer_cost_per_hour = get_dryer_cost_rates(dryer)
         line.update(
             {
                 "filament_dryer_id": dryer_id,
                 "dryer_brand": dryer["brand"] if dryer else None,
                 "dryer_model": dryer["model"] if dryer else None,
+                "dryer_power_watts": dryer["power_watts"] if dryer else 0,
+                "dryer_kwh_cost": dryer["kwh_cost"] if dryer else 0,
+                "dryer_hourly_cost": dryer["hourly_cost"] if dryer else 0,
                 "dryer_label": f"{dryer['brand']} {dryer['model']}".strip()
                 if dryer
                 else "",
                 "dryer_hours": float(product_line.get("print_hours") or 0),
-                "dryer_cost_per_hour": float(dryer["hourly_cost"] or 0)
-                if dryer
-                else 0.0,
+                "dryer_cost_per_hour": dryer_cost_per_hour,
+                "dryer_energy_cost_per_hour": dryer_energy_cost_per_hour,
             }
         )
 
@@ -2428,6 +2442,21 @@ def get_next_job_number(db: sqlite3.Connection) -> int:
     return int(row["next_id"])
 
 
+def normalize_uploaded_file_path(file_path: Any, upload_kind: str) -> str:
+    normalized = str(file_path or "").strip().replace("\\", "/").lstrip("/")
+    if not normalized:
+        return ""
+    prefixes = (
+        f"data/uploads/{upload_kind}/",
+        f"uploads/{upload_kind}/",
+        f"{upload_kind}/",
+    )
+    for prefix in prefixes:
+        if normalized.startswith(prefix):
+            return normalized[len(prefix) :]
+    return normalized
+
+
 def save_job_photos(job_id: int) -> None:
     files = request.files.getlist("product_photos")
     if not files:
@@ -2501,7 +2530,10 @@ def fetch_product_photos(db: sqlite3.Connection, product: sqlite3.Row | dict[str
         return []
 
     photo_lines = [
-        dict(row)
+        {
+            **dict(row),
+            "file_path": normalize_uploaded_file_path(row["file_path"], "products"),
+        }
         for row in db.execute(
             """
             SELECT id, file_path, original_name, created_at
@@ -2522,6 +2554,7 @@ def fetch_product_photos(db: sqlite3.Connection, product: sqlite3.Row | dict[str
         if isinstance(product, sqlite3.Row)
         else product.get("photo_original_name")
     )
+    legacy_path = normalize_uploaded_file_path(legacy_path, "products")
     if legacy_path and not any(line["file_path"] == legacy_path for line in photo_lines):
         photo_lines.insert(
             0,
@@ -3413,6 +3446,26 @@ def get_printer_cost_rates(
     )
 
 
+def get_dryer_cost_rates(dryer: sqlite3.Row | dict[str, Any] | None) -> tuple[float, float]:
+    if dryer is None:
+        return 0.0, 0.0
+    keys = set(dryer.keys())
+
+    def dryer_value(primary_key: str, fallback_key: str) -> Any:
+        if primary_key in keys:
+            return dryer[primary_key]
+        if fallback_key in keys:
+            return dryer[fallback_key]
+        return 0
+
+    power_watts = float(dryer_value("power_watts", "dryer_power_watts") or 0)
+    kwh_cost = float(dryer_value("kwh_cost", "dryer_kwh_cost") or 0)
+    hourly_cost = float(dryer_value("hourly_cost", "dryer_hourly_cost") or 0)
+    energy_rate = round((power_watts / 1000) * kwh_cost, 4)
+    equipment_rate = round(max(hourly_cost - energy_rate, 0), 4)
+    return energy_rate, equipment_rate
+
+
 def summarize_cost_lines(
     material_lines: list[dict[str, Any]],
     component_lines: list[dict[str, Any]],
@@ -3446,12 +3499,14 @@ def summarize_cost_lines(
         line_operating_rate = float(line.get("operating_cost_per_hour") or 0)
         line_dryer_hours = float(line.get("dryer_hours") or 0)
         line_dryer_rate = float(line.get("dryer_cost_per_hour") or 0)
+        line_dryer_energy_rate = float(line.get("dryer_energy_cost_per_hour") or 0)
         line_energy_total = round(line_print_hours * line_energy_rate, 2)
         line_operating_total = round(line_print_hours * line_operating_rate, 2)
+        line_dryer_energy_total = round(line_dryer_hours * line_dryer_energy_rate, 2)
         line_dryer_total = round(line_dryer_hours * line_dryer_rate, 2)
 
         material_cost += line_material_cost
-        energy_cost += line_energy_total
+        energy_cost += line_energy_total + line_dryer_energy_total
         operating_cost += line_operating_total
         dryer_cost += line_dryer_total
         total_weight += weight_grams
@@ -3518,6 +3573,21 @@ def summarize_cost_lines(
             )
             dryer_summary["hours"] = float(dryer_summary["hours"]) + line_dryer_hours
             dryer_summary["total"] = float(dryer_summary["total"]) + line_dryer_total
+            dryer_energy_summary = energy_totals_by_equipment.setdefault(
+                dryer_label,
+                {
+                    "label": dryer_label,
+                    "hours": 0.0,
+                    "rate": line_dryer_energy_rate,
+                    "total": 0.0,
+                },
+            )
+            dryer_energy_summary["hours"] = (
+                float(dryer_energy_summary["hours"]) + line_dryer_hours
+            )
+            dryer_energy_summary["total"] = (
+                float(dryer_energy_summary["total"]) + line_dryer_energy_total
+            )
 
     def format_equipment_breakdown(
         equipment_totals: dict[str, dict[str, float | str]]
@@ -3588,6 +3658,7 @@ def summarize_cost_lines(
         "profit": round(sale_total - total_cost, 2),
         "total_weight": round(total_weight, 2),
         "total_weight_grams": round(total_weight, 2),
+        "total_energy_hours": round(total_print_hours + total_dryer_hours, 2),
         "total_print_hours": round(total_print_hours, 2),
         "total_dryer_hours": round(total_dryer_hours, 2),
         "component_count": round(component_count, 2),
@@ -8761,7 +8832,10 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             printers.kwh_cost AS printer_kwh_cost,
             printers.hourly_cost AS printer_hourly_cost,
             filament_dryers.brand AS dryer_brand,
-            filament_dryers.model AS dryer_model
+            filament_dryers.model AS dryer_model,
+            filament_dryers.power_watts AS dryer_power_watts,
+            filament_dryers.kwh_cost AS dryer_kwh_cost,
+            filament_dryers.hourly_cost AS dryer_hourly_cost
         FROM job_materials
         JOIN materials ON materials.id = job_materials.material_id
         LEFT JOIN printers ON printers.id = job_materials.printer_id
@@ -8857,7 +8931,7 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
                 )
     material_lines = [{**dict(line), "service_line_number": int(line["service_line_number"] or 1)} for line in material_lines]
     component_lines = [{**dict(line), "service_line_number": int(line["service_line_number"] or 1)} for line in component_lines]
-    photo_lines = db.execute(
+    job_photo_lines = db.execute(
         """
         SELECT *
         FROM job_photos
@@ -8866,12 +8940,25 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         """,
         (job_id,),
     ).fetchall()
-    photo_lines = [dict(line) for line in photo_lines]
-    if not photo_lines and resolved_product is not None:
-        photo_lines = [
-            {**line, "source": "product"}
-            for line in fetch_product_photos(db, resolved_product)
-        ]
+    photo_lines = [
+        {
+            **dict(line),
+            "file_path": normalize_uploaded_file_path(line["file_path"], "jobs"),
+            "source": "job",
+        }
+        for line in job_photo_lines
+    ]
+    if resolved_product is not None:
+        seen_product_photos: set[str] = set()
+        for line in photo_lines:
+            if line.get("source") == "product" and line.get("file_path"):
+                seen_product_photos.add(str(line["file_path"]))
+        for product_photo in fetch_product_photos(db, resolved_product):
+            file_path = str(product_photo.get("file_path") or "")
+            if not file_path or file_path in seen_product_photos:
+                continue
+            photo_lines.append({**product_photo, "source": "product"})
+            seen_product_photos.add(file_path)
     selected_service_line_number = resolve_selected_service_line_number(
         job["id"],
         service_lines,
@@ -8942,8 +9029,26 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             line_dryer_hours = float(job["dryer_hours"] or 0) or line_print_hours
 
         line_dryer_rate = float(line["dryer_cost_per_hour"] or 0)
+        line_dryer_energy_rate = (
+            (float(line.get("dryer_power_watts") or 0) / 1000)
+            * float(line.get("dryer_kwh_cost") or 0)
+        )
+        if line_dryer_energy_rate <= 0 and line.get("dryer_hourly_cost"):
+            line_dryer_energy_rate, inferred_dryer_equipment_rate = get_dryer_cost_rates(line)
+            if line_dryer_rate <= 0:
+                line_dryer_rate = inferred_dryer_equipment_rate
+        dryer_hourly_total = float(line.get("dryer_hourly_cost") or 0)
+        if (
+            line_dryer_energy_rate > 0
+            and dryer_hourly_total > 0
+            and abs(line_dryer_rate - dryer_hourly_total) < 0.0001
+        ):
+            line_dryer_rate = max(line_dryer_rate - line_dryer_energy_rate, 0)
         if line_dryer_rate <= 0 and line["dryer_brand"]:
-            line_dryer_rate = float(job["dryer_cost_per_hour"] or 0)
+            line_dryer_rate = max(
+                float(job["dryer_cost_per_hour"] or 0) - line_dryer_energy_rate,
+                0,
+            )
 
         normalized_material_lines.append(
             {
@@ -8954,6 +9059,7 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
                 "operating_cost_per_hour": printer_operating_rate,
                 "dryer_hours": line_dryer_hours,
                 "dryer_cost_per_hour": line_dryer_rate,
+                "dryer_energy_cost_per_hour": line_dryer_energy_rate,
                 "printer_label": (
                     f"{line['printer_name']} - {line['printer_model']}"
                     if line["printer_name"] and line["printer_model"]
@@ -9023,6 +9129,7 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         cost_summary["energy_cost"] = fallback_energy
         cost_summary["operating_cost"] = fallback_operating
         cost_summary["total_print_hours"] = round(float(job["print_hours"] or 0), 2)
+        cost_summary["total_energy_hours"] = cost_summary["total_print_hours"]
         cost_summary["breakdowns"]["energy"] = [
             {
                 "label": printer_label,
@@ -9060,6 +9167,10 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         )
         cost_summary["dryer_cost"] = fallback_dryer
         cost_summary["total_dryer_hours"] = round(fallback_dryer_hours, 2)
+        cost_summary["total_energy_hours"] = round(
+            float(cost_summary.get("total_energy_hours") or 0) + fallback_dryer_hours,
+            2,
+        )
         cost_summary["breakdowns"]["dryers"] = [
             {
                 "label": dryer_label,
@@ -9068,6 +9179,9 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
                 "total": fallback_dryer,
             }
         ]
+        cost_summary["breakdowns"]["operating"].extend(
+            cost_summary["breakdowns"]["dryers"]
+        )
     cost_summary["total_cost"] = round(
         cost_summary["material_cost"]
         + cost_summary["component_cost"]
@@ -9080,13 +9194,15 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         2,
     )
     cost_summary["suggested_price"] = float(job["suggested_price"] or 0)
-    if cost_summary["suggested_price"] <= 0:
-        cost_summary["margin_suggested_price"] = 0.0
-    else:
-        cost_summary["margin_suggested_price"] = calculate_price_with_margin(
-            cost_summary["total_cost"],
-            float(job["margin_percent"] or 0),
-        )
+    cost_summary["margin_percent"] = calculate_margin_percent_from_sale(
+        cost_summary["total_cost"],
+        cost_summary["suggested_price"],
+    )
+    cost_summary["margin_suggested_price"] = (
+        cost_summary["suggested_price"]
+        if cost_summary["suggested_price"] > 0
+        else 0.0
+    )
     cost_summary["profit"] = round(
         cost_summary["suggested_price"] - cost_summary["total_cost"], 2
     )
@@ -9100,20 +9216,15 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         extra_cost=float(selected_service["production_extra_cost"] or 0) if selected_service else 0.0,
         sale_total=float(selected_service["total_price"] or 0) if selected_service else 0.0,
     )
-    selected_margin_percent = 0.0
-    if selected_cost_summary["suggested_price"] > 0:
-        selected_margin_percent = (
-            float(selected_service["production_margin_percent"])
-            if selected_service and selected_service["production_margin_percent"] is not None
-            else float(job["margin_percent"] or 0)
-        )
-        selected_cost_summary["margin_suggested_price"] = calculate_price_with_margin(
-            selected_cost_summary["total_cost"],
-            selected_margin_percent,
-        )
-    else:
-        selected_cost_summary["margin_suggested_price"] = 0.0
-    selected_cost_summary["margin_percent"] = selected_margin_percent
+    selected_cost_summary["margin_percent"] = calculate_margin_percent_from_sale(
+        selected_cost_summary["total_cost"],
+        selected_cost_summary["suggested_price"],
+    )
+    selected_cost_summary["margin_suggested_price"] = (
+        selected_cost_summary["suggested_price"]
+        if selected_cost_summary["suggested_price"] > 0
+        else 0.0
+    )
     return {
         "job": job,
         "material_lines": selected_material_lines,

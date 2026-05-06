@@ -3460,7 +3460,8 @@ function setupProductPhotoPreviews() {
     const preview = document.createElement("div");
     preview.className = "selected-product-photo-preview";
     preview.hidden = true;
-    input.insertAdjacentElement("afterend", preview);
+    const uploadField = input.closest("label") || input;
+    uploadField.insertAdjacentElement("afterend", preview);
 
     input.addEventListener("change", () => {
       objectUrls.forEach((url) => URL.revokeObjectURL(url));

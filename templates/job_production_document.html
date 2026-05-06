@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <title>Ordem de produção #{{ job["id"] }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260430-1805') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260506-1455') }}">
   </head>
   <body class="print-body production-document-page">
     <main class="print-page production-document-page">
@@ -215,7 +215,7 @@
           <tbody>
             <tr class="document-summary-topic">
               <td>Energia</td>
-              <td>{{ production_cost_summary["total_print_hours"]|br_decimal }} h</td>
+              <td>{{ production_cost_summary["total_energy_hours"]|br_decimal }} h</td>
               <td>Tempo de impressão x energia/h</td>
               <td>R$ {{ production_cost_summary["energy_cost"]|br_money }}</td>
             </tr>
@@ -267,7 +267,7 @@
             </tr>
             <tr class="document-summary-topic">
               <td><strong>Valor sugerido para venda</strong></td>
-              <td>Margem desejada: {{ production_margin_percent|br_decimal }}%</td>
+              <td>Margem no preço vendido: {{ production_margin_percent|br_decimal }}%</td>
               <td>Custo / (1 - margem)</td>
               <td><strong>R$ {{ production_cost_summary["margin_suggested_price"]|br_money }}</strong></td>
             </tr>

@@ -3369,10 +3369,21 @@ th {
 }
 
 .selected-product-photo-preview {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 118px));
   gap: 0.7rem;
   margin-top: 0.65rem;
+  width: 100%;
+  align-items: start;
+}
+
+.selected-product-photo-preview[hidden] {
+  display: none;
+}
+
+.selected-product-photo-preview .product-photo-preview-link {
+  width: 118px;
 }
 
 .selected-product-photo-preview img {
