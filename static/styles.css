@@ -3136,6 +3136,13 @@ th {
   font-size: 0.64rem;
 }
 
+.production-document-page .document-section h3 {
+  margin-top: 0.34rem;
+  font-size: 0.62rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .production-document-page .document-section,
 .production-document-page .document-total,
 .production-document-page .production-context-grid,

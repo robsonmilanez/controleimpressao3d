@@ -115,8 +115,11 @@
         </section>
       {% endif %}
 
+      {% set production_cost_summary = selected_cost_summary if selected_service else cost_summary %}
+      {% set production_margin_percent = production_cost_summary["margin_percent"] if "margin_percent" in production_cost_summary else (selected_service["production_margin_percent"] if selected_service and selected_service["production_margin_percent"] is not none else job["margin_percent"]) %}
       <section class="document-section">
-        <h2>Filamentos e materiais</h2>
+        <h2>Custos e horas</h2>
+        <h3>Filamentos e materiais</h3>
         <table class="document-table">
           <thead>
             <tr>
@@ -147,12 +150,17 @@
                 <td colspan="8">Nenhum material detalhado.</td>
               </tr>
             {% endfor %}
+            <tr>
+              <td colspan="3"><strong>Total de filamentos e materiais</strong></td>
+              <td><strong>{{ production_cost_summary["total_weight"]|br_decimal }} g</strong></td>
+              <td>-</td>
+              <td><strong>R$ {{ production_cost_summary["material_cost"]|br_money }}</strong></td>
+              <td colspan="2">-</td>
+            </tr>
           </tbody>
         </table>
-      </section>
 
-      <section class="document-section">
-        <h2>Componentes</h2>
+        <h3>Componentes</h3>
         <table class="document-table">
           <thead>
             <tr>
@@ -183,14 +191,18 @@
                 <td colspan="8">Nenhum componente detalhado.</td>
               </tr>
             {% endfor %}
+            <tr>
+              <td colspan="2"><strong>Total de componentes</strong></td>
+              <td><strong>{{ production_cost_summary["component_count"]|br_decimal }}</strong></td>
+              <td>-</td>
+              <td>-</td>
+              <td><strong>R$ {{ production_cost_summary["component_cost"]|br_money }}</strong></td>
+              <td colspan="2">-</td>
+            </tr>
           </tbody>
         </table>
-      </section>
 
-      {% set production_cost_summary = selected_cost_summary if selected_service else cost_summary %}
-      {% set production_margin_percent = selected_service["production_margin_percent"] if selected_service and selected_service["production_margin_percent"] is not none else job["margin_percent"] %}
-      <section class="document-section">
-        <h2>Custos e horas</h2>
+        <h3>Resumo de custos e horas</h3>
         <table class="document-table">
           <thead>
             <tr>
@@ -201,34 +213,6 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>Filamentos e materiais</td>
-              <td>{{ production_cost_summary["total_weight"]|br_decimal }} g</td>
-              <td>Conforme linhas acima</td>
-              <td>R$ {{ production_cost_summary["material_cost"]|br_money }}</td>
-            </tr>
-            {% for detail in production_cost_summary["breakdowns"]["materials"] %}
-              <tr class="document-subrow">
-                <td>• {{ detail["label"] }}</td>
-                <td>{{ detail["base"] }}</td>
-                <td>{{ detail["rate"] }}</td>
-                <td>R$ {{ detail["total"]|br_money }}</td>
-              </tr>
-            {% endfor %}
-            <tr>
-              <td>Componentes</td>
-              <td>{{ production_cost_summary["component_count"]|br_decimal }} item(ns)</td>
-              <td>Conforme linhas acima</td>
-              <td>R$ {{ production_cost_summary["component_cost"]|br_money }}</td>
-            </tr>
-            {% for detail in production_cost_summary["breakdowns"]["components"] %}
-              <tr class="document-subrow">
-                <td>• {{ detail["label"] }}</td>
-                <td>{{ detail["base"] }}</td>
-                <td>{{ detail["rate"] }}</td>
-                <td>R$ {{ detail["total"]|br_money }}</td>
-              </tr>
-            {% endfor %}
             <tr>
               <td>Energia</td>
               <td>{{ production_cost_summary["total_print_hours"]|br_decimal }} h</td>
@@ -245,25 +229,11 @@
             {% endfor %}
             <tr>
               <td>Depreciação de equipamentos</td>
-              <td>{{ production_cost_summary["total_print_hours"]|br_decimal }} h</td>
-              <td>Tempo de impressão x depreciação/h</td>
-              <td>R$ {{ production_cost_summary["operating_cost"]|br_money }}</td>
+              <td>{{ (production_cost_summary["total_print_hours"] + production_cost_summary["total_dryer_hours"])|br_decimal }} h</td>
+              <td>Tempo de uso x custo/h do equipamento</td>
+              <td>R$ {{ production_cost_summary["equipment_cost"]|br_money }}</td>
             </tr>
             {% for detail in production_cost_summary["breakdowns"]["operating"] %}
-              <tr class="document-subrow">
-                <td>• {{ detail["label"] }}</td>
-                <td>{{ detail["base"] }}</td>
-                <td>{{ detail["rate"] }}</td>
-                <td>R$ {{ detail["total"]|br_money }}</td>
-              </tr>
-            {% endfor %}
-            <tr>
-              <td>Secagem do filamento</td>
-              <td>{{ production_cost_summary["total_dryer_hours"]|br_decimal }} h</td>
-              <td>Tempo de secagem x custo/h</td>
-              <td>R$ {{ production_cost_summary["dryer_cost"]|br_money }}</td>
-            </tr>
-            {% for detail in production_cost_summary["breakdowns"]["dryers"] %}
               <tr class="document-subrow">
                 <td>• {{ detail["label"] }}</td>
                 <td>{{ detail["base"] }}</td>
