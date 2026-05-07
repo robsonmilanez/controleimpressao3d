@@ -1372,6 +1372,26 @@ input[type="range"]:focus {
   line-height: 1.32;
 }
 
+.price-suggestions-panel {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.price-suggestions-table td,
+.price-suggestions-table th {
+  white-space: nowrap;
+}
+
+.price-suggestions-table td:first-child,
+.price-suggestions-table th:first-child {
+  white-space: normal;
+}
+
+.production-quantity-warning {
+  margin-top: 0.8rem;
+}
+
 .queries-sheet-panel {
   padding: 1.6rem;
 }
@@ -1640,7 +1660,8 @@ input[readonly].computed-field,
 .product-material-metric-field,
 .product-component-metric-field,
 .product-material-total-field,
-.product-component-total-field {
+.product-component-total-field,
+.product-row-remove-field {
   min-width: 0;
 }
 
@@ -1664,6 +1685,16 @@ input[readonly].computed-field,
 .product-material-total-field,
 .product-component-total-field {
   flex: 0 0 132px;
+}
+
+.product-row-remove-field {
+  flex: 0 0 98px;
+}
+
+.product-row-remove-field .remove-row-button {
+  width: 100%;
+  min-height: 40px;
+  justify-content: center;
 }
 
 .product-material-select-field .searchable-select-wrapper,
@@ -3173,6 +3204,22 @@ th {
   padding-top: 0.34rem;
 }
 
+.production-document-page .document-summary-total-row td {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.production-document-page .document-warning {
+  margin: 0.24rem 0;
+  padding: 0.34rem 0.45rem;
+  border: 1px solid rgba(255, 159, 10, 0.45);
+  border-radius: 6px;
+  background: rgba(255, 159, 10, 0.12);
+  color: var(--text);
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
+
 .production-document-page .document-section,
 .production-document-page .document-total,
 .production-document-page .production-context-grid,
@@ -3888,12 +3935,12 @@ th {
 
   .product-material-row {
     display: grid;
-    grid-template-columns: minmax(180px, 2fr) minmax(160px, 1.35fr) minmax(84px, 0.72fr) minmax(90px, 0.78fr) minmax(112px, 0.82fr);
+    grid-template-columns: minmax(180px, 2fr) minmax(160px, 1.35fr) minmax(84px, 0.72fr) minmax(90px, 0.78fr) minmax(112px, 0.82fr) minmax(88px, 0.7fr);
   }
 
   .product-component-row {
     display: grid;
-    grid-template-columns: minmax(240px, 2.9fr) minmax(92px, 0.85fr) minmax(112px, 0.9fr);
+    grid-template-columns: minmax(240px, 2.9fr) minmax(92px, 0.85fr) minmax(112px, 0.9fr) minmax(88px, 0.7fr);
   }
 
   .product-pricing-grid {

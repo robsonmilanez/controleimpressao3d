@@ -37,17 +37,115 @@ PRODUCT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 BOOTSTRAP_CORE_TABLES = ("customers", "jobs", "materials", "products", "printers")
 
-ORDER_STATUS_DEFAULTS = [
-    "Orcamento",
-    "Aguardando aprovacao",
-    "Aprovado",
-    "Producao",
-    "Producao para estoque",
-    "Pos-processo",
-    "Pronto para entrega",
-    "Entregue",
-    "Cancelado",
+STATUS_STAGE_LABELS = {
+    "quote": "Orçamento",
+    "approved": "Pedido aprovado",
+    "production": "Produção",
+    "finished": "Produto finalizado",
+    "stock": "Estoque",
+    "direct_sale": "Venda direta",
+    "fulfilled": "Pedido atendido",
+    "canceled": "Cancelado",
+}
+STATUS_STAGE_OPTIONS = [
+    {"value": key, "label": label}
+    for key, label in STATUS_STAGE_LABELS.items()
 ]
+
+ORDER_STATUS_DEFAULTS = [
+    {
+        "name": "Orcamento",
+        "workflow_stage": "quote",
+        "sort_order": 10,
+        "applies_stock": 0,
+        "is_final": 0,
+        "notes": "Pedido ainda em orçamento. Não baixa estoque.",
+    },
+    {
+        "name": "Pedido aprovado",
+        "workflow_stage": "approved",
+        "sort_order": 20,
+        "applies_stock": 0,
+        "is_final": 0,
+        "notes": "Cliente aprovou. Ainda não baixa estoque automaticamente.",
+    },
+    {
+        "name": "Enviado para producao",
+        "workflow_stage": "production",
+        "sort_order": 30,
+        "applies_stock": 1,
+        "is_final": 0,
+        "notes": "Pedido liberado para produção. Baixa materiais e componentes da OP.",
+    },
+    {
+        "name": "Em producao",
+        "workflow_stage": "production",
+        "sort_order": 40,
+        "applies_stock": 1,
+        "is_final": 0,
+        "notes": "Produção em andamento. Mantém baixa de estoque aplicada.",
+    },
+    {
+        "name": "Produto finalizado",
+        "workflow_stage": "finished",
+        "sort_order": 50,
+        "applies_stock": 1,
+        "is_final": 0,
+        "notes": "Produto pronto, aguardando destino.",
+    },
+    {
+        "name": "Estoque",
+        "workflow_stage": "stock",
+        "sort_order": 60,
+        "applies_stock": 1,
+        "is_final": 0,
+        "notes": "Produção destinada ao estoque.",
+    },
+    {
+        "name": "Venda direta",
+        "workflow_stage": "direct_sale",
+        "sort_order": 70,
+        "applies_stock": 0,
+        "is_final": 0,
+        "notes": "Venda registrada no histórico comercial, sem baixa automática de estoque.",
+    },
+    {
+        "name": "Pedido atendido",
+        "workflow_stage": "fulfilled",
+        "sort_order": 80,
+        "applies_stock": 1,
+        "is_final": 1,
+        "notes": "Pedido entregue/concluído.",
+    },
+    {
+        "name": "Cancelado",
+        "workflow_stage": "canceled",
+        "sort_order": 90,
+        "applies_stock": 0,
+        "is_final": 1,
+        "notes": "Pedido cancelado. Reverte baixa de estoque se houver.",
+    },
+]
+
+LEGACY_STATUS_WORKFLOW = {
+    "AGUARDANDO APROVACAO": ("quote", 15, 0, 0),
+    "APROVADO": ("approved", 20, 0, 0),
+    "PRODUCAO": ("production", 40, 1, 0),
+    "PRODUCAO PARA ESTOQUE": ("stock", 60, 1, 0),
+    "POS-PROCESSO": ("production", 45, 1, 0),
+    "PRONTO PARA ENTREGA": ("finished", 50, 1, 0),
+    "ENTREGUE": ("fulfilled", 80, 1, 1),
+}
+
+STATUS_CANONICAL_RENAMES = {
+    "Aguardando aprovacao": "Orcamento",
+    "Aprovado": "Pedido aprovado",
+    "Producao": "Em producao",
+    "Pos-processo": "Em producao",
+    "Pronto para entrega": "Produto finalizado",
+    "Producao para estoque": "Estoque",
+    "Entregue": "Pedido atendido",
+}
 
 MOVEMENT_TYPES = [
     "Entrada",
@@ -343,7 +441,11 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS order_statuses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
-            notes TEXT
+            notes TEXT,
+            workflow_stage TEXT NOT NULL DEFAULT 'quote',
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            applies_stock INTEGER NOT NULL DEFAULT 0,
+            is_final INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS printers (
@@ -861,6 +963,10 @@ def init_db() -> None:
     ensure_column(db, "payment_terms", "notes", "TEXT")
     ensure_column(db, "sales_channels", "notes", "TEXT")
     ensure_column(db, "order_statuses", "notes", "TEXT")
+    ensure_column(db, "order_statuses", "workflow_stage", "TEXT NOT NULL DEFAULT 'quote'")
+    ensure_column(db, "order_statuses", "sort_order", "INTEGER NOT NULL DEFAULT 0")
+    ensure_column(db, "order_statuses", "applies_stock", "INTEGER NOT NULL DEFAULT 0")
+    ensure_column(db, "order_statuses", "is_final", "INTEGER NOT NULL DEFAULT 0")
     db.execute(
         "UPDATE jobs SET created_at = ? WHERE created_at IS NULL OR created_at = ''",
         (date.today().isoformat(),),
@@ -907,6 +1013,8 @@ def init_db() -> None:
     seed_payment_terms(db)
     seed_sales_channels(db)
     seed_order_statuses(db)
+    normalize_order_statuses(db)
+    reconcile_job_stock_statuses(db)
     seed_material_types(db)
     refresh_zero_component_unit_costs(db)
 
@@ -967,13 +1075,64 @@ def seed_order_statuses(db: sqlite3.Connection) -> None:
     for status in ORDER_STATUS_DEFAULTS:
         db.execute(
             """
-            INSERT INTO order_statuses (name)
-            SELECT ?
+            INSERT INTO order_statuses (
+                name,
+                notes,
+                workflow_stage,
+                sort_order,
+                applies_stock,
+                is_final
+            )
+            SELECT ?, ?, ?, ?, ?, ?
             WHERE NOT EXISTS (
                 SELECT 1 FROM order_statuses WHERE LOWER(name) = LOWER(?)
             )
             """,
-            (status, status),
+            (
+                status["name"],
+                status["notes"],
+                status["workflow_stage"],
+                status["sort_order"],
+                status["applies_stock"],
+                status["is_final"],
+                status["name"],
+            ),
+        )
+        db.execute(
+            """
+            UPDATE order_statuses
+            SET
+                workflow_stage = ?,
+                sort_order = ?,
+                applies_stock = ?,
+                is_final = ?,
+                notes = CASE
+                    WHEN notes IS NULL OR notes = '' OR LOWER(name) = LOWER('Venda direta') THEN ?
+                    ELSE notes
+                END
+            WHERE LOWER(name) = LOWER(?)
+            """,
+            (
+                status["workflow_stage"],
+                status["sort_order"],
+                status["applies_stock"],
+                status["is_final"],
+                status["notes"],
+                status["name"],
+            ),
+        )
+    for name, (stage, sort_order, applies_stock, is_final) in LEGACY_STATUS_WORKFLOW.items():
+        db.execute(
+            """
+            UPDATE order_statuses
+            SET
+                workflow_stage = ?,
+                sort_order = ?,
+                applies_stock = ?,
+                is_final = ?
+            WHERE UPPER(name) = ?
+            """,
+            (stage, sort_order, applies_stock, is_final, name),
         )
 
 
@@ -1079,6 +1238,39 @@ def calculate_margin_percent_from_sale(total_cost: float, sale_total: float) -> 
     if sale_total <= 0:
         return 0.0
     return round(max(((sale_total - total_cost) / sale_total) * 100, 0), 2)
+
+
+def build_price_suggestions(
+    total_cost: float,
+    sale_total: float,
+    desired_margin_percent: float | None = None,
+) -> list[dict[str, Any]]:
+    total_cost = round(float(total_cost or 0), 2)
+    sale_total = round(float(sale_total or 0), 2)
+    suggestions: list[dict[str, Any]] = []
+
+    def add_suggestion(label: str, price: float, source: str) -> None:
+        price = round(float(price or 0), 2)
+        suggestions.append(
+            {
+                "label": label,
+                "price": price,
+                "cost": total_cost,
+                "margin_percent": calculate_margin_percent_from_sale(total_cost, price),
+                "profit": round(price - total_cost, 2),
+                "source": source,
+            }
+        )
+
+    for margin in [30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0]:
+        normalized_margin = round(float(margin), 2)
+        price = calculate_price_with_margin(total_cost, normalized_margin)
+        add_suggestion(
+            f"Margem {br_decimal(normalized_margin)}%",
+            price,
+            "Margem sobre o preço de venda",
+        )
+    return suggestions
 
 
 def frustum_volume_mm3(height_mm: float, radius_bottom_mm: float, radius_top_mm: float) -> float:
@@ -2006,7 +2198,28 @@ def build_default_production_lines_for_service(
         line["service_line_number"] = service_line_number
     for line in component_lines:
         line["service_line_number"] = service_line_number
+    multiply_production_lines_by_quantity(
+        material_lines,
+        component_lines,
+        float(service_line.get("quantity") or 1),
+    )
     return material_lines, component_lines
+
+
+def multiply_production_lines_by_quantity(
+    material_lines: list[dict[str, Any]],
+    component_lines: list[dict[str, Any]],
+    quantity: float,
+) -> None:
+    multiplier = max(float(quantity or 1), 1.0)
+    if multiplier <= 1:
+        return
+    for line in material_lines:
+        line["weight_grams"] = round(float(line.get("weight_grams") or 0) * multiplier, 4)
+        line["print_hours"] = round(float(line.get("print_hours") or 0) * multiplier, 4)
+        line["dryer_hours"] = round(float(line.get("dryer_hours") or 0) * multiplier, 4)
+    for line in component_lines:
+        line["quantity"] = round(float(line.get("quantity") or 0) * multiplier, 4)
 
 
 def refresh_job_production_totals(db: sqlite3.Connection, job_id: int) -> None:
@@ -2371,6 +2584,42 @@ def apply_saved_equipment_to_product_material_line(
     return line
 
 
+def should_keep_saved_material_line(
+    product_line: dict[str, Any],
+    saved_line: dict[str, Any] | None,
+) -> bool:
+    if not saved_line:
+        return False
+    comparable_fields = ["material_id", "weight_grams", "print_hours", "notes"]
+    for field in comparable_fields:
+        product_value = product_line.get(field)
+        saved_value = saved_line.get(field)
+        if field in {"weight_grams", "print_hours"}:
+            if abs(float(product_value or 0) - float(saved_value or 0)) > 0.0001:
+                return True
+        elif str(product_value or "").strip() != str(saved_value or "").strip():
+            return True
+    return False
+
+
+def should_keep_saved_component_line(
+    product_line: dict[str, Any],
+    saved_line: dict[str, Any] | None,
+) -> bool:
+    if not saved_line:
+        return False
+    comparable_fields = ["component_id", "quantity", "notes"]
+    for field in comparable_fields:
+        product_value = product_line.get(field)
+        saved_value = saved_line.get(field)
+        if field == "quantity":
+            if abs(float(product_value or 0) - float(saved_value or 0)) > 0.0001:
+                return True
+        elif str(product_value or "").strip() != str(saved_value or "").strip():
+            return True
+    return False
+
+
 def find_matching_saved_material_line(
     product_line: dict[str, Any],
     saved_lines: list[dict[str, Any]],
@@ -2382,6 +2631,25 @@ def find_matching_saved_material_line(
         if index in used_indexes:
             continue
         if parse_integerish(saved_line.get("material_id")) == product_material_id:
+            used_indexes.add(index)
+            return saved_line
+    if fallback_index < len(saved_lines) and fallback_index not in used_indexes:
+        used_indexes.add(fallback_index)
+        return saved_lines[fallback_index]
+    return None
+
+
+def find_matching_saved_component_line(
+    product_line: dict[str, Any],
+    saved_lines: list[dict[str, Any]],
+    used_indexes: set[int],
+    fallback_index: int,
+) -> dict[str, Any] | None:
+    product_component_id = parse_integerish(product_line.get("component_id"))
+    for index, saved_line in enumerate(saved_lines):
+        if index in used_indexes:
+            continue
+        if parse_integerish(saved_line.get("component_id")) == product_component_id:
             used_indexes.add(index)
             return saved_line
     if fallback_index < len(saved_lines) and fallback_index not in used_indexes:
@@ -2429,7 +2697,10 @@ def build_current_product_production_lines(
             job,
         )
         saved_service_materials = saved_materials_by_service.get(service_line_number, [])
+        saved_service_components = saved_components_by_service.get(service_line_number, [])
         used_saved_material_indexes: set[int] = set()
+        used_saved_component_indexes: set[int] = set()
+        default_service_material_lines: list[dict[str, Any]] = []
 
         for index, product_line in enumerate(product_material_lines):
             saved_line = find_matching_saved_material_line(
@@ -2438,17 +2709,40 @@ def build_current_product_production_lines(
                 used_saved_material_indexes,
                 index,
             )
-            line = apply_saved_equipment_to_product_material_line(
-                db,
-                product_line,
-                saved_line,
-            )
+            if should_keep_saved_material_line(product_line, saved_line):
+                line = {**dict(saved_line)}
+            else:
+                line = apply_saved_equipment_to_product_material_line(
+                    db,
+                    product_line,
+                    saved_line,
+                )
+                default_service_material_lines.append(line)
             line["service_line_number"] = service_line_number
             current_material_lines.append(line)
 
-        for product_line in product_component_lines:
-            line = {**product_line, "service_line_number": service_line_number}
-            current_component_lines.append(line)
+        current_service_component_lines: list[dict[str, Any]] = []
+        default_service_component_lines: list[dict[str, Any]] = []
+        for index, product_line in enumerate(product_component_lines):
+            saved_line = find_matching_saved_component_line(
+                product_line,
+                saved_service_components,
+                used_saved_component_indexes,
+                index,
+            )
+            if should_keep_saved_component_line(product_line, saved_line):
+                line = {**dict(saved_line)}
+            else:
+                line = {**product_line}
+                default_service_component_lines.append(line)
+            line["service_line_number"] = service_line_number
+            current_service_component_lines.append(line)
+        multiply_production_lines_by_quantity(
+            default_service_material_lines,
+            default_service_component_lines,
+            float(service_line.get("quantity") or 1),
+        )
+        current_component_lines.extend(current_service_component_lines)
 
     return current_material_lines, current_component_lines
 
@@ -3713,8 +4007,30 @@ def inventory_delta_for_type(movement_type: str, quantity_grams: float) -> float
     return -quantity_grams if movement_type in negative_movements else quantity_grams
 
 
-def job_status_uses_stock(status: str | None) -> bool:
-    return normalize_upper_text(status) not in {"ORCAMENTO", "CANCELADO"}
+def fallback_status_uses_stock(status: str | None) -> bool:
+    normalized = normalize_upper_text(status)
+    if not normalized or normalized in {"ORCAMENTO", "CANCELADO", "AGUARDANDO APROVACAO"}:
+        return False
+    if normalized in LEGACY_STATUS_WORKFLOW:
+        return bool(LEGACY_STATUS_WORKFLOW[normalized][2])
+    return True
+
+
+def job_status_uses_stock(db: sqlite3.Connection, status: str | None) -> bool:
+    normalized = str(status or "").strip()
+    if not normalized:
+        return False
+    row = db.execute(
+        """
+        SELECT applies_stock
+        FROM order_statuses
+        WHERE LOWER(name) = LOWER(?)
+        """,
+        (normalized,),
+    ).fetchone()
+    if row is not None:
+        return bool(int(row["applies_stock"] or 0))
+    return fallback_status_uses_stock(normalized)
 
 
 def get_job_material_usage(db: sqlite3.Connection, job_id: int) -> dict[int, dict[str, float]]:
@@ -3882,10 +4198,42 @@ def reverse_job_stock(db: sqlite3.Connection, job_id: int) -> None:
 
 
 def sync_job_stock_for_status(db: sqlite3.Connection, job_id: int, status: str | None) -> None:
-    if job_status_uses_stock(status):
+    if job_status_uses_stock(db, status):
         apply_job_stock(db, job_id)
     else:
         reverse_job_stock(db, job_id)
+
+
+def normalize_order_statuses(db: sqlite3.Connection) -> None:
+    for old_name, new_name in STATUS_CANONICAL_RENAMES.items():
+        db.execute(
+            """
+            UPDATE jobs
+            SET status = ?
+            WHERE LOWER(status) = LOWER(?)
+            """,
+            (new_name, old_name),
+        )
+        db.execute(
+            """
+            DELETE FROM order_statuses
+            WHERE LOWER(name) = LOWER(?)
+            """,
+            (old_name,),
+        )
+
+
+def reconcile_job_stock_statuses(db: sqlite3.Connection) -> None:
+    rows = db.execute(
+        """
+        SELECT id, status, stock_applied
+        FROM jobs
+        WHERE stock_applied = 1
+        """
+    ).fetchall()
+    for row in rows:
+        if not job_status_uses_stock(db, row["status"]):
+            reverse_job_stock(db, int(row["id"]))
 
 
 def inventory_direction_label(movement_type: str) -> str:
@@ -3949,7 +4297,7 @@ def fetch_reference_data(db: sqlite3.Connection) -> dict[str, list[sqlite3.Row]]
             "SELECT * FROM sales_channels ORDER BY name ASC"
         ).fetchall(),
         "order_statuses": db.execute(
-            "SELECT * FROM order_statuses ORDER BY name ASC"
+            "SELECT * FROM order_statuses ORDER BY sort_order ASC, name ASC"
         ).fetchall(),
         "material_types": db.execute(
             "SELECT * FROM material_types ORDER BY name ASC"
@@ -4198,11 +4546,22 @@ def handle_registry_submission(db: sqlite3.Connection, section: str) -> int | No
     elif section == "order-statuses":
         cursor = db.execute(
             """
-            INSERT INTO order_statuses (name, notes)
-            VALUES (?, ?)
+            INSERT INTO order_statuses (
+                name,
+                workflow_stage,
+                sort_order,
+                applies_stock,
+                is_final,
+                notes
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 request.form["name"].strip(),
+                request.form.get("workflow_stage", "quote").strip() or "quote",
+                parse_integerish(request.form.get("sort_order"), 0),
+                1 if request.form.get("applies_stock") else 0,
+                1 if request.form.get("is_final") else 0,
                 request.form["notes"].strip(),
             ),
         )
@@ -4908,23 +5267,37 @@ def get_registry_page_context(
         "order-statuses": {
             "eyebrow": "Cadastros",
             "title": "Cadastro de status do pedido",
-            "description": "Padronize os status usados em pedidos, vendas e produção para poder ampliar a lista quando quiser.",
+            "description": "Padronize o caminho do pedido para filtrar relatórios e controlar quando a OP baixa estoque.",
             "panel_kicker": "Comercial",
             "panel_title": "Status do pedido",
             "panel_badge": f"{len(references['order_statuses'])} cadastrados",
             "submit_label": "Salvar status",
             "fields": [
                 {"name": "name", "label": "Status do pedido", "type": "text", "required": True, "placeholder": "Orcamento, Producao, Producao para estoque..."},
+                {"name": "workflow_stage", "label": "Etapa do fluxo", "type": "select", "required": True, "options": STATUS_STAGE_OPTIONS},
+                {"name": "sort_order", "label": "Ordem", "type": "number", "min": 0, "step": 1, "value": 0},
+                {"name": "applies_stock", "label": "Baixa estoque", "type": "checkbox", "hint": "Baixar materiais/componentes quando usar este status"},
+                {"name": "is_final", "label": "Status final", "type": "checkbox", "hint": "Pedido encerrado"},
                 {"name": "notes", "label": "Observações", "type": "textarea", "full": True},
             ],
             "columns": [
                 {"key": "name", "label": "Status"},
+                {"key": "stage_label", "label": "Etapa"},
+                {"key": "stock_label", "label": "Estoque"},
+                {"key": "final_label", "label": "Final"},
                 {"key": "notes", "label": "Observações"},
             ],
             "records": [
                 {
                     "id": row["id"],
                     "name": row["name"],
+                    "workflow_stage": row["workflow_stage"],
+                    "stage_label": STATUS_STAGE_LABELS.get(row["workflow_stage"], row["workflow_stage"] or "-"),
+                    "sort_order": row["sort_order"],
+                    "applies_stock": row["applies_stock"],
+                    "stock_label": "Baixa" if row["applies_stock"] else "Nao baixa",
+                    "is_final": row["is_final"],
+                    "final_label": "Sim" if row["is_final"] else "Nao",
                     "notes": row["notes"] or "-",
                 }
                 for row in references["order_statuses"]
@@ -5357,11 +5730,21 @@ def handle_registry_update(
         db.execute(
             """
             UPDATE order_statuses
-            SET name = ?, notes = ?
+            SET
+                name = ?,
+                workflow_stage = ?,
+                sort_order = ?,
+                applies_stock = ?,
+                is_final = ?,
+                notes = ?
             WHERE id = ?
             """,
             (
                 request.form["name"].strip(),
+                request.form.get("workflow_stage", "quote").strip() or "quote",
+                parse_integerish(request.form.get("sort_order"), 0),
+                1 if request.form.get("applies_stock") else 0,
+                1 if request.form.get("is_final") else 0,
                 request.form["notes"].strip(),
                 record_id,
             ),
@@ -7641,7 +8024,7 @@ def jobs() -> str:
             )
 
             stock_warning = ""
-            if job_status_uses_stock(status) and (insufficient_material or insufficient_component):
+            if job_status_uses_stock(db, status) and (insufficient_material or insufficient_component):
                 stock_warning = build_job_stock_error_message(material_lines, component_lines)
 
             extra_cost = parse_form_decimal(request.form.get("extra_cost"), "Custos extras")
@@ -8760,10 +9143,11 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             line_product_id = parse_integerish(service_line.get("product_id"))
             if line_product_id and line_product_id != int(resolved_product["id"]):
                 continue
+            service_quantity = max(float(service_line.get("quantity") or 1), 1.0)
             if float(service_line.get("production_labor_hours") or 0) <= 0:
                 service_line["production_labor_hours"] = float(
                     resolved_product["labor_hours"] or 0
-                )
+                ) * service_quantity
             if float(service_line.get("production_labor_hourly_rate") or 0) <= 0:
                 service_line["production_labor_hourly_rate"] = float(
                     resolved_product["labor_hourly_rate"]
@@ -8773,7 +9157,7 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             if float(service_line.get("production_design_hours") or 0) <= 0:
                 service_line["production_design_hours"] = float(
                     resolved_product["design_hours"] or 0
-                )
+                ) * service_quantity
             if float(service_line.get("production_design_hourly_rate") or 0) <= 0:
                 service_line["production_design_hourly_rate"] = float(
                     resolved_product["design_hourly_rate"] or 0
@@ -8781,7 +9165,7 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
             if float(service_line.get("production_extra_cost") or 0) <= 0:
                 service_line["production_extra_cost"] = float(
                     resolved_product["extra_cost"] or 0
-                )
+                ) * service_quantity
     material_lines = [{**dict(line), "service_line_number": int(line["service_line_number"] or 1)} for line in material_lines]
     component_lines = [{**dict(line), "service_line_number": int(line["service_line_number"] or 1)} for line in component_lines]
     job_photo_lines = db.execute(
@@ -9059,6 +9443,11 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
     cost_summary["profit"] = round(
         cost_summary["suggested_price"] - cost_summary["total_cost"], 2
     )
+    cost_summary["price_suggestions"] = build_price_suggestions(
+        cost_summary["total_cost"],
+        cost_summary["suggested_price"],
+        float(job["margin_percent"] or 0) if job["margin_percent"] is not None else None,
+    )
     selected_cost_summary = summarize_cost_lines(
         material_lines=selected_material_lines,
         component_lines=selected_component_lines,
@@ -9077,6 +9466,16 @@ def fetch_job_detail(db: sqlite3.Connection, job_id: int) -> dict[str, Any]:
         selected_cost_summary["suggested_price"]
         if selected_cost_summary["suggested_price"] > 0
         else 0.0
+    )
+    selected_desired_margin = None
+    if selected_service and selected_service["production_margin_percent"] is not None:
+        selected_desired_margin = float(selected_service["production_margin_percent"] or 0)
+    elif job["margin_percent"] is not None:
+        selected_desired_margin = float(job["margin_percent"] or 0)
+    selected_cost_summary["price_suggestions"] = build_price_suggestions(
+        selected_cost_summary["total_cost"],
+        selected_cost_summary["suggested_price"],
+        selected_desired_margin,
     )
     return {
         "job": job,

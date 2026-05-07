@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <title>Ordem de produção #{{ job["id"] }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260506-1504') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260507-1110') }}">
   </head>
   <body class="print-body production-document-page">
     <main class="print-page production-document-page">
@@ -102,6 +102,14 @@
             {% endfor %}
           </tbody>
         </table>
+
+        {% set production_quantity = selected_service["quantity"] if selected_service else job["quantity"] %}
+        {% if production_quantity|float > 1 %}
+          <div class="document-warning production-quantity-warning">
+            <strong>Atenção:</strong> esta OP tem {{ production_quantity|br_decimal }} unidades. Os custos abaixo são calculados para o total produzido quando vêm do cadastro do produto.
+          </div>
+        {% endif %}
+
       </section>
 
       {% if photo_lines %}
@@ -259,30 +267,66 @@
               <td>-</td>
               <td>R$ {{ production_cost_summary["extra_cost"]|br_money }}</td>
             </tr>
-            <tr class="document-summary-topic">
+            <tr class="document-summary-topic document-summary-total-row">
               <td><strong>Custo total</strong></td>
               <td>-</td>
               <td>-</td>
               <td><strong>R$ {{ production_cost_summary["total_cost"]|br_money }}</strong></td>
             </tr>
-            <tr class="document-summary-topic">
+            <tr class="document-summary-topic document-summary-total-row">
+              <td><strong>Custo unitário</strong></td>
+              <td>{{ production_quantity|br_decimal }} un</td>
+              <td>Custo total / quantidade</td>
+              <td><strong>R$ {{ (production_cost_summary["total_cost"] / production_quantity)|br_money if production_quantity|float > 0 else "0,00" }}</strong></td>
+            </tr>
+            <tr class="document-summary-topic document-summary-total-row">
               <td><strong>Valor sugerido para venda</strong></td>
               <td>Margem no preço vendido: {{ production_margin_percent|br_decimal }}%</td>
               <td>Custo / (1 - margem)</td>
               <td><strong>R$ {{ production_cost_summary["margin_suggested_price"]|br_money }}</strong></td>
             </tr>
-            <tr class="document-summary-topic">
+            <tr class="document-summary-topic document-summary-total-row">
               <td><strong>Preço vendido</strong></td>
               <td>Objeto do pedido</td>
               <td>-</td>
               <td><strong>R$ {{ production_cost_summary["suggested_price"]|br_money }}</strong></td>
             </tr>
-            <tr class="document-summary-topic">
+            <tr class="document-summary-topic document-summary-total-row">
               <td><strong>Lucro estimado</strong></td>
               <td>-</td>
               <td>-</td>
               <td><strong>R$ {{ production_cost_summary["profit"]|br_money }}</strong></td>
             </tr>
+          </tbody>
+        </table>
+
+        <h3>Sugestões de preço e lucro</h3>
+        <table class="document-table price-suggestions-table">
+          <thead>
+            <tr>
+              <th>Sugestão</th>
+              <th>Custo da OP</th>
+              <th>Preço de venda</th>
+              <th>Margem</th>
+              <th>Lucro</th>
+              <th>Base do cálculo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for suggestion in production_cost_summary["price_suggestions"] %}
+              <tr>
+                <td>{{ suggestion["label"] }}</td>
+                <td>R$ {{ suggestion["cost"]|br_money }}</td>
+                <td><strong>R$ {{ suggestion["price"]|br_money }}</strong></td>
+                <td>{{ suggestion["margin_percent"]|br_decimal }}%</td>
+                <td><strong>R$ {{ suggestion["profit"]|br_money }}</strong></td>
+                <td>{{ suggestion["source"] }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6">Sem custo calculado para sugerir preço.</td>
+              </tr>
+            {% endfor %}
           </tbody>
         </table>
       </section>

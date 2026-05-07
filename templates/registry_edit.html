@@ -46,7 +46,11 @@
                   <option value="">Nenhum</option>
                 {% endif %}
                 {% for option in field["options"] %}
-                  <option value="{{ option }}" {% if field.get('value') == option %}selected{% endif %}>{{ option }}</option>
+                  {% if option is mapping %}
+                    <option value="{{ option['value'] }}" {% if field.get('value') == option['value'] %}selected{% endif %}>{{ option['label'] }}</option>
+                  {% else %}
+                    <option value="{{ option }}" {% if field.get('value') == option %}selected{% endif %}>{{ option }}</option>
+                  {% endif %}
                 {% endfor %}
               </select>
             {% elif field["type"] == "checkbox" %}

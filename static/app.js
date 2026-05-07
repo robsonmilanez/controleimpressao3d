@@ -2078,6 +2078,7 @@ function setupJobInlineTotals() {
       ).reduce((total, row) => total + getServiceTotal(row), 0);
       const fallbackSaleTotal = parseNumber(form.dataset.saleTotal);
       const saleTotal = calculatedSaleTotal > 0 ? calculatedSaleTotal : fallbackSaleTotal;
+      const productionQuantity = Math.max(parseNumber(form.dataset.productionQuantity) || 1, 1);
       const energyTotal = materialTotals.energy;
       const operatingTotal = materialTotals.operating;
       const dryerTotal = materialTotals.dryer;
@@ -2146,6 +2147,7 @@ function setupJobInlineTotals() {
       setText(".internal-labor-total", currency(laborTotal));
       setText(".internal-design-total", currency(designTotal));
       setText(".internal-total-cost", currency(totalCost));
+      setText(".internal-unit-cost", currency(totalCost / productionQuantity));
       setText(".internal-suggested-price-total", currency(suggestedPrice));
       setText(".internal-sale-total", currency(saleTotal));
       setText(".internal-profit-total", currency(saleTotal - totalCost));
@@ -2329,15 +2331,23 @@ function setupJobProfitWarning() {
         return;
       }
 
-      const materialCost = Array.from(
+      const materialTotals = Array.from(
         form.querySelectorAll("[data-collection='materials'] .collection-row")
-      ).reduce((total, row) => {
+      ).reduce((totals, row) => {
         const select = row.querySelector("[name='material_id']");
         const weight = parseNumber(row.querySelector("[name='material_weight_grams']")?.value);
+        const printHours = parseNumber(row.querySelector("[name='print_hours']")?.value);
         const selectedOption = select?.selectedOptions?.[0];
         const costPerKg = parseNumber(selectedOption?.dataset.costPerKg);
-        return total + weight * (costPerKg / 1000);
-      }, 0);
+        const printerOption = row.querySelector("[name='printer_id']")?.selectedOptions?.[0];
+        const dryerSelect = row.querySelector("[name='filament_dryer_id']");
+        const dryerOption = dryerSelect?.selectedOptions?.[0];
+        totals.material += weight * (costPerKg / 1000);
+        totals.energy += printHours * parseNumber(printerOption?.dataset.energyCost);
+        totals.operating += printHours * parseNumber(printerOption?.dataset.operatingCost);
+        totals.dryer += (dryerSelect?.value ? printHours : 0) * parseNumber(dryerOption?.dataset.hourlyCost);
+        return totals;
+      }, { material: 0, energy: 0, operating: 0, dryer: 0 });
 
       const componentCost = Array.from(
         form.querySelectorAll("[data-collection='components'] .collection-row")
@@ -2362,13 +2372,6 @@ function setupJobProfitWarning() {
       const serviceTotal =
         calculatedServiceTotal > 0 ? calculatedServiceTotal : fallbackServiceTotal;
 
-      const printHours = parseNumber(form.querySelector("[name='print_hours']")?.value);
-      const energyCost = printHours * parseNumber(
-        form.querySelector("[name='energy_cost_per_hour']")?.value
-      );
-      const operatingCost = printHours * parseNumber(
-        form.querySelector("[name='operating_cost_per_hour']")?.value
-      );
       const laborCost =
         parseNumber(form.querySelector("[name='labor_hours']")?.value) *
         parseNumber(form.querySelector("[name='labor_hourly_rate']")?.value);
@@ -2376,15 +2379,12 @@ function setupJobProfitWarning() {
         parseNumber(form.querySelector("[name='design_hours']")?.value) *
         parseNumber(form.querySelector("[name='design_hourly_rate']")?.value);
       const extraCost = parseNumber(form.querySelector("[name='extra_cost']")?.value);
-      const dryerCost =
-        parseNumber(form.querySelector("[name='dryer_hours']")?.value) *
-        parseNumber(form.querySelector("[name='dryer_cost_per_hour']")?.value);
       const totalCost =
-        materialCost +
+        materialTotals.material +
         componentCost +
-        energyCost +
-        operatingCost +
-        dryerCost +
+        materialTotals.energy +
+        materialTotals.operating +
+        materialTotals.dryer +
         laborCost +
         designCost +
         extraCost;
