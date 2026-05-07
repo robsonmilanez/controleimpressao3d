@@ -118,6 +118,16 @@
         <p><strong>Custo interno atual:</strong> R$ {{ job["total_cost"]|br_money }}</p>
       </section>
 
+      <section class="document-section production-context-section data-origin-section">
+        <h2>Origem dos dados</h2>
+        <div class="data-origin-grid">
+          <p><strong>Comercial:</strong> cliente, status, item, quantidade e preço vêm do pedido.</p>
+          <p><strong>Produto:</strong> materiais/componentes iniciais e fotos padrão vêm do cadastro atual.</p>
+          <p><strong>OP:</strong> impressoras, secadores, horas, custos internos e observações de produção são salvos nesta ordem.</p>
+          <p><strong>Cálculos:</strong> custo, margem, lucro, energia e depreciação são calculados a partir das linhas da OP.</p>
+        </div>
+      </section>
+
       {% if photo_lines %}
         <section class="document-section production-context-section">
           <h2>Fotos do produto</h2>

@@ -577,6 +577,19 @@ def init_db() -> None:
             FOREIGN KEY(related_job_id) REFERENCES jobs(id)
         );
 
+        CREATE TABLE IF NOT EXISTS component_inventory_movements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            component_id INTEGER NOT NULL,
+            movement_type TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            unit_cost REAL NOT NULL DEFAULT 0,
+            related_job_id INTEGER,
+            notes TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(component_id) REFERENCES components(id),
+            FOREIGN KEY(related_job_id) REFERENCES jobs(id)
+        );
+
         CREATE TABLE IF NOT EXISTS commercial_entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             invoice_group_id TEXT,
@@ -774,6 +787,7 @@ def init_db() -> None:
     ensure_column(db, "jobs", "product_id", "INTEGER")
     ensure_column(db, "jobs", "customer_document_token", "TEXT")
     ensure_column(db, "jobs", "production_document_token", "TEXT")
+    ensure_column(db, "jobs", "stock_applied", "INTEGER NOT NULL DEFAULT 0")
     ensure_column(db, "jobs", "printer_id", "INTEGER")
     ensure_column(db, "jobs", "filament_dryer_id", "INTEGER")
     ensure_column(db, "jobs", "dryer_hours", "REAL NOT NULL DEFAULT 0")
@@ -841,6 +855,8 @@ def init_db() -> None:
         "REAL NOT NULL DEFAULT 0",
     )
     ensure_column(db, "inventory_movements", "related_job_id", "INTEGER")
+    ensure_column(db, "component_inventory_movements", "unit_cost", "REAL NOT NULL DEFAULT 0")
+    ensure_column(db, "component_inventory_movements", "related_job_id", "INTEGER")
     ensure_column(db, "jobs", "created_at", "TEXT")
     ensure_column(db, "payment_terms", "notes", "TEXT")
     ensure_column(db, "sales_channels", "notes", "TEXT")
@@ -848,6 +864,18 @@ def init_db() -> None:
     db.execute(
         "UPDATE jobs SET created_at = ? WHERE created_at IS NULL OR created_at = ''",
         (date.today().isoformat(),),
+    )
+    db.execute(
+        """
+        UPDATE jobs
+        SET stock_applied = 1
+        WHERE stock_applied = 0
+          AND EXISTS (
+              SELECT 1
+              FROM inventory_movements
+              WHERE inventory_movements.related_job_id = jobs.id
+          )
+        """
     )
     rows_without_customer_token = db.execute(
         "SELECT id FROM jobs WHERE customer_document_token IS NULL OR customer_document_token = ''"
@@ -2064,8 +2092,6 @@ def refresh_job_production_totals(db: sqlite3.Connection, job_id: int) -> None:
             extra_cost = ?,
             margin_percent = ?,
             total_cost = ?,
-            internal_notes = ?,
-            notes = ?,
             printer_id = ?,
             filament_dryer_id = ?,
             dryer_hours = ?,
@@ -2085,16 +2111,6 @@ def refresh_job_production_totals(db: sqlite3.Connection, job_id: int) -> None:
             round(total_extra_cost, 2),
             average_margin,
             round(total_cost, 2),
-            (
-                str(service_lines[0]["production_internal_notes"]).strip()
-                if len(service_lines) == 1 and service_lines
-                else detail["job"]["internal_notes"]
-            ),
-            (
-                str(service_lines[0]["production_internal_notes"]).strip()
-                if len(service_lines) == 1 and service_lines
-                else detail["job"]["notes"]
-            ),
             primary_printer_id,
             primary_dryer_id,
             round(total_dryer_hours, 2),
@@ -3695,6 +3711,181 @@ def parse_integerish(value: str | None, default: int = 0) -> int:
 def inventory_delta_for_type(movement_type: str, quantity_grams: float) -> float:
     negative_movements = {"Ajuste negativo", "Consumo manual", "Perda"}
     return -quantity_grams if movement_type in negative_movements else quantity_grams
+
+
+def job_status_uses_stock(status: str | None) -> bool:
+    return normalize_upper_text(status) not in {"ORCAMENTO", "CANCELADO"}
+
+
+def get_job_material_usage(db: sqlite3.Connection, job_id: int) -> dict[int, dict[str, float]]:
+    usage: dict[int, dict[str, float]] = {}
+    rows = db.execute(
+        """
+        SELECT
+            job_materials.material_id,
+            SUM(job_materials.weight_grams) AS quantity_grams,
+            materials.cost_per_kg
+        FROM job_materials
+        JOIN materials ON materials.id = job_materials.material_id
+        WHERE job_materials.job_id = ?
+        GROUP BY job_materials.material_id
+        """,
+        (job_id,),
+    ).fetchall()
+    for row in rows:
+        material_id = int(row["material_id"])
+        usage[material_id] = {
+            "quantity": float(row["quantity_grams"] or 0),
+            "unit_cost": float(row["cost_per_kg"] or 0),
+        }
+    return usage
+
+
+def get_job_component_usage(db: sqlite3.Connection, job_id: int) -> dict[int, dict[str, float]]:
+    usage: dict[int, dict[str, float]] = {}
+    rows = db.execute(
+        """
+        SELECT
+            job_components.component_id,
+            SUM(job_components.quantity) AS quantity,
+            components.unit_cost
+        FROM job_components
+        JOIN components ON components.id = job_components.component_id
+        WHERE job_components.job_id = ?
+        GROUP BY job_components.component_id
+        """,
+        (job_id,),
+    ).fetchall()
+    for row in rows:
+        component_id = int(row["component_id"])
+        usage[component_id] = {
+            "quantity": float(row["quantity"] or 0),
+            "unit_cost": float(row["unit_cost"] or 0),
+        }
+    return usage
+
+
+def apply_job_stock(db: sqlite3.Connection, job_id: int) -> None:
+    job = db.execute("SELECT id, item_name, stock_applied FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if job is None or int(job["stock_applied"] or 0):
+        return
+    item_name = str(job["item_name"] or f"#{job_id:04d}")
+    for material_id, usage in get_job_material_usage(db, job_id).items():
+        quantity = float(usage["quantity"] or 0)
+        if quantity <= 0:
+            continue
+        db.execute(
+            "UPDATE materials SET stock_grams = stock_grams - ? WHERE id = ?",
+            (quantity, material_id),
+        )
+        db.execute(
+            """
+            INSERT INTO inventory_movements (
+                material_id,
+                movement_type,
+                quantity_grams,
+                unit_cost_per_kg,
+                related_job_id,
+                notes
+            )
+            VALUES (?, 'Consumo manual', ?, ?, ?, ?)
+            """,
+            (
+                material_id,
+                quantity,
+                float(usage["unit_cost"] or 0),
+                job_id,
+                f"Baixa automatica do pedido: {item_name}",
+            ),
+        )
+    for component_id, usage in get_job_component_usage(db, job_id).items():
+        quantity = float(usage["quantity"] or 0)
+        if quantity <= 0:
+            continue
+        db.execute(
+            "UPDATE components SET stock_quantity = stock_quantity - ? WHERE id = ?",
+            (quantity, component_id),
+        )
+        db.execute(
+            """
+            INSERT INTO component_inventory_movements (
+                component_id,
+                movement_type,
+                quantity,
+                unit_cost,
+                related_job_id,
+                notes
+            )
+            VALUES (?, 'Consumo manual', ?, ?, ?, ?)
+            """,
+            (
+                component_id,
+                quantity,
+                float(usage["unit_cost"] or 0),
+                job_id,
+                f"Baixa automatica do pedido: {item_name}",
+            ),
+        )
+    db.execute("UPDATE jobs SET stock_applied = 1 WHERE id = ?", (job_id,))
+
+
+def reverse_job_stock(db: sqlite3.Connection, job_id: int) -> None:
+    job = db.execute("SELECT id, stock_applied FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if job is None or not int(job["stock_applied"] or 0):
+        return
+    material_movements = db.execute(
+        """
+        SELECT material_id, SUM(quantity_grams) AS quantity_grams
+        FROM inventory_movements
+        WHERE related_job_id = ? AND movement_type = 'Consumo manual'
+        GROUP BY material_id
+        """,
+        (job_id,),
+    ).fetchall()
+    for movement in material_movements:
+        quantity = float(movement["quantity_grams"] or 0)
+        if quantity > 0:
+            db.execute(
+                "UPDATE materials SET stock_grams = stock_grams + ? WHERE id = ?",
+                (quantity, movement["material_id"]),
+            )
+    component_movements = db.execute(
+        """
+        SELECT component_id, SUM(quantity) AS quantity
+        FROM component_inventory_movements
+        WHERE related_job_id = ? AND movement_type = 'Consumo manual'
+        GROUP BY component_id
+        """,
+        (job_id,),
+    ).fetchall()
+    if not component_movements:
+        component_movements = [
+            {"component_id": component_id, "quantity": usage["quantity"]}
+            for component_id, usage in get_job_component_usage(db, job_id).items()
+        ]
+    for movement in component_movements:
+        quantity = float(movement["quantity"] or 0)
+        if quantity > 0:
+            db.execute(
+                "UPDATE components SET stock_quantity = stock_quantity + ? WHERE id = ?",
+                (quantity, movement["component_id"]),
+            )
+    db.execute(
+        "DELETE FROM inventory_movements WHERE related_job_id = ? AND movement_type = 'Consumo manual'",
+        (job_id,),
+    )
+    db.execute(
+        "DELETE FROM component_inventory_movements WHERE related_job_id = ? AND movement_type = 'Consumo manual'",
+        (job_id,),
+    )
+    db.execute("UPDATE jobs SET stock_applied = 0 WHERE id = ?", (job_id,))
+
+
+def sync_job_stock_for_status(db: sqlite3.Connection, job_id: int, status: str | None) -> None:
+    if job_status_uses_stock(status):
+        apply_job_stock(db, job_id)
+    else:
+        reverse_job_stock(db, job_id)
 
 
 def inventory_direction_label(movement_type: str) -> str:
@@ -7450,7 +7641,7 @@ def jobs() -> str:
             )
 
             stock_warning = ""
-            if status != "Orcamento" and (insufficient_material or insufficient_component):
+            if job_status_uses_stock(status) and (insufficient_material or insufficient_component):
                 stock_warning = build_job_stock_error_message(material_lines, component_lines)
 
             extra_cost = parse_form_decimal(request.form.get("extra_cost"), "Custos extras")
@@ -7698,52 +7889,7 @@ def jobs() -> str:
                     ),
                 )
 
-            if status != "Orcamento":
-                for material_id, usage in material_stock_usage.items():
-                    material_line = next(
-                        (
-                            line
-                            for line in material_lines
-                            if int(line["material_id"]) == int(material_id)
-                        ),
-                        None,
-                    )
-                    db.execute(
-                        "UPDATE materials SET stock_grams = stock_grams - ? WHERE id = ?",
-                        (usage, material_id),
-                    )
-                    db.execute(
-                        """
-                        INSERT INTO inventory_movements (
-                            material_id,
-                            movement_type,
-                            quantity_grams,
-                            unit_cost_per_kg,
-                            related_job_id,
-                            notes
-                        )
-                        VALUES (?, 'Consumo manual', ?, ?, ?, ?)
-                        """,
-                        (
-                            material_id,
-                            usage,
-                            float(material_line["material"]["cost_per_kg"] or 0)
-                            if material_line
-                            else 0.0,
-                            job_id,
-                            f"Baixa automatica do pedido: {item_name}",
-                        ),
-                    )
-                for component_id, usage in component_stock_usage.items():
-                    db.execute(
-                        """
-                        UPDATE components
-                        SET stock_quantity = stock_quantity - ?
-                        WHERE id = ?
-                        """,
-                        (usage, component_id),
-                    )
-            db.commit()
+            sync_job_stock_for_status(db, job_id, status)
             save_job_photos(job_id)
             refresh_job_production_totals(db, job_id)
             db.commit()
@@ -7809,6 +7955,7 @@ def jobs() -> str:
 @app.route("/jobs/<int:job_id>/delete", methods=["POST"])
 def delete_job(job_id: int) -> str:
     db = get_db()
+    reverse_job_stock(db, job_id)
     db.execute("DELETE FROM job_materials WHERE job_id = ?", (job_id,))
     db.execute("DELETE FROM job_components WHERE job_id = ?", (job_id,))
     db.execute("DELETE FROM job_services WHERE job_id = ?", (job_id,))
@@ -8069,6 +8216,9 @@ def save_job_production_data(
     if selected_service is None:
         raise ValueError("Selecione um item do pedido para editar a ordem de produção.")
     service_line_number = int(detail["selected_service_line_number"])
+    stock_was_applied = bool(int(detail["job"]["stock_applied"] or 0))
+    if stock_was_applied:
+        reverse_job_stock(db, job_id)
     material_lines = build_job_material_lines(db)
     component_lines = build_job_component_lines(db)
     material_lines, component_lines, _ = apply_product_defaults_to_job_lines(
@@ -8179,6 +8329,8 @@ def save_job_production_data(
         )
 
     refresh_job_production_totals(db, job_id)
+    if stock_was_applied:
+        sync_job_stock_for_status(db, job_id, detail["job"]["status"])
     db.commit()
 
 
@@ -8413,6 +8565,8 @@ def save_job_commercial_data(
                 ),
             )
     refresh_job_production_totals(db, job_id)
+    sync_job_stock_for_status(db, job_id, status)
+    save_job_photos(job_id)
     db.commit()
 
 
@@ -8436,311 +8590,9 @@ def edit_job(job_id: int) -> str:
     detail = fetch_job_detail(db, job_id)
 
     if request.method == "POST":
-        if "material_id" not in request.form and "component_id" not in request.form:
-            try:
-                save_job_commercial_data(db, job_id, detail)
-            except ValueError as error:
-                return render_template(
-                    "job_edit.html",
-                    **detail,
-                    materials=materials_list,
-                    components=references["components"],
-                    products=references["products"],
-                    statuses=references["order_statuses"],
-                    customers=references["customers"],
-                    representatives=references["representatives"],
-                    partner_stores=references["partner_stores"],
-                    payment_terms=references["payment_terms"],
-                    sales_channels=references["sales_channels"],
-                    printers=references["printers"],
-                    filament_dryers=references["filament_dryers"],
-                    today_date=date.today().isoformat(),
-                    return_to=return_to,
-                    error=str(error),
-                )
-            return redirect(return_to or url_for("jobs"))
-
-        customer_id = parse_integerish(request.form.get("customer_id"))
-        item_name = request.form.get("item_name", "").strip()
-        status = normalize_shortcut_value(request.form.get("status"))
-        if not customer_id or not item_name or not status:
-            return render_template(
-                "job_edit.html",
-                **detail,
-                materials=materials_list,
-                components=references["components"],
-                products=references["products"],
-                statuses=references["order_statuses"],
-                customers=references["customers"],
-                representatives=references["representatives"],
-                partner_stores=references["partner_stores"],
-                payment_terms=references["payment_terms"],
-                sales_channels=references["sales_channels"],
-                printers=references["printers"],
-                filament_dryers=references["filament_dryers"],
-                today_date=date.today().isoformat(),
-                return_to=return_to,
-                error="Preencha cliente, status e descrição do item antes de salvar o pedido.",
-            )
-
-        customer = db.execute(
-            "SELECT * FROM customers WHERE id = ?",
-            (customer_id,),
-        ).fetchone()
-        if customer is None:
-            return render_template(
-                "job_edit.html",
-                **detail,
-                materials=materials_list,
-                components=references["components"],
-                products=references["products"],
-                statuses=references["order_statuses"],
-                customers=references["customers"],
-                representatives=references["representatives"],
-                partner_stores=references["partner_stores"],
-                payment_terms=references["payment_terms"],
-                sales_channels=references["sales_channels"],
-                printers=references["printers"],
-                filament_dryers=references["filament_dryers"],
-                today_date=date.today().isoformat(),
-                return_to=return_to,
-                error="Selecione um cliente valido antes de salvar o pedido.",
-            )
         try:
-            material_lines = build_job_material_lines(db)
-            component_lines = build_job_component_lines(db)
-            service_lines = build_job_service_lines(db)
-            material_lines, component_lines, resolved_product = apply_product_defaults_to_job_lines(
-                db,
-                detail["job"],
-                service_lines,
-                material_lines,
-                component_lines,
-            )
-            requested_weight = sum(line["weight_grams"] for line in material_lines)
-            extra_cost = parse_form_decimal(request.form.get("extra_cost"), "Custos extras")
-            margin_percent = parse_form_number(request.form.get("margin_percent"), "Margem (%)")
-            labor_hours = parse_form_number(request.form.get("labor_hours"), "Horas operacionais")
-            labor_hourly_rate = parse_form_decimal(
-                request.form.get("labor_hourly_rate"),
-                "Mão de obra operacional/h",
-            )
-            design_hours = parse_form_number(request.form.get("design_hours"), "Horas de design")
-            design_hourly_rate = parse_form_decimal(
-                request.form.get("design_hourly_rate"),
-                "Valor design/h",
-            )
-            customer_total = sum(line["total_price"] for line in service_lines)
-            cost_summary = summarize_cost_lines(
-                material_lines=material_lines,
-                component_lines=component_lines,
-                labor_hours=labor_hours,
-                labor_hourly_rate=labor_hourly_rate,
-                design_hours=design_hours,
-                design_hourly_rate=design_hourly_rate,
-                extra_cost=extra_cost,
-                sale_total=customer_total,
-            )
-            total_cost = cost_summary["total_cost"]
-            suggested_price = (
-                customer_total
-                if customer_total > 0
-                else calculate_price_with_margin(total_cost, margin_percent)
-            )
-            print_hours = cost_summary["total_print_hours"]
-            dryer_hours = cost_summary["total_dryer_hours"]
-            energy_cost_per_hour = (
-                round(cost_summary["energy_cost"] / print_hours, 4) if print_hours else 0.0
-            )
-            operating_cost_per_hour = (
-                round(cost_summary["operating_cost"] / print_hours, 4) if print_hours else 0.0
-            )
-            dryer_cost_per_hour = (
-                round(cost_summary["dryer_cost"] / dryer_hours, 4) if dryer_hours else 0.0
-            )
-            primary_material_id = (
-                material_lines[0]["material_id"]
-                if material_lines
-                else int(detail["job"]["material_id"])
-            )
-
-            db.execute(
-                """
-                UPDATE jobs
-                SET
-                    customer_name = ?,
-                    customer_id = ?,
-                    item_name = ?,
-                    product_id = ?,
-                    status = ?,
-                    created_at = ?,
-                    material_id = ?,
-                    weight_grams = ?,
-                    print_hours = ?,
-                    energy_cost_per_hour = ?,
-                    operating_cost_per_hour = ?,
-                    extra_cost = ?,
-                    margin_percent = ?,
-                    total_cost = ?,
-                    suggested_price = ?,
-                    notes = ?,
-                    customer_notes = ?,
-                    internal_notes = ?,
-                    representative_id = ?,
-                    partner_store_id = ?,
-                    due_date = ?,
-                    quantity = ?,
-                    sale_channel = ?,
-                    printer_id = ?,
-                    filament_dryer_id = ?,
-                    dryer_hours = ?,
-                    dryer_cost_per_hour = ?,
-                    labor_hours = ?,
-                    labor_hourly_rate = ?,
-                    design_hours = ?,
-                    design_hourly_rate = ?,
-                    valid_until = ?,
-                    payment_terms = ?,
-                    model_link = ?
-                WHERE id = ?
-                """,
-                (
-                    customer["name"],
-                    customer_id,
-                    item_name,
-                    (
-                        service_lines[0]["product_id"]
-                        if service_lines and service_lines[0]["product_id"]
-                        else (resolved_product["id"] if resolved_product else None)
-                    ),
-                    status,
-                    request.form.get("created_at", "").strip()
-                    or str(detail["job"]["created_at"])[:10],
-                    primary_material_id,
-                    requested_weight,
-                    print_hours,
-                    energy_cost_per_hour,
-                    operating_cost_per_hour,
-                    extra_cost,
-                    margin_percent,
-                    total_cost,
-                    suggested_price,
-                    request.form.get("internal_notes", "").strip(),
-                    request.form.get("customer_notes", "").strip(),
-                    request.form.get("internal_notes", "").strip(),
-                    (
-                        int(request.form["representative_id"])
-                        if request.form.get("representative_id")
-                        else None
-                    ),
-                    (
-                        int(request.form["partner_store_id"])
-                        if request.form.get("partner_store_id")
-                        else None
-                    ),
-                    request.form.get("due_date") or None,
-                    parse_integerish(request.form.get("quantity"), 1),
-                    request.form.get("sale_channel", "").strip(),
-                    (
-                        material_lines[0]["printer_id"] if material_lines else None
-                    ),
-                    (
-                        material_lines[0]["filament_dryer_id"] if material_lines else None
-                    ),
-                    dryer_hours,
-                    dryer_cost_per_hour,
-                    labor_hours,
-                    labor_hourly_rate,
-                    design_hours,
-                    design_hourly_rate,
-                    request.form.get("valid_until") or None,
-                    normalize_shortcut_value(request.form.get("payment_terms")),
-                    request.form.get("model_link", "").strip(),
-                    job_id,
-                ),
-            )
-            db.execute("DELETE FROM job_materials WHERE job_id = ?", (job_id,))
-            db.execute("DELETE FROM job_components WHERE job_id = ?", (job_id,))
-            db.execute("DELETE FROM job_services WHERE job_id = ?", (job_id,))
-
-            for line in material_lines:
-                db.execute(
-                    """
-                    INSERT INTO job_materials (
-                        job_id,
-                        material_id,
-                        weight_grams,
-                        print_hours,
-                        printer_id,
-                        energy_cost_per_hour,
-                        operating_cost_per_hour,
-                        filament_dryer_id,
-                        dryer_hours,
-                        dryer_cost_per_hour,
-                        notes
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        job_id,
-                        line["material_id"],
-                        line["weight_grams"],
-                        line["print_hours"],
-                        line["printer_id"],
-                        line["energy_cost_per_hour"],
-                        line["operating_cost_per_hour"],
-                        line["filament_dryer_id"],
-                        line["dryer_hours"],
-                        line["dryer_cost_per_hour"],
-                        line["notes"],
-                    ),
-                )
-            for line in component_lines:
-                db.execute(
-                    """
-                    INSERT INTO job_components (job_id, component_id, quantity, notes)
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (job_id, line["component_id"], line["quantity"], line["notes"]),
-                )
-            for line in service_lines:
-                db.execute(
-                    """
-                    INSERT INTO job_services (
-                        job_id,
-                        service_name,
-                        product_id,
-                        category,
-                        quantity,
-                        hours,
-                        unit_price,
-                        addition_value,
-                        discount_value,
-                        total_price,
-                        show_to_customer,
-                        notes
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
-                    """,
-                    (
-                        job_id,
-                        line["service_name"],
-                        line["product_id"],
-                        line["category"],
-                        line["quantity"],
-                        line["hours"],
-                        line["unit_price"],
-                        line["addition_value"],
-                        line["discount_value"],
-                        line["total_price"],
-                        line["notes"],
-                    ),
-                )
-            save_job_photos(job_id)
-            db.commit()
-            return redirect(return_to or url_for("jobs"))
+            save_job_commercial_data(db, job_id, detail)
         except ValueError as error:
-            db.rollback()
             return render_template(
                 "job_edit.html",
                 **detail,
@@ -8759,6 +8611,7 @@ def edit_job(job_id: int) -> str:
                 return_to=return_to,
                 error=str(error),
             )
+        return redirect(return_to or url_for("jobs"))
 
     return render_template(
         "job_edit.html",

@@ -2864,6 +2864,22 @@ th {
   margin-bottom: 1rem;
 }
 
+.data-origin-section {
+  border-style: dashed;
+}
+
+.data-origin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem 1rem;
+}
+
+.data-origin-grid p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
 .document-table {
   min-width: 100%;
   color: #1d2329;
@@ -4361,6 +4377,10 @@ th {
   .document-commercial-grid {
     gap: 0.45rem;
     margin-top: 0.5rem;
+  }
+
+  .data-origin-grid {
+    grid-template-columns: 1fr;
   }
 
   .document-grid article,
