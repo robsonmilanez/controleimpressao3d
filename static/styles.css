@@ -4468,6 +4468,85 @@ th {
     height: 74px;
   }
 
+  .production-document-page.print-body {
+    overflow-x: hidden;
+  }
+
+  .production-document-page .print-page {
+    width: 100%;
+    max-width: 100%;
+    padding: 0.35rem 0.28rem;
+    font-size: 0.62rem;
+  }
+
+  .production-document-page .document-header {
+    gap: 0.35rem;
+    padding-bottom: 0.32rem;
+  }
+
+  .production-document-page .document-header h1 {
+    font-size: 0.96rem;
+  }
+
+  .production-document-page .document-commercial-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .production-document-page .document-commercial-grid article,
+  .production-document-page .document-commercial-grid article:nth-child(1),
+  .production-document-page .document-commercial-grid article:nth-child(2),
+  .production-document-page .document-commercial-grid article:nth-child(n + 3) {
+    grid-column: span 1;
+  }
+
+  .production-document-page .document-item-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .production-document-page .document-section {
+    overflow: hidden;
+    padding: 0.26rem 0.18rem;
+  }
+
+  .production-document-page .document-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .production-document-page .document-table th,
+  .production-document-page .document-table td {
+    padding: 0.13rem 0.05rem;
+    font-size: 0.5rem;
+    line-height: 1.05;
+    letter-spacing: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .production-document-page .document-table th {
+    font-size: 0.48rem;
+  }
+
+  .production-document-page .document-summary-total-row td {
+    font-size: 0.56rem;
+  }
+
+  .production-document-page .production-material-table th:nth-child(7),
+  .production-document-page .production-material-table td:nth-child(7),
+  .production-document-page .production-component-table th:nth-child(7),
+  .production-document-page .production-component-table td:nth-child(7),
+  .production-document-page .price-suggestions-table th:nth-child(6),
+  .production-document-page .price-suggestions-table td:nth-child(6) {
+    display: none;
+  }
+
+  .production-document-page .price-suggestions-table th,
+  .production-document-page .price-suggestions-table td {
+    white-space: normal;
+  }
+
   .topbar {
     position: static;
     gap: 0.55rem;

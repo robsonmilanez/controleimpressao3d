@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <title>Ordem de produção #{{ job["id"] }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260507-1110') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260507-1435') }}">
   </head>
   <body class="print-body production-document-page">
     <main class="print-page production-document-page">
@@ -69,7 +69,7 @@
           <p><strong>Secador:</strong> {{ job["dryer_brand"] or "Conforme linhas de produção" }}{% if job["dryer_model"] %} {{ job["dryer_model"] }}{% endif %}</p>
           <p><strong>Link do modelo:</strong> {{ job["model_link"] or "-" }}</p>
         </div>
-        <table class="document-table">
+        <table class="document-table production-items-table">
           <thead>
             <tr>
               <th>Item</th>
@@ -128,7 +128,7 @@
       <section class="document-section">
         <h2>Custos e horas</h2>
         <h3>Filamentos e materiais</h3>
-        <table class="document-table">
+        <table class="document-table production-material-table">
           <thead>
             <tr>
               <th>Tipo</th>
@@ -169,7 +169,7 @@
         </table>
 
         <h3>Componentes</h3>
-        <table class="document-table">
+        <table class="document-table production-component-table">
           <thead>
             <tr>
               <th>Componente</th>
@@ -211,7 +211,7 @@
         </table>
 
         <h3>Resumo de custos e horas</h3>
-        <table class="document-table">
+        <table class="document-table production-cost-table">
           <thead>
             <tr>
               <th>Categoria</th>
