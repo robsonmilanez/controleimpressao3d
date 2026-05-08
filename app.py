@@ -226,6 +226,15 @@ def split_item_description_filter(value: str | None) -> tuple[str, str]:
     return split_item_description(value)
 
 
+@app.template_filter("pdf_filename_part")
+def pdf_filename_part(value: Any, max_length: int = 80) -> str:
+    text = " ".join(str(value or "").split()).strip()
+    forbidden = '<>:"/\\|?*'
+    for char in forbidden:
+        text = text.replace(char, "-")
+    return (text[:max_length].strip(" .-") or "documento")
+
+
 def material_order_clause(prefix: str = "") -> str:
     return (
         f"{prefix}color COLLATE NOCASE ASC, "
@@ -6760,6 +6769,11 @@ def fetch_product_detail(db: sqlite3.Connection, product_id: int) -> dict[str, A
             "margin_value": round(
                 float(product.get("sale_price") or 0) - float(product.get("unit_cost") or 0),
                 2,
+            ),
+            "price_suggestions": build_price_suggestions(
+                float(product.get("unit_cost") or 0),
+                float(product.get("sale_price") or 0),
+                float(product.get("margin_percent") or 0),
             ),
             "print_hours": total_print_hours,
             "sales_count": int(sales_count_row["total"] or 0),

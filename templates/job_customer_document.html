@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
-    <title>Pedido do cliente #{{ job["id"] }}</title>
+    <title>Pedido {{ "%04d"|format(job["id"]) }} - {{ job["customer_display"]|pdf_filename_part }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260506-1504') }}">
   </head>
   <body class="print-body">

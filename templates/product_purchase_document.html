@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
-    <title>Ficha técnica {{ product["sku"] or product["name"] }}</title>
+    <title>Ficha tecnica {{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260507-1845') }}">
   </head>
   <body class="print-body production-document-page product-technical-document-page">
@@ -231,6 +231,36 @@
               <td>Preço - custo</td>
               <td><strong>R$ {{ totals["margin_value"]|br_money }}</strong></td>
             </tr>
+          </tbody>
+        </table>
+
+        <h3>Sugestões de preço e lucro</h3>
+        <table class="document-table price-suggestions-table">
+          <thead>
+            <tr>
+              <th>Sugestão</th>
+              <th>Custo unit.</th>
+              <th>Preço de venda</th>
+              <th>Margem</th>
+              <th>Lucro</th>
+              <th>Base do cálculo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for suggestion in totals["price_suggestions"] %}
+              <tr>
+                <td>{{ suggestion["label"] }}</td>
+                <td>R$ {{ suggestion["cost"]|br_money }}</td>
+                <td><strong>R$ {{ suggestion["price"]|br_money }}</strong></td>
+                <td>{{ suggestion["margin_percent"]|br_decimal }}%</td>
+                <td><strong>R$ {{ suggestion["profit"]|br_money }}</strong></td>
+                <td>{{ suggestion["source"] }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6">Sem custo calculado para sugerir preço.</td>
+              </tr>
+            {% endfor %}
           </tbody>
         </table>
       </section>
