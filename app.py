@@ -301,9 +301,10 @@ def render_pdf_response(template_name: str, filename: str, **context: Any) -> Re
         browser.close()
 
     quoted_filename = quote(filename)
+    disposition = "attachment" if request.args.get("download") == "1" else "inline"
     response = Response(pdf_bytes, mimetype="application/pdf")
     response.headers["Content-Disposition"] = (
-        f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quoted_filename}"
+        f"{disposition}; filename=\"{filename}\"; filename*=UTF-8''{quoted_filename}"
     )
     return response
 
