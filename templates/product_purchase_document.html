@@ -11,6 +11,7 @@
     <main class="print-page production-document-page product-technical-document-page">
       <div class="print-actions">
         <a class="action-link history-back-link" href="{{ url_for('products') }}">Voltar</a>
+        <a class="action-link" href="{{ url_for('product_purchase_document_pdf', product_id=product['id']) }}">Baixar PDF</a>
         <button type="button" onclick="window.print()">Gerar PDF</button>
       </div>
 

@@ -1,5 +1,8 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "buildCommand": "pip install -r requirements.txt && python -m playwright install chromium"
+  },
   "deploy": {
     "startCommand": "gunicorn app:app --bind 0.0.0.0:$PORT",
     "restartPolicyType": "ON_FAILURE",

@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+import base64
 import json
 import math
+import mimetypes
 import os
+import re
 import shutil
 import sqlite3
 import uuid
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, quote, unquote, urlencode, urlsplit, urlunsplit
 
-from flask import Flask, abort, g, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, Response, abort, g, redirect, render_template, request, send_from_directory, url_for
 from werkzeug.utils import secure_filename
 
 
@@ -233,6 +236,76 @@ def pdf_filename_part(value: Any, max_length: int = 80) -> str:
     for char in forbidden:
         text = text.replace(char, "-")
     return (text[:max_length].strip(" .-") or "documento")
+
+
+def make_pdf_filename(*parts: Any) -> str:
+    cleaned_parts = [
+        pdf_filename_part(part, 70)
+        for part in parts
+        if str(part or "").strip()
+    ]
+    return f"{' - '.join(cleaned_parts) or 'documento'}.pdf"
+
+
+def inline_pdf_assets(html: str) -> str:
+    styles_path = BASE_DIR / "static" / "styles.css"
+    if styles_path.exists():
+        styles = styles_path.read_text(encoding="utf-8")
+        html = re.sub(
+            r'<link\s+rel="stylesheet"\s+href="[^"]*styles\.css[^"]*"\s*>',
+            f"<style>\n{styles}\n</style>",
+            html,
+            count=1,
+        )
+
+    def replace_upload_src(match: re.Match[str]) -> str:
+        quote_char = match.group(1)
+        upload_group = match.group(2)
+        filename = unquote(match.group(3))
+        directory = PRODUCT_UPLOAD_DIR if upload_group == "products" else UPLOAD_DIR
+        file_path = directory / filename
+        if not file_path.exists() or not file_path.is_file():
+            return match.group(0)
+        mime_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+        encoded = base64.b64encode(file_path.read_bytes()).decode("ascii")
+        return f"src={quote_char}data:{mime_type};base64,{encoded}{quote_char}"
+
+    return re.sub(
+        r'src=(["\'])/uploads/(jobs|products)/([^"\']+)\1',
+        replace_upload_src,
+        html,
+    )
+
+
+def render_pdf_response(template_name: str, filename: str, **context: Any) -> Response:
+    html = inline_pdf_assets(render_template(template_name, **context))
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise RuntimeError(
+            "O gerador de PDF precisa do Playwright instalado. Rode: pip install -r requirements.txt"
+        ) from exc
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(
+            args=["--no-sandbox", "--disable-dev-shm-usage"]
+        )
+        page = browser.new_page(viewport={"width": 1280, "height": 1800})
+        page.emulate_media(media="print")
+        page.set_content(html, wait_until="load", timeout=30000)
+        pdf_bytes = page.pdf(
+            format="A4",
+            print_background=True,
+            prefer_css_page_size=True,
+        )
+        browser.close()
+
+    quoted_filename = quote(filename)
+    response = Response(pdf_bytes, mimetype="application/pdf")
+    response.headers["Content-Disposition"] = (
+        f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quoted_filename}"
+    )
+    return response
 
 
 def material_order_clause(prefix: str = "") -> str:
@@ -9589,6 +9662,23 @@ def job_customer_document(job_id: int) -> str:
     )
 
 
+@app.route("/jobs/<int:job_id>/cliente/pdf")
+def job_customer_document_pdf(job_id: int) -> Response:
+    detail = fetch_job_detail(get_db(), job_id)
+    job = detail["job"]
+    filename = make_pdf_filename(
+        f"Pedido {int(job['id']):04d}",
+        job.get("customer_display"),
+    )
+    return render_pdf_response(
+        "job_customer_document.html",
+        filename,
+        **detail,
+        **build_document_share_context(detail),
+        public_view=False,
+    )
+
+
 @app.route("/jobs/<int:job_id>/producao")
 def job_production_document(job_id: int) -> str:
     detail = fetch_job_detail(get_db(), job_id)
@@ -9600,11 +9690,45 @@ def job_production_document(job_id: int) -> str:
     )
 
 
+@app.route("/jobs/<int:job_id>/producao/pdf")
+def job_production_document_pdf(job_id: int) -> Response:
+    detail = fetch_job_detail(get_db(), job_id)
+    job = detail["job"]
+    filename = make_pdf_filename(
+        f"OP {int(job['id']):04d}",
+        job.get("customer_display"),
+        job.get("item_name"),
+    )
+    return render_pdf_response(
+        "job_production_document.html",
+        filename,
+        **detail,
+        **build_document_share_context(detail),
+        public_view=False,
+    )
+
+
 @app.route("/queries/sale-products/<int:product_id>/pdf")
 def product_purchase_document(product_id: int) -> str:
     return render_template(
         "product_purchase_document.html",
         **fetch_product_detail(get_db(), product_id),
+    )
+
+
+@app.route("/queries/sale-products/<int:product_id>/pdf/download")
+def product_purchase_document_pdf(product_id: int) -> Response:
+    detail = fetch_product_detail(get_db(), product_id)
+    product = detail["product"]
+    filename = make_pdf_filename(
+        "Ficha tecnica",
+        product.get("sku") or product.get("id"),
+        product.get("name"),
+    )
+    return render_pdf_response(
+        "product_purchase_document.html",
+        filename,
+        **detail,
     )
 
 
