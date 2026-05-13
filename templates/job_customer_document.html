@@ -14,8 +14,8 @@
           <a class="action-link history-back-link" href="{{ url_for('jobs') }}">Voltar</a>
           <a class="action-link" href="{{ whatsapp_customer_url }}" target="_blank" rel="noopener noreferrer">Enviar WhatsApp</a>
           <a class="action-link" href="{{ url_for('job_production_document', job_id=job['id']) }}">Abrir OP</a>
-          <a class="action-link" href="{{ url_for('job_customer_document_pdf', job_id=job['id']) }}">Gerar PDF</a>
         {% endif %}
+        <button type="button" onclick="window.print()">Gerar PDF</button>
       </div>
 
       <header class="document-header">
