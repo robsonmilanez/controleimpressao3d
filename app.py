@@ -745,6 +745,7 @@ def init_db() -> None:
             product_id INTEGER NOT NULL,
             file_path TEXT NOT NULL,
             original_name TEXT,
+            photo_type TEXT NOT NULL DEFAULT 'public',
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(product_id) REFERENCES products(id)
         );
@@ -1033,6 +1034,7 @@ def init_db() -> None:
     ensure_column(db, "products", "photo_original_name", "TEXT")
     ensure_column(db, "products", "notes", "TEXT")
     ensure_column(db, "products", "created_at", "TEXT")
+    ensure_column(db, "product_photos", "photo_type", "TEXT NOT NULL DEFAULT 'public'")
     ensure_column(
         db,
         "inventory_movements",
@@ -2879,15 +2881,20 @@ def save_job_photos(job_id: int) -> None:
         )
 
 
-def save_product_photos(product_id: int) -> list[dict[str, str]]:
-    uploaded_files = request.files.getlist("product_photos")
+def save_product_photos(
+    product_id: int,
+    field_name: str = "product_photos",
+    photo_type: str = "public",
+) -> list[dict[str, str]]:
+    uploaded_files = request.files.getlist(field_name)
     if not uploaded_files:
-        fallback_file = request.files.get("product_photo")
+        fallback_file = request.files.get("product_photo") if field_name == "product_photos" else None
         uploaded_files = [fallback_file] if fallback_file else []
 
     PRODUCT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     db = get_db()
     saved_files: list[dict[str, str]] = []
+    normalized_type = "internal" if photo_type == "internal" else "public"
     for uploaded_file in uploaded_files:
         if not uploaded_file or not uploaded_file.filename:
             continue
@@ -2899,29 +2906,37 @@ def save_product_photos(product_id: int) -> list[dict[str, str]]:
         uploaded_file.save(PRODUCT_UPLOAD_DIR / target_name)
         db.execute(
             """
-            INSERT INTO product_photos (product_id, file_path, original_name)
-            VALUES (?, ?, ?)
+            INSERT INTO product_photos (product_id, file_path, original_name, photo_type)
+            VALUES (?, ?, ?, ?)
             """,
             (
                 product_id,
                 target_name,
                 uploaded_file.filename,
+                normalized_type,
             ),
         )
         saved_files.append(
             {
                 "photo_path": target_name,
                 "photo_original_name": uploaded_file.filename,
+                "photo_type": normalized_type,
             }
         )
     return saved_files
 
 
-def fetch_product_photos(db: sqlite3.Connection, product: sqlite3.Row | dict[str, Any]) -> list[dict[str, Any]]:
+def fetch_product_photos(
+    db: sqlite3.Connection,
+    product: sqlite3.Row | dict[str, Any],
+    photo_type: str = "public",
+    include_legacy: bool = True,
+) -> list[dict[str, Any]]:
     product_id = parse_integerish(product["id"] if isinstance(product, sqlite3.Row) else product.get("id"))
     if product_id <= 0:
         return []
 
+    normalized_type = "internal" if photo_type == "internal" else "public"
     photo_lines = [
         {
             **dict(row),
@@ -2929,14 +2944,17 @@ def fetch_product_photos(db: sqlite3.Connection, product: sqlite3.Row | dict[str
         }
         for row in db.execute(
             """
-            SELECT id, file_path, original_name, created_at
+            SELECT id, file_path, original_name, photo_type, created_at
             FROM product_photos
-            WHERE product_id = ?
+            WHERE product_id = ? AND COALESCE(photo_type, 'public') = ?
             ORDER BY id ASC
             """,
-            (product_id,),
+            (product_id, normalized_type),
         ).fetchall()
     ]
+    if not include_legacy or normalized_type != "public":
+        return photo_lines
+
     legacy_path = (
         product["photo_path"]
         if isinstance(product, sqlite3.Row)
@@ -2955,6 +2973,7 @@ def fetch_product_photos(db: sqlite3.Connection, product: sqlite3.Row | dict[str
                 "id": 0,
                 "file_path": legacy_path,
                 "original_name": legacy_name,
+                "photo_type": "public",
                 "created_at": "",
             },
         )
@@ -3016,7 +3035,7 @@ def delete_product_photo_record(db: sqlite3.Connection, product_id: int, photo_i
             """
             SELECT file_path, original_name
             FROM product_photos
-            WHERE product_id = ?
+            WHERE product_id = ? AND COALESCE(photo_type, 'public') = 'public'
             ORDER BY id ASC
             LIMIT 1
             """,
@@ -7021,6 +7040,11 @@ def products() -> str:
             )
             created_id = cursor.lastrowid
             photo_lines = save_product_photos(created_id)
+            save_product_photos(
+                created_id,
+                field_name="internal_product_photos",
+                photo_type="internal",
+            )
             if photo_lines:
                 cover_photo = photo_lines[0]
                 db.execute(
@@ -7210,6 +7234,11 @@ def edit_product(product_id: int) -> str:
                 product_data["name"],
             )
             photo_lines = save_product_photos(product_id)
+            save_product_photos(
+                product_id,
+                field_name="internal_product_photos",
+                photo_type="internal",
+            )
             if photo_lines and (not product["photo_path"]):
                 cover_photo = photo_lines[0]
                 db.execute(
@@ -7235,6 +7264,12 @@ def edit_product(product_id: int) -> str:
         "product_edit.html",
         product=render_product,
         product_photo_lines=fetch_product_photos(db, product),
+        internal_product_photo_lines=fetch_product_photos(
+            db,
+            product,
+            photo_type="internal",
+            include_legacy=False,
+        ),
         materials=materials_list,
         components=references["components"],
         product_material_lines=render_material_lines,

@@ -223,12 +223,12 @@
   <input type="text" name="model_link" value="{{ product['model_link'] if product else '' }}" placeholder="https://...">
 </label>
 <label class="full">
-  Fotos do produto
+  Fotos do produto para venda/ficha
   <input type="file" name="product_photos" class="product-photo-input" accept="image/*" multiple>
 </label>
 {% if product_photo_lines is defined and product_photo_lines %}
   <div class="full product-photo-preview-grid">
-    <span>Fotos atuais</span>
+    <span>Fotos atuais da ficha</span>
     <div class="product-photo-preview-list">
       {% for photo in product_photo_lines %}
         <div class="product-photo-card">
@@ -244,6 +244,37 @@
               formenctype="application/x-www-form-urlencoded"
               formnovalidate
               onclick="return confirm('Excluir esta foto?');"
+            >
+              Excluir foto
+            </button>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+<label class="full">
+  Fotos internas de controle
+  <input type="file" name="internal_product_photos" class="product-photo-input" accept="image/*" multiple>
+</label>
+{% if internal_product_photo_lines is defined and internal_product_photo_lines %}
+  <div class="full product-photo-preview-grid">
+    <span>Fotos internas atuais</span>
+    <div class="product-photo-preview-list">
+      {% for photo in internal_product_photo_lines %}
+        <div class="product-photo-card">
+          <a class="product-photo-preview-link" href="{{ url_for('uploaded_product_file', filename=photo['file_path']) }}" target="_blank" rel="noopener noreferrer">
+            <img src="{{ url_for('uploaded_product_file', filename=photo['file_path']) }}" alt="{{ photo['original_name'] or product['name'] }}">
+          </a>
+          {% if product and photo['id'] %}
+            <button
+              type="submit"
+              class="secondary-button product-photo-delete-button"
+              formaction="{{ url_for('delete_product_photo', product_id=product['id'], photo_id=photo['id']) }}"
+              formmethod="post"
+              formenctype="application/x-www-form-urlencoded"
+              formnovalidate
+              onclick="return confirm('Excluir esta foto interna?');"
             >
               Excluir foto
             </button>
