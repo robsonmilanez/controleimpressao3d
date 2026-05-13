@@ -3825,7 +3825,7 @@ function setupDocumentImageExport() {
           downloadBlob(blob, filename);
         }
       } catch (error) {
-        alert("Não foi possível gerar o PNG neste navegador. Tente salvar em PDF.");
+        alert("Não foi possível compartilhar o PNG neste navegador. O arquivo pode ser salvo e anexado manualmente no WhatsApp.");
       } finally {
         button.disabled = false;
         button.textContent = originalText;
