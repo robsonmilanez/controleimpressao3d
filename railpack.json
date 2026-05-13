@@ -10,7 +10,6 @@
     }
   },
   "deploy": {
-    "startCommand": "gunicorn app:app --bind 0.0.0.0:${PORT:-8000}",
     "aptPackages": [
       "libasound2t64",
       "libatk-bridge2.0-0",
