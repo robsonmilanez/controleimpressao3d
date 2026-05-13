@@ -3546,75 +3546,259 @@ function downloadBlob(blob, filename) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-async function renderPrintPageToPngBlob() {
-  const source = document.querySelector(".print-page");
-  if (!source) {
-    throw new Error("Documento não encontrado para exportação.");
+function compactText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function getDocumentText(selector) {
+  const element = document.querySelector(selector);
+  return compactText(element ? element.textContent : "");
+}
+
+function collectArticlePairs(selector) {
+  return Array.from(document.querySelectorAll(selector)).map((article) => ({
+    label: compactText(article.querySelector("span, dt, h2")?.textContent),
+    value: compactText(article.querySelector("strong, dd, p")?.textContent),
+  })).filter((item) => item.label || item.value);
+}
+
+function collectParagraphLines(selector) {
+  return Array.from(document.querySelectorAll(selector)).map((item) =>
+    compactText(item.textContent)
+  ).filter(Boolean);
+}
+
+function collectTableRows(selector, limit) {
+  return Array.from(document.querySelectorAll(`${selector} tbody tr`))
+    .slice(0, limit)
+    .map((row) => Array.from(row.children).map((cell) => compactText(cell.textContent)));
+}
+
+function wrapCanvasText(context, text, maxWidth) {
+  const words = compactText(text).split(" ").filter(Boolean);
+  const lines = [];
+  let line = "";
+  words.forEach((word) => {
+    const candidate = line ? `${line} ${word}` : word;
+    if (context.measureText(candidate).width <= maxWidth || !line) {
+      line = candidate;
+      return;
+    }
+    lines.push(line);
+    line = word;
+  });
+  if (line) {
+    lines.push(line);
   }
+  return lines.length ? lines : [""];
+}
+
+function drawWrappedText(context, text, x, y, maxWidth, lineHeight, maxLines = 4) {
+  const lines = wrapCanvasText(context, text, maxWidth).slice(0, maxLines);
+  lines.forEach((line, index) => {
+    const suffix = index === maxLines - 1 && wrapCanvasText(context, text, maxWidth).length > maxLines ? "..." : "";
+    context.fillText(`${line}${suffix}`, x, y + index * lineHeight);
+  });
+  return y + lines.length * lineHeight;
+}
+
+function drawSectionTitle(context, title, y, width, margin) {
+  context.fillStyle = "#1d2329";
+  context.font = "700 25px Arial, sans-serif";
+  context.fillText(title.toUpperCase(), margin, y);
+  context.strokeStyle = "#cfd6de";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(margin, y + 14);
+  context.lineTo(width - margin, y + 14);
+  context.stroke();
+  return y + 42;
+}
+
+function drawRoundedRect(context, x, y, width, height, radius) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  context.moveTo(x + safeRadius, y);
+  context.lineTo(x + width - safeRadius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  context.lineTo(x + width, y + height - safeRadius);
+  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  context.lineTo(x + safeRadius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  context.lineTo(x, y + safeRadius);
+  context.quadraticCurveTo(x, y, x + safeRadius, y);
+}
+
+function drawInfoGrid(context, items, x, y, width) {
+  const columns = 3;
+  const gap = 12;
+  const itemWidth = (width - gap * (columns - 1)) / columns;
+  let currentY = y;
+  items.forEach((item, index) => {
+    const column = index % columns;
+    if (index > 0 && column === 0) {
+      currentY += 78;
+    }
+    const itemX = x + column * (itemWidth + gap);
+    context.fillStyle = "#f7f9fb";
+    context.strokeStyle = "#cfd6de";
+    context.lineWidth = 2;
+    context.beginPath();
+    drawRoundedRect(context, itemX, currentY, itemWidth, 62, 10);
+    context.fill();
+    context.stroke();
+    context.fillStyle = "#6c7582";
+    context.font = "700 15px Arial, sans-serif";
+    context.fillText(item.label.toUpperCase(), itemX + 14, currentY + 22);
+    context.fillStyle = "#1d2329";
+    context.font = "700 19px Arial, sans-serif";
+    drawWrappedText(context, item.value || "-", itemX + 14, currentY + 47, itemWidth - 28, 20, 1);
+  });
+  return currentY + 78;
+}
+
+function drawLineList(context, lines, x, y, width, limit = 8) {
+  context.font = "600 19px Arial, sans-serif";
+  context.fillStyle = "#1d2329";
+  let currentY = y;
+  lines.slice(0, limit).forEach((line) => {
+    currentY = drawWrappedText(context, line, x, currentY, width, 25, 2) + 10;
+  });
+  if (lines.length > limit) {
+    context.fillStyle = "#6c7582";
+    context.fillText(`+ ${lines.length - limit} linha(s) na ficha completa`, x, currentY);
+    currentY += 28;
+  }
+  return currentY;
+}
+
+function drawSimpleTable(context, title, rows, x, y, width, columns) {
+  if (!rows.length) {
+    return y;
+  }
+  let currentY = drawSectionTitle(context, title, y, width + x, x);
+  const columnWidths = columns.map((fraction) => width * fraction);
+  rows.forEach((row, rowIndex) => {
+    const rowHeight = rowIndex === 0 ? 48 : 42;
+    context.fillStyle = rowIndex % 2 === 0 ? "#fff" : "#f7f9fb";
+    context.fillRect(x, currentY - 24, width, rowHeight);
+    context.strokeStyle = "#d5dce3";
+    context.beginPath();
+    context.moveTo(x, currentY + rowHeight - 24);
+    context.lineTo(x + width, currentY + rowHeight - 24);
+    context.stroke();
+    context.fillStyle = "#1d2329";
+    context.font = rowIndex === 0 ? "700 18px Arial, sans-serif" : "600 17px Arial, sans-serif";
+    let columnX = x + 4;
+    row.slice(0, columns.length).forEach((cell, cellIndex) => {
+      drawWrappedText(context, cell || "-", columnX, currentY, columnWidths[cellIndex] - 10, 19, 2);
+      columnX += columnWidths[cellIndex];
+    });
+    currentY += rowHeight;
+  });
+  return currentY + 26;
+}
+
+async function renderPrintPageToPngBlob() {
   if (document.fonts && document.fonts.ready) {
     await document.fonts.ready;
   }
 
-  const width = Math.ceil(source.scrollWidth);
-  const height = Math.ceil(source.scrollHeight);
-  const clone = source.cloneNode(true);
-  clone.querySelectorAll(".print-actions").forEach((element) => element.remove());
-  clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-  clone.style.width = `${width}px`;
-  clone.style.minHeight = "auto";
-  clone.style.margin = "0";
-  clone.style.background = "#fff";
+  const width = 1200;
+  const margin = 46;
+  const title = getDocumentText(".document-header h1") || "Ficha técnica";
+  const subtitle = getDocumentText(".document-header p:not(.eyebrow)");
+  const commercialItems = collectArticlePairs(".document-commercial-grid article");
+  const technicalLines = collectParagraphLines(".document-item-meta p");
+  const materialRows = collectTableRows(".production-material-table", 7).map((row) => [
+    [row[0], row[1], row[2]].filter(Boolean).join(" / "),
+    row[3],
+    row[5],
+    row[7],
+  ]);
+  const componentRows = collectTableRows(".production-component-table", 5).map((row) => [
+    row[0],
+    row[2],
+    row[5],
+    row[7],
+  ]);
+  const costRows = collectTableRows(".production-cost-table", 10).map((row) => [
+    row[0],
+    row[1],
+    row[3],
+  ]);
+  const suggestionRows = collectTableRows(".price-suggestions-table", 8).map((row) => [
+    row[0],
+    row[2],
+    row[3],
+    row[4],
+  ]);
+  const notes = collectParagraphLines(".document-section:last-child p");
 
-  const style = document.createElement("style");
-  style.textContent = getExportStyles();
-  clone.insertBefore(style, clone.firstChild);
-  await inlineExportImages(clone);
+  const estimatedHeight = 620
+    + commercialItems.length * 28
+    + technicalLines.length * 42
+    + materialRows.length * 52
+    + componentRows.length * 50
+    + costRows.length * 48
+    + suggestionRows.length * 48
+    + notes.length * 45;
+  const canvas = document.createElement("canvas");
+  const scale = 2;
+  canvas.width = width * scale;
+  canvas.height = Math.max(1500, Math.min(9000, estimatedHeight)) * scale;
+  const context = canvas.getContext("2d");
+  context.scale(scale, scale);
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
 
-  const serialized = new XMLSerializer().serializeToString(clone);
-  const svg = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`,
-    `<foreignObject width="100%" height="100%">${serialized}</foreignObject>`,
-    "</svg>",
-  ].join("");
-  const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+  let y = 62;
+  context.fillStyle = "#0a84ff";
+  context.font = "700 18px Arial, sans-serif";
+  context.fillText("FICHA TÉCNICA DO PRODUTO", margin, y);
+  y += 44;
+  context.fillStyle = "#1d2329";
+  context.font = "800 39px Arial, sans-serif";
+  y = drawWrappedText(context, title, margin, y, width - margin * 2, 42, 2) + 6;
+  context.font = "600 22px Arial, sans-serif";
+  context.fillStyle = "#3f4752";
+  y = drawWrappedText(context, subtitle, margin, y, width - margin * 2, 28, 2) + 26;
+  context.strokeStyle = "#1d2329";
+  context.lineWidth = 4;
+  context.beginPath();
+  context.moveTo(margin, y);
+  context.lineTo(width - margin, y);
+  context.stroke();
+  y += 36;
 
-  try {
-    const image = new Image();
-    image.decoding = "async";
-    const imageLoaded = new Promise((resolve, reject) => {
-      image.onload = resolve;
-      image.onerror = reject;
-    });
-    image.src = svgUrl;
-    await imageLoaded;
-
-    const maxDimension = 12000;
-    const maxPixels = 18000000;
-    const scale = Math.max(
-      0.6,
-      Math.min(2, maxDimension / width, maxDimension / height, Math.sqrt(maxPixels / (width * height)))
-    );
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.ceil(width * scale);
-    canvas.height = Math.ceil(height * scale);
-    const context = canvas.getContext("2d");
-    context.fillStyle = "#fff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.scale(scale, scale);
-    context.drawImage(image, 0, 0);
-
-    return await new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error("Não foi possível gerar a imagem."));
-        }
-      }, "image/png");
-    });
-  } finally {
-    URL.revokeObjectURL(svgUrl);
+  y = drawInfoGrid(context, commercialItems, margin, y, width - margin * 2) + 12;
+  y = drawSectionTitle(context, "Dados técnicos", y, width, margin);
+  y = drawLineList(context, technicalLines, margin, y, width - margin * 2, 9) + 10;
+  y = drawSimpleTable(context, "Filamentos e materiais", materialRows, margin, y, width - margin * 2, [0.42, 0.16, 0.18, 0.24]);
+  y = drawSimpleTable(context, "Componentes", componentRows, margin, y, width - margin * 2, [0.48, 0.14, 0.16, 0.22]);
+  y = drawSimpleTable(context, "Resumo de custos", costRows, margin, y, width - margin * 2, [0.46, 0.22, 0.32]);
+  y = drawSimpleTable(context, "Sugestões de preço e lucro", suggestionRows, margin, y, width - margin * 2, [0.38, 0.24, 0.18, 0.2]);
+  if (notes.length) {
+    y = drawSectionTitle(context, "Observações", y, width, margin);
+    y = drawLineList(context, notes, margin, y, width - margin * 2, 4);
   }
+
+  context.fillStyle = "#6c7582";
+  context.font = "600 15px Arial, sans-serif";
+  context.fillText("Gerado pelo Controle Impressão 3D", margin, Math.min(y + 32, canvas.height / scale - 34));
+
+  const outputCanvas = document.createElement("canvas");
+  outputCanvas.width = canvas.width;
+  outputCanvas.height = Math.ceil(Math.min(y + 78, canvas.height / scale) * scale);
+  outputCanvas.getContext("2d").drawImage(canvas, 0, 0);
+  return await new Promise((resolve, reject) => {
+    outputCanvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error("Não foi possível gerar a imagem."));
+      }
+    }, "image/png");
+  });
 }
 
 function setupDocumentImageExport() {
