@@ -3812,6 +3812,7 @@ function setupDocumentImageExport() {
     button.addEventListener("click", async () => {
       const originalText = button.textContent;
       const filename = button.dataset.exportFilename || `${document.title || "documento"}.png`;
+      const caption = button.dataset.exportCaption || document.title || filename;
       button.disabled = true;
       button.textContent = "Gerando...";
       try {
@@ -3824,6 +3825,7 @@ function setupDocumentImageExport() {
           await navigator.share({
             files: [file],
             title: document.title || filename,
+            text: caption,
           });
         } else {
           downloadBlob(blob, filename);

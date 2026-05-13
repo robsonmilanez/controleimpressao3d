@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex,nofollow">
     <title>Ficha tecnica {{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260507-1845') }}">
-    <script src="{{ url_for('static', filename='app.js', v='20260513-0121') }}" defer></script>
+    <script src="{{ url_for('static', filename='app.js', v='20260513-0135') }}" defer></script>
   </head>
   <body class="print-body production-document-page product-technical-document-page">
     <main class="print-page production-document-page product-technical-document-page">
@@ -20,13 +20,15 @@
               type="button"
               class="js-export-png"
               data-export-action="download"
-              data-export-filename="Ficha tecnica {{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }}.png"
+              data-export-filename="{{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }} - Ficha tecnica.png"
+              data-export-caption="Ficha técnica {{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }}"
             >Salvar PNG</button>
             <button
               type="button"
               class="js-export-png"
               data-export-action="share"
-              data-export-filename="Ficha tecnica {{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }}.png"
+              data-export-filename="{{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }} - Ficha tecnica.png"
+              data-export-caption="Ficha técnica {{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }}"
             >Enviar PNG</button>
           </div>
         </details>
