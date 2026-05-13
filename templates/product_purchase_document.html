@@ -15,12 +15,19 @@
         <details class="export-menu">
           <summary>Enviar / salvar</summary>
           <div class="export-menu-panel">
-            <button type="button" onclick="window.print()">PDF</button>
+            <button type="button" onclick="window.print()">Salvar PDF</button>
             <button
               type="button"
               class="js-export-png"
+              data-export-action="download"
               data-export-filename="Ficha tecnica {{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }}.png"
-            >PNG</button>
+            >Salvar PNG</button>
+            <button
+              type="button"
+              class="js-export-png"
+              data-export-action="share"
+              data-export-filename="Ficha tecnica {{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }}.png"
+            >Enviar PNG</button>
           </div>
         </details>
       </div>

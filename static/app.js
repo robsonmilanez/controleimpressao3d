@@ -3815,14 +3815,18 @@ function setupDocumentImageExport() {
       button.textContent = "Gerando...";
       try {
         const blob = await renderPrintPageToPngBlob();
+        const action = button.dataset.exportAction || "share";
         const file = new File([blob], filename, { type: "image/png" });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        if (action === "download") {
+          downloadBlob(blob, filename);
+        } else if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
             title: document.title || filename,
           });
         } else {
           downloadBlob(blob, filename);
+          alert("Seu navegador não abriu o compartilhamento direto. Salvei o PNG para você anexar manualmente no WhatsApp.");
         }
       } catch (error) {
         alert("Não foi possível compartilhar o PNG neste navegador. O arquivo pode ser salvo e anexado manualmente no WhatsApp.");
