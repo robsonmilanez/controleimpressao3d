@@ -9652,6 +9652,27 @@ def build_document_share_context(detail: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def build_product_share_context(detail: dict[str, Any]) -> dict[str, str]:
+    product = detail["product"]
+    product_url = url_for(
+        "product_purchase_document",
+        product_id=product["id"],
+        _external=True,
+    )
+    product_label = " - ".join(
+        part
+        for part in (
+            str(product.get("sku") or "").strip(),
+            str(product.get("name") or "").strip(),
+        )
+        if part
+    )
+    message = f"Olá, segue a ficha técnica do produto {product_label}: {product_url}"
+    return {
+        "whatsapp_product_url": build_whatsapp_link(None, message),
+    }
+
+
 @app.route("/jobs/<int:job_id>/cliente")
 def job_customer_document(job_id: int) -> str:
     detail = fetch_job_detail(get_db(), job_id)
@@ -9711,9 +9732,11 @@ def job_production_document_pdf(job_id: int) -> Response:
 
 @app.route("/queries/sale-products/<int:product_id>/pdf")
 def product_purchase_document(product_id: int) -> str:
+    detail = fetch_product_detail(get_db(), product_id)
     return render_template(
         "product_purchase_document.html",
-        **fetch_product_detail(get_db(), product_id),
+        **detail,
+        **build_product_share_context(detail),
     )
 
 
@@ -9730,6 +9753,7 @@ def product_purchase_document_pdf(product_id: int) -> Response:
         "product_purchase_document.html",
         filename,
         **detail,
+        **build_product_share_context(detail),
     )
 
 
