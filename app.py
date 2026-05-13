@@ -9654,22 +9654,40 @@ def build_document_share_context(detail: dict[str, Any]) -> dict[str, str]:
 
 def build_product_share_context(detail: dict[str, Any]) -> dict[str, str]:
     product = detail["product"]
+    return {
+        "whatsapp_product_url": build_product_whatsapp_url(product),
+    }
+
+
+def get_record_value(record: sqlite3.Row | dict[str, Any], key: str) -> Any:
+    if isinstance(record, dict):
+        return record.get(key)
+    return record[key] if key in record.keys() else None
+
+
+def build_product_whatsapp_url(product: sqlite3.Row | dict[str, Any]) -> str:
+    product_id = get_record_value(product, "id")
     product_url = url_for(
         "product_purchase_document",
-        product_id=product["id"],
+        product_id=product_id,
         _external=True,
     )
     product_label = " - ".join(
         part
         for part in (
-            str(product.get("sku") or "").strip(),
-            str(product.get("name") or "").strip(),
+            str(get_record_value(product, "sku") or "").strip(),
+            str(get_record_value(product, "name") or "").strip(),
         )
         if part
     )
     message = f"Olá, segue a ficha técnica do produto {product_label}: {product_url}"
+    return build_whatsapp_link(None, message)
+
+
+@app.context_processor
+def inject_product_share_helpers() -> dict[str, Any]:
     return {
-        "whatsapp_product_url": build_whatsapp_link(None, message),
+        "product_whatsapp_url": build_product_whatsapp_url,
     }
 
 
