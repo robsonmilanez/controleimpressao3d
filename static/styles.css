@@ -2777,6 +2777,62 @@ th {
   margin-bottom: 0.9rem;
 }
 
+.export-menu {
+  position: relative;
+}
+
+.export-menu summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0.55rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(10, 132, 255, 0.12);
+  border: 1px solid rgba(10, 132, 255, 0.24);
+  color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.export-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.export-menu-panel {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 10;
+  display: grid;
+  min-width: 168px;
+  padding: 0.35rem;
+  border: 1px solid rgba(141, 151, 163, 0.36);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(14, 22, 35, 0.18);
+}
+
+.export-menu-panel button {
+  justify-content: flex-start;
+  min-height: 36px;
+  padding: 0.5rem 0.65rem;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #1d2329;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.export-menu-panel button:hover,
+.export-menu-panel button:focus-visible {
+  background: rgba(10, 132, 255, 0.12);
+  color: var(--accent);
+}
+
 .document-header {
   display: flex;
   justify-content: space-between;

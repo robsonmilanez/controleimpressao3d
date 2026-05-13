@@ -6,13 +6,23 @@
     <meta name="robots" content="noindex,nofollow">
     <title>Ficha tecnica {{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='20260507-1845') }}">
+    <script src="{{ url_for('static', filename='app.js', v='20260513-0108') }}" defer></script>
   </head>
   <body class="print-body production-document-page product-technical-document-page">
     <main class="print-page production-document-page product-technical-document-page">
       <div class="print-actions">
         <a class="action-link history-back-link" href="{{ url_for('products') }}">Voltar</a>
-        <a class="action-link" href="{{ whatsapp_product_url }}" target="_blank" rel="noopener noreferrer">Enviar WhatsApp</a>
-        <button type="button" onclick="window.print()">Gerar PDF</button>
+        <details class="export-menu">
+          <summary>Enviar / salvar</summary>
+          <div class="export-menu-panel">
+            <button type="button" onclick="window.print()">PDF</button>
+            <button
+              type="button"
+              class="js-export-png"
+              data-export-filename="Ficha tecnica {{ product["sku"] or product["id"] }} - {{ product["name"]|pdf_filename_part }}.png"
+            >PNG</button>
+          </div>
+        </details>
       </div>
 
       <header class="document-header">

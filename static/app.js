@@ -3491,6 +3491,165 @@ function setupProductPhotoPreviews() {
   });
 }
 
+function getExportStyles() {
+  return Array.from(document.styleSheets)
+    .map((sheet) => {
+      try {
+        return Array.from(sheet.cssRules)
+          .map((rule) => rule.cssText)
+          .join("\n");
+      } catch (error) {
+        return "";
+      }
+    })
+    .join("\n");
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function inlineExportImages(root) {
+  const images = Array.from(root.querySelectorAll("img"));
+  await Promise.all(
+    images.map(async (image) => {
+      const source = image.currentSrc || image.src;
+      if (!source || source.startsWith("data:")) {
+        return;
+      }
+      try {
+        const response = await fetch(source, { credentials: "same-origin" });
+        if (!response.ok) {
+          return;
+        }
+        image.src = await blobToDataUrl(await response.blob());
+      } catch (error) {
+        // If an image cannot be embedded, the export should still continue.
+      }
+    })
+  );
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function renderPrintPageToPngBlob() {
+  const source = document.querySelector(".print-page");
+  if (!source) {
+    throw new Error("Documento não encontrado para exportação.");
+  }
+  if (document.fonts && document.fonts.ready) {
+    await document.fonts.ready;
+  }
+
+  const width = Math.ceil(source.scrollWidth);
+  const height = Math.ceil(source.scrollHeight);
+  const clone = source.cloneNode(true);
+  clone.querySelectorAll(".print-actions").forEach((element) => element.remove());
+  clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+  clone.style.width = `${width}px`;
+  clone.style.minHeight = "auto";
+  clone.style.margin = "0";
+  clone.style.background = "#fff";
+
+  const style = document.createElement("style");
+  style.textContent = getExportStyles();
+  clone.insertBefore(style, clone.firstChild);
+  await inlineExportImages(clone);
+
+  const serialized = new XMLSerializer().serializeToString(clone);
+  const svg = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`,
+    `<foreignObject width="100%" height="100%">${serialized}</foreignObject>`,
+    "</svg>",
+  ].join("");
+  const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+
+  try {
+    const image = new Image();
+    image.decoding = "async";
+    const imageLoaded = new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+    });
+    image.src = svgUrl;
+    await imageLoaded;
+
+    const maxDimension = 12000;
+    const maxPixels = 18000000;
+    const scale = Math.max(
+      0.6,
+      Math.min(2, maxDimension / width, maxDimension / height, Math.sqrt(maxPixels / (width * height)))
+    );
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(width * scale);
+    canvas.height = Math.ceil(height * scale);
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.scale(scale, scale);
+    context.drawImage(image, 0, 0);
+
+    return await new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Não foi possível gerar a imagem."));
+        }
+      }, "image/png");
+    });
+  } finally {
+    URL.revokeObjectURL(svgUrl);
+  }
+}
+
+function setupDocumentImageExport() {
+  const buttons = Array.from(document.querySelectorAll(".js-export-png"));
+  buttons.forEach((button) => {
+    if (button.dataset.exportPngReady === "1") {
+      return;
+    }
+    button.dataset.exportPngReady = "1";
+    button.addEventListener("click", async () => {
+      const originalText = button.textContent;
+      const filename = button.dataset.exportFilename || `${document.title || "documento"}.png`;
+      button.disabled = true;
+      button.textContent = "Gerando...";
+      try {
+        const blob = await renderPrintPageToPngBlob();
+        const file = new File([blob], filename, { type: "image/png" });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: document.title || filename,
+          });
+        } else {
+          downloadBlob(blob, filename);
+        }
+      } catch (error) {
+        alert("Não foi possível gerar o PNG neste navegador. Tente salvar em PDF.");
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+  });
+}
+
 setupSupplierShortcut();
 setupSelectShortcuts();
 setupSearchableSelects();
@@ -3519,4 +3678,5 @@ setupHeaderFilterPopovers();
 setupMaterialsCatalogAnchor();
 setupHistoryBackLinks();
 setupProductPhotoPreviews();
+setupDocumentImageExport();
 setupServiceWorker();
