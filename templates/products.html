@@ -142,8 +142,15 @@
                   <td data-label="Acoes">
                     <div class="action-group">
                       <a class="action-link" href="{{ url_for('edit_product', product_id=item['id']) }}">Editar</a>
-                      <a class="action-link" href="{{ url_for('product_purchase_document', product_id=item['id']) }}">PDF</a>
-                      <a class="action-link" href="{{ product_whatsapp_url(item) }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                      <details class="export-menu table-export-menu">
+                        <summary>Enviar / salvar</summary>
+                        <div class="export-menu-panel">
+                          <a class="export-menu-link" href="{{ product_whatsapp_url(item) }}" target="_blank" rel="noopener noreferrer">Enviar link WhatsApp</a>
+                          <a class="export-menu-link" href="{{ url_for('product_purchase_document', product_id=item['id'], export='pdf') }}">Salvar PDF</a>
+                          <a class="export-menu-link" href="{{ url_for('product_purchase_document', product_id=item['id'], export='png-download') }}">Salvar PNG</a>
+                          <a class="export-menu-link" href="{{ url_for('product_purchase_document', product_id=item['id'], export='png-share') }}">Enviar PNG</a>
+                        </div>
+                      </details>
                     </div>
                   </td>
                   <td data-label="Codigo">{{ item["sku"] or "-" }}</td>

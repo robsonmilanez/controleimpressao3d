@@ -2838,6 +2838,15 @@ th {
   color: var(--accent);
 }
 
+.table-export-menu summary {
+  min-height: 38px;
+}
+
+.table-export-menu .export-menu-panel {
+  left: 0;
+  right: auto;
+}
+
 .document-header {
   display: flex;
   justify-content: space-between;

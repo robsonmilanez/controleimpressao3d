@@ -3841,6 +3841,27 @@ function setupDocumentImageExport() {
   });
 }
 
+function setupDocumentAutoExport() {
+  const params = new URLSearchParams(window.location.search);
+  const action = params.get("export");
+  if (!action || document.body.dataset.autoExportReady === "1") {
+    return;
+  }
+  document.body.dataset.autoExportReady = "1";
+  window.setTimeout(() => {
+    if (action === "pdf") {
+      window.print();
+      return;
+    }
+    if (action === "png-download" || action === "png-share") {
+      const selector = action === "png-download"
+        ? '.js-export-png[data-export-action="download"]'
+        : '.js-export-png[data-export-action="share"]';
+      document.querySelector(selector)?.click();
+    }
+  }, 450);
+}
+
 setupSupplierShortcut();
 setupSelectShortcuts();
 setupSearchableSelects();
@@ -3870,4 +3891,5 @@ setupMaterialsCatalogAnchor();
 setupHistoryBackLinks();
 setupProductPhotoPreviews();
 setupDocumentImageExport();
+setupDocumentAutoExport();
 setupServiceWorker();
