@@ -3594,9 +3594,10 @@ function wrapCanvasText(context, text, maxWidth) {
 }
 
 function drawWrappedText(context, text, x, y, maxWidth, lineHeight, maxLines = 4) {
-  const lines = wrapCanvasText(context, text, maxWidth).slice(0, maxLines);
+  const wrappedLines = wrapCanvasText(context, text, maxWidth);
+  const lines = wrappedLines.slice(0, maxLines);
   lines.forEach((line, index) => {
-    const suffix = index === maxLines - 1 && wrapCanvasText(context, text, maxWidth).length > maxLines ? "..." : "";
+    const suffix = index === maxLines - 1 && wrappedLines.length > maxLines ? "..." : "";
     context.fillText(`${line}${suffix}`, x, y + index * lineHeight);
   });
   return y + lines.length * lineHeight;
@@ -3604,7 +3605,7 @@ function drawWrappedText(context, text, x, y, maxWidth, lineHeight, maxLines = 4
 
 function drawSectionTitle(context, title, y, width, margin) {
   context.fillStyle = "#1d2329";
-  context.font = "700 25px Arial, sans-serif";
+  context.font = "700 22px Arial, sans-serif";
   context.fillText(title.toUpperCase(), margin, y);
   context.strokeStyle = "#cfd6de";
   context.lineWidth = 2;
@@ -3612,7 +3613,7 @@ function drawSectionTitle(context, title, y, width, margin) {
   context.moveTo(margin, y + 14);
   context.lineTo(width - margin, y + 14);
   context.stroke();
-  return y + 42;
+  return y + 28;
 }
 
 function drawRoundedRect(context, x, y, width, height, radius) {
@@ -3636,37 +3637,37 @@ function drawInfoGrid(context, items, x, y, width) {
   items.forEach((item, index) => {
     const column = index % columns;
     if (index > 0 && column === 0) {
-      currentY += 78;
+      currentY += 58;
     }
     const itemX = x + column * (itemWidth + gap);
     context.fillStyle = "#f7f9fb";
     context.strokeStyle = "#cfd6de";
     context.lineWidth = 2;
     context.beginPath();
-    drawRoundedRect(context, itemX, currentY, itemWidth, 62, 10);
+    drawRoundedRect(context, itemX, currentY, itemWidth, 46, 8);
     context.fill();
     context.stroke();
     context.fillStyle = "#6c7582";
-    context.font = "700 15px Arial, sans-serif";
-    context.fillText(item.label.toUpperCase(), itemX + 14, currentY + 22);
+    context.font = "700 13px Arial, sans-serif";
+    context.fillText(item.label.toUpperCase(), itemX + 12, currentY + 17);
     context.fillStyle = "#1d2329";
-    context.font = "700 19px Arial, sans-serif";
-    drawWrappedText(context, item.value || "-", itemX + 14, currentY + 47, itemWidth - 28, 20, 1);
+    context.font = "700 16px Arial, sans-serif";
+    drawWrappedText(context, item.value || "-", itemX + 12, currentY + 36, itemWidth - 24, 17, 1);
   });
-  return currentY + 78;
+  return currentY + 56;
 }
 
 function drawLineList(context, lines, x, y, width, limit = 8) {
-  context.font = "600 19px Arial, sans-serif";
+  context.font = "600 16px Arial, sans-serif";
   context.fillStyle = "#1d2329";
   let currentY = y;
   lines.slice(0, limit).forEach((line) => {
-    currentY = drawWrappedText(context, line, x, currentY, width, 25, 2) + 10;
+    currentY = drawWrappedText(context, line, x, currentY, width, 20, 2) + 4;
   });
   if (lines.length > limit) {
     context.fillStyle = "#6c7582";
     context.fillText(`+ ${lines.length - limit} linha(s) na ficha completa`, x, currentY);
-    currentY += 28;
+    currentY += 22;
   }
   return currentY;
 }
@@ -3678,7 +3679,7 @@ function drawSimpleTable(context, title, rows, x, y, width, columns) {
   let currentY = drawSectionTitle(context, title, y, width + x, x);
   const columnWidths = columns.map((fraction) => width * fraction);
   rows.forEach((row, rowIndex) => {
-    const rowHeight = rowIndex === 0 ? 48 : 42;
+    const rowHeight = rowIndex === 0 ? 34 : 30;
     context.fillStyle = rowIndex % 2 === 0 ? "#fff" : "#f7f9fb";
     context.fillRect(x, currentY - 24, width, rowHeight);
     context.strokeStyle = "#d5dce3";
@@ -3687,15 +3688,15 @@ function drawSimpleTable(context, title, rows, x, y, width, columns) {
     context.lineTo(x + width, currentY + rowHeight - 24);
     context.stroke();
     context.fillStyle = "#1d2329";
-    context.font = rowIndex === 0 ? "700 18px Arial, sans-serif" : "600 17px Arial, sans-serif";
+    context.font = rowIndex === 0 ? "700 15px Arial, sans-serif" : "600 14px Arial, sans-serif";
     let columnX = x + 4;
     row.slice(0, columns.length).forEach((cell, cellIndex) => {
-      drawWrappedText(context, cell || "-", columnX, currentY, columnWidths[cellIndex] - 10, 19, 2);
+      drawWrappedText(context, cell || "-", columnX, currentY, columnWidths[cellIndex] - 10, 15, 2);
       columnX += columnWidths[cellIndex];
     });
     currentY += rowHeight;
   });
-  return currentY + 26;
+  return currentY + 14;
 }
 
 async function renderPrintPageToPngBlob() {
@@ -3703,8 +3704,8 @@ async function renderPrintPageToPngBlob() {
     await document.fonts.ready;
   }
 
-  const width = 1200;
-  const margin = 46;
+  const width = 1080;
+  const margin = 38;
   const title = getDocumentText(".document-header h1") || "Ficha técnica";
   const subtitle = getDocumentText(".document-header p:not(.eyebrow)");
   const commercialItems = collectArticlePairs(".document-commercial-grid article");
@@ -3734,14 +3735,14 @@ async function renderPrintPageToPngBlob() {
   ]);
   const notes = collectParagraphLines(".document-section:last-child p");
 
-  const estimatedHeight = 620
-    + commercialItems.length * 28
-    + technicalLines.length * 42
-    + materialRows.length * 52
-    + componentRows.length * 50
-    + costRows.length * 48
-    + suggestionRows.length * 48
-    + notes.length * 45;
+  const estimatedHeight = 430
+    + commercialItems.length * 18
+    + technicalLines.length * 26
+    + materialRows.length * 34
+    + componentRows.length * 32
+    + costRows.length * 32
+    + suggestionRows.length * 32
+    + notes.length * 28;
   const canvas = document.createElement("canvas");
   const scale = 2;
   canvas.width = width * scale;
@@ -3751,28 +3752,28 @@ async function renderPrintPageToPngBlob() {
   context.fillStyle = "#fff";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  let y = 62;
+  let y = 42;
   context.fillStyle = "#0a84ff";
-  context.font = "700 18px Arial, sans-serif";
+  context.font = "700 16px Arial, sans-serif";
   context.fillText("FICHA TÉCNICA DO PRODUTO", margin, y);
-  y += 44;
+  y += 34;
   context.fillStyle = "#1d2329";
-  context.font = "800 39px Arial, sans-serif";
-  y = drawWrappedText(context, title, margin, y, width - margin * 2, 42, 2) + 6;
-  context.font = "600 22px Arial, sans-serif";
+  context.font = "800 33px Arial, sans-serif";
+  y = drawWrappedText(context, title, margin, y, width - margin * 2, 35, 2) + 2;
+  context.font = "600 18px Arial, sans-serif";
   context.fillStyle = "#3f4752";
-  y = drawWrappedText(context, subtitle, margin, y, width - margin * 2, 28, 2) + 26;
+  y = drawWrappedText(context, subtitle, margin, y, width - margin * 2, 22, 2) + 20;
   context.strokeStyle = "#1d2329";
   context.lineWidth = 4;
   context.beginPath();
   context.moveTo(margin, y);
   context.lineTo(width - margin, y);
   context.stroke();
-  y += 36;
+  y += 28;
 
-  y = drawInfoGrid(context, commercialItems, margin, y, width - margin * 2) + 12;
+  y = drawInfoGrid(context, commercialItems, margin, y, width - margin * 2) + 8;
   y = drawSectionTitle(context, "Dados técnicos", y, width, margin);
-  y = drawLineList(context, technicalLines, margin, y, width - margin * 2, 9) + 10;
+  y = drawLineList(context, technicalLines, margin, y, width - margin * 2, 9) + 4;
   y = drawSimpleTable(context, "Filamentos e materiais", materialRows, margin, y, width - margin * 2, [0.42, 0.16, 0.18, 0.24]);
   y = drawSimpleTable(context, "Componentes", componentRows, margin, y, width - margin * 2, [0.48, 0.14, 0.16, 0.22]);
   y = drawSimpleTable(context, "Resumo de custos", costRows, margin, y, width - margin * 2, [0.46, 0.22, 0.32]);
